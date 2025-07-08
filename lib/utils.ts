@@ -29,7 +29,7 @@ export function filterImages(images: ImageData[], filters: SearchFilters): Image
     // 标签筛选匹配
     const tagMatch = filters.tags.length === 0 || 
       filters.tags.every(filterTag => 
-        image.tags.some(imageTag => imageTag.id === filterTag)
+        image.tags.some(imageTag => imageTag.id === filterTag.id)
       );
 
     return queryMatch && tagMatch;
