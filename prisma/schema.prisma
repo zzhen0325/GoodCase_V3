@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+}
+
+// 图片模型
+model Image {
+  id        String   @id @default(uuid())
+  url       String
+  title     String
+  prompts   Prompt[]
+  tags      Tag[]    @relation("ImageTags")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 提示词模型
+model Prompt {
+  id      String @id @default(uuid())
+  title   String
+  content String
+  color   String
+  order   Int
+  image   Image  @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  imageId String
+}
+
+// 标签模型
+model Tag {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  color  String
+  images Image[] @relation("ImageTags")
+}
