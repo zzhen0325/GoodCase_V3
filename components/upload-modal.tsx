@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ImageData, Prompt, Tag } from '@/types';
 import { TagManager } from './tag-manager';
+import { useToastContext } from '@/components/toast-provider';
 import { generateId } from '@/lib/utils';
 
 // 上传图片弹窗组件属性
@@ -27,6 +28,7 @@ export function UploadModal({
   availableTags,
   onCreateTag 
 }: UploadModalProps) {
+  const { toast } = useToastContext();
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -118,10 +120,12 @@ export function UploadModal({
   // 处理上传
   const handleUpload = async () => {
     if (!selectedFile) {
-      alert('请选择图片文件');
+      toast.error('请选择图片文件');
       return;
     }
 
+    const toastId = toast.loading('上传中...', '正在处理图片文件');
+    
     try {
       setIsUploading(true);
       
@@ -138,6 +142,8 @@ export function UploadModal({
       // 调用上传回调
       await onUpload(newImage);
       
+      toast.resolve(toastId, '上传成功', '图片已添加到图库');
+      
       // 重置表单
       resetForm();
       
@@ -145,7 +151,7 @@ export function UploadModal({
       onClose();
     } catch (error) {
       console.error('上传失败:', error);
-      alert('上传失败，请重试');
+      toast.reject(toastId, '上传失败', '请检查文件格式后重试');
     } finally {
       setIsUploading(false);
     }

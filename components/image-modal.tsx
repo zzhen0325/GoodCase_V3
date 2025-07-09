@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PromptBlock } from './prompt-block';
 import { TagManager } from './tag-manager';
+import { useToastContext } from '@/components/toast-provider';
 import { formatDate, formatFileSize, generateId, copyToClipboard } from '@/lib/utils';
 
 // 弹窗样式配置 - 简化布局，避免覆盖问题
@@ -67,6 +68,7 @@ export function ImageModal({
   onCreateTag,
   onCopyPrompt
 }: ImageModalProps) {
+  const { toast } = useToastContext();
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -94,15 +96,24 @@ export function ImageModal({
   }, [image, isOpen]);
 
   // 保存更改
-  const saveChanges = () => {
+  const saveChanges = async () => {
     if (!image) return;
 
-    onUpdate(image.id, {
-      title: editedTitle,
-      prompts: prompts,
-      tags: tags
-    });
-    setIsEditing(false);
+    const toastId = toast.loading('保存中...', '正在更新图片信息');
+    
+    try {
+      await onUpdate(image.id, {
+        title: editedTitle,
+        prompts: prompts,
+        tags: tags
+      });
+      
+      toast.resolve(toastId, '保存成功', '图片信息已更新');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('保存失败:', error);
+      toast.reject(toastId, '保存失败', '请稍后重试');
+    }
   };
 
   // 取消编辑
@@ -184,7 +195,7 @@ export function ImageModal({
   };
 
   // 删除图片
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteStatus === 'idle') {
       setDeleteStatus('confirming');
       // 3秒后自动取消确认状态
@@ -194,8 +205,18 @@ export function ImageModal({
     } else if (deleteStatus === 'confirming') {
       if (image && onDelete) {
         setDeleteStatus('deleting');
-        onDelete(image.id);
-        onClose();
+        
+        const toastId = toast.loading('删除中...', '正在删除图片');
+        
+        try {
+          await onDelete(image.id);
+          toast.resolve(toastId, '删除成功', '图片已从图库中移除');
+          onClose();
+        } catch (error) {
+          console.error('删除失败:', error);
+          toast.reject(toastId, '删除失败', '请稍后重试');
+          setDeleteStatus('idle');
+        }
       }
     }
   };
