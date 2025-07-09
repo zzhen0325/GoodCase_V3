@@ -194,45 +194,25 @@ export class Database {
 
       // 更新图片基本信息
       if (Object.keys(imageInfo).length > 0) {
-        const updateFields = [];
-        const values = [];
-        
-        if (imageInfo.title !== undefined) {
-          updateFields.push('title = $' + (values.length + 1));
-          values.push(imageInfo.title);
-        }
-        if (imageInfo.url !== undefined) {
-          updateFields.push('url = $' + (values.length + 1));
-          values.push(imageInfo.url);
-        }
-        
-        updateFields.push('"updatedAt" = $' + (values.length + 1));
-        values.push(now);
-        values.push(id);
-        
-        if (updateFields.length > 1) { // 除了updatedAt还有其他字段
-          // 构建动态SQL查询
-          let query = 'UPDATE "Image" SET ';
-          const setParts = [];
-          const queryValues = [];
-          
-          if (imageInfo.title !== undefined) {
-            setParts.push('title = $' + (queryValues.length + 1));
-            queryValues.push(imageInfo.title);
-          }
-          if (imageInfo.url !== undefined) {
-            setParts.push('url = $' + (queryValues.length + 1));
-            queryValues.push(imageInfo.url);
-          }
-          
-          setParts.push('"updatedAt" = $' + (queryValues.length + 1));
-          queryValues.push(now);
-          
-          query += setParts.join(', ') + ' WHERE id = $' + (queryValues.length + 1);
-          queryValues.push(id);
-          
-          // 使用动态SQL查询需要特殊处理
-          const result = await sql(query, queryValues);
+        // 根据需要更新的字段组合不同的SQL语句
+        if (imageInfo.title !== undefined && imageInfo.url !== undefined) {
+          await sql`
+            UPDATE "Image" 
+            SET title = ${imageInfo.title}, url = ${imageInfo.url}, "updatedAt" = ${now}
+            WHERE id = ${id}
+          `;
+        } else if (imageInfo.title !== undefined) {
+          await sql`
+            UPDATE "Image" 
+            SET title = ${imageInfo.title}, "updatedAt" = ${now}
+            WHERE id = ${id}
+          `;
+        } else if (imageInfo.url !== undefined) {
+          await sql`
+            UPDATE "Image" 
+            SET url = ${imageInfo.url}, "updatedAt" = ${now}
+            WHERE id = ${id}
+          `;
         }
       }
 
