@@ -45,6 +45,10 @@ export interface SearchFilters {
   sortBy?: string;
   sortOrder?: string;
   isFavorite?: boolean;
+  dateRange?: {
+    start?: string;
+    end?: string;
+  };
 }
 
 // 数据库操作结果
@@ -100,12 +104,60 @@ export interface ImportOptions {
 // 导入结果
 export interface ImportResult {
   success: boolean;
-  summary: {
-    imagesImported: number;
-    tagsImported: number;
-    promptsImported: number;
-    duplicatesSkipped: number;
-    errors: string[];
-  };
+  importedImages: number;
+  importedTags: number;
+  importedPrompts: number;
+  skippedImages: number;
+  errors: string[];
   error?: string;
 }
+
+// Firestore 文档类型定义
+
+// 图片文档（Firestore）
+export interface ImageDocument {
+  id: string;
+  url: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  usageCount?: number;
+}
+
+// 提示词文档（Firestore）
+export interface PromptDocument {
+  id: string;
+  imageId: string; // 关联的图片ID
+  title: string;
+  content: string;
+  color: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 标签文档（Firestore）
+export interface TagDocument {
+  id: string;
+  name: string;
+  color: string;
+  usageCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 图片标签关联文档（Firestore）
+export interface ImageTagDocument {
+  id: string;
+  imageId: string;
+  tagId: string;
+  createdAt: string;
+}
+
+// Firestore 集合名称常量
+export const COLLECTIONS = {
+  IMAGES: 'images',
+  PROMPTS: 'prompts', 
+  TAGS: 'tags',
+  IMAGE_TAGS: 'image_tags'
+} as const;
