@@ -16,6 +16,8 @@ export interface Prompt {
   content: string;
   color: string;
   order: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // 颜色主题类型
@@ -30,6 +32,9 @@ export interface Tag {
   id: string;
   name: string;
   color: string;
+  usageCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // 搜索筛选参数

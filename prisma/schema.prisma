@@ -16,21 +16,35 @@ model Image {
   updatedAt DateTime @updatedAt
   prompts   Prompt[]
   tags      Tag[]    @relation("ImageTags")
+
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 model Prompt {
-  id      String @id @default(uuid())
-  title   String
-  content String
-  color   String
-  order   Int
-  imageId String
-  image   Image  @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  color     String
+  order     Int      @default(0)
+  imageId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, order])
+  @@index([imageId])
 }
 
 model Tag {
-  id     String  @id @default(uuid())
-  name   String  @unique
-  color  String
-  images Image[] @relation("ImageTags")
+  id         String  @id @default(uuid())
+  name       String  @unique
+  color      String
+  usageCount Int     @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  images     Image[] @relation("ImageTags")
+
+  @@index([name])
+  @@index([usageCount])
 }
