@@ -231,7 +231,8 @@ export class Database {
           query += setParts.join(', ') + ' WHERE id = $' + (queryValues.length + 1);
           queryValues.push(id);
           
-          await sql(query, queryValues);
+          // 使用动态SQL查询需要特殊处理
+          const result = await sql.unsafe(query, queryValues);
         }
       }
 

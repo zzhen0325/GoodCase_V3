@@ -85,12 +85,13 @@ export function ImageModal({
 
   // 初始化数据
   useEffect(() => {
-    if (image) {
+    if (image && isOpen) {
       setEditedTitle(image.title);
       setPrompts([...image.prompts]);
       setTags([...image.tags]);
+      setIsEditing(false); // 重置编辑状态
     }
-  }, [image]);
+  }, [image, isOpen]);
 
   // 保存更改
   const saveChanges = () => {
