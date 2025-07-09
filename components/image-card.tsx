@@ -69,14 +69,37 @@ export function ImageCard({ image, onClick, index }: ImageCardProps) {
         <Card className="aspect-square overflow-hidden rounded-[2rem]   hover:shadow-xl transition-shadow duration-300">
           <div className="relative w-full h-full">
             {/* 图片容器 */}
-            <div className="w-full h-full bg-muted rounded-[2rem] flex items-center justify-center">
+            <div className="w-full h-full bg-muted rounded-[2rem] flex items-center justify-center relative">
               {image.url ? (
-                <img
-                  src={image.url}
-                  alt={image.title}
-                  className="w-full h-full object-cover rounded-[2rem]"
-                  loading="lazy"
-                />
+                inView ? (
+                  <>
+                    <img
+                      src={image.url}
+                      alt={image.title}
+                      className="w-full h-full object-cover rounded-[2rem] transition-opacity duration-300"
+                      loading="lazy"
+                      onLoad={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const errorDiv = e.currentTarget.parentElement?.querySelector('.error-placeholder');
+                        if (errorDiv) {
+                          errorDiv.classList.remove('hidden');
+                        }
+                      }}
+                      style={{ opacity: 0 }}
+                    />
+                    {/* 错误状态占位符 */}
+                    <div className="error-placeholder hidden absolute inset-0 w-full h-full bg-muted rounded-[2rem] flex items-center justify-center text-muted-foreground text-sm">
+                      图片加载失败
+                    </div>
+                  </>
+                ) : (
+                  <div className="w-full h-full bg-muted/50 rounded-[2rem] flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                  </div>
+                )
               ) : (
                 <div className="text-muted-foreground text-sm text-center p-4 rounded-[2rem]">
                   暂无图片

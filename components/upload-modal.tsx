@@ -1,15 +1,17 @@
 "use client"
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, Image as ImageIcon, FileImage } from 'lucide-react';
+import { X, Upload, FileImage } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageData, Prompt, Tag } from '@/types';
-import { TagManager } from './tag-manager';
+import { ImageData, Tag } from '@/types';
+import { TagManager } from '@/components/tag-manager';
 import { useToastContext } from '@/components/toast-provider';
+
 import { generateId } from '@/lib/utils';
+import { uploadImageToStorage, validateImageFile, generateImageFilename } from '@/lib/image-storage';
 
 // 上传图片弹窗组件属性
 interface UploadModalProps {
@@ -34,6 +36,7 @@ export function UploadModal({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,29 +71,20 @@ export function UploadModal({
     }
   };
 
-  // 将文件转换为base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   // 处理文件
   const processFile = async (file: File) => {
-    // 检查文件类型
-    if (!file.type.startsWith('image/')) {
-      alert('请选择图片文件');
-      return;
-    }
-    
     try {
-      // 转换为base64并设置预览
-      const base64 = await fileToBase64(file);
-      setSelectedFile(file);
-      setPreviewUrl(base64);
+      // 验证文件
+      validateImageFile(file);
+      
+      // 创建预览 URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setSelectedFile(file);
+        setPreviewUrl(dataUrl);
+      };
+      reader.readAsDataURL(file);
       
       // 如果没有标题，使用文件名作为默认标题
       if (!title) {
@@ -99,7 +93,7 @@ export function UploadModal({
       }
     } catch (error) {
       console.error('文件处理失败:', error);
-      alert('文件处理失败，请重试');
+      toast.error('文件处理失败', error instanceof Error ? error.message : '请重试');
     }
   };
 
@@ -124,15 +118,29 @@ export function UploadModal({
       return;
     }
 
-    const toastId = toast.loading('上传中...', '正在处理图片文件');
+    const toastId = toast.loading('上传中...', '正在处理图片');
     
     try {
       setIsUploading(true);
+      setUploadProgress(0);
+      
+      // 生成文件名
+      const filename = generateImageFilename(selectedFile.name);
+      
+      // 上传到 Firebase Storage
+       const imageUrl = await uploadImageToStorage(
+         selectedFile,
+         filename,
+         (progress) => {
+           setUploadProgress(progress);
+           toast.updateProgress(toastId, progress);
+         }
+       );
       
       // 创建新的图片数据对象
       const newImage: Omit<ImageData, 'id'> = {
         title: title || '未命名图片',
-        url: previewUrl || '', // 现在存储base64数据
+        url: imageUrl, // 存储 Firebase Storage URL
         prompts: [],
         tags: selectedTags,
         createdAt: new Date().toISOString(),
@@ -151,9 +159,10 @@ export function UploadModal({
       onClose();
     } catch (error) {
       console.error('上传失败:', error);
-      toast.reject(toastId, '上传失败', '请检查文件格式后重试');
+      toast.reject(toastId, '上传失败', error instanceof Error ? error.message : '请检查文件格式后重试');
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -163,6 +172,7 @@ export function UploadModal({
     setSelectedFile(null);
     setPreviewUrl(null);
     setSelectedTags([]);
+    setUploadProgress(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -273,13 +283,31 @@ export function UploadModal({
             </div>
           </div>
 
-          <div className="p-6 border-t bg-muted/30 flex justify-end">
-            <Button 
-              onClick={handleUpload} 
-              disabled={!selectedFile || isUploading}
-            >
-              {isUploading ? '上传中...' : '上传图片'}
-            </Button>
+          <div className="p-6 border-t bg-muted/30 space-y-4">
+            {/* 上传进度条 */}
+            {isUploading && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>上传进度</span>
+                  <span>{Math.round(uploadProgress)}%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end">
+              <Button 
+                onClick={handleUpload} 
+                disabled={!selectedFile || isUploading}
+              >
+                {isUploading ? '上传中...' : '上传图片'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

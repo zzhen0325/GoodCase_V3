@@ -75,3 +75,36 @@ export const TAG_COLORS = COLOR_THEMES.map(theme => theme.name);
 export const getColorTheme = (colorName: string): ColorTheme => {
   return COLOR_THEMES.find(theme => theme.name === colorName) || COLOR_THEMES[0];
 };
+
+// 导出数据格式
+export interface ExportData {
+  version: string;
+  exportedAt: string;
+  images: ImageData[];
+  tags: Tag[];
+  metadata: {
+    totalImages: number;
+    totalTags: number;
+    totalPrompts: number;
+  };
+}
+
+// 导入选项
+export interface ImportOptions {
+  mode: 'merge' | 'replace'; // 合并模式或替换模式
+  skipDuplicates: boolean; // 是否跳过重复项
+  preserveIds: boolean; // 是否保留原始ID
+}
+
+// 导入结果
+export interface ImportResult {
+  success: boolean;
+  summary: {
+    imagesImported: number;
+    tagsImported: number;
+    promptsImported: number;
+    duplicatesSkipped: number;
+    errors: string[];
+  };
+  error?: string;
+}

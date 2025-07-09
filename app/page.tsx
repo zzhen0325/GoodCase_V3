@@ -9,6 +9,9 @@ import { SearchBar } from '@/components/search-bar';
 import { ImageGrid } from '@/components/image-grid';
 import { ImageModal } from '@/components/image-modal';
 import { UploadModal } from '@/components/upload-modal';
+import { ProgressModal, useProgress } from '@/components/progress-modal';
+
+
 import { Dock } from '@/components/dock';
 import TextPressure from '@/components/text-pressure';
 import CircularText from '@/components/circular-text';
@@ -29,7 +32,12 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+
   const [activeView, setActiveView] = useState('grid');
+  
+  // 进度管理
+  const { progressInfo, updateProgress, resetProgress } = useProgress();
 
   // 初始化数据
   useEffect(() => {
@@ -198,56 +206,201 @@ export default function HomePage() {
   const handleImport = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.json,application/json';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
+      // 重置并显示进度弹窗
+      resetProgress();
+      setIsProgressModalOpen(true);
+      
       try {
+        // 步骤1: 读取文件
+        updateProgress({
+          status: 'reading',
+          progress: 10,
+          message: '正在读取文件...',
+          details: `文件大小: ${(file.size / 1024 / 1024).toFixed(2)} MB`
+        });
+        
         const text = await file.text();
+        
+        // 步骤2: 解析数据
+        updateProgress({
+          status: 'parsing',
+          progress: 30,
+          message: '正在解析数据...',
+          details: '验证数据格式和完整性'
+        });
+        
         const data = JSON.parse(text);
         
-        // 验证数据格式
-        if (!data.images || !data.tags || !Array.isArray(data.images) || !Array.isArray(data.tags)) {
-          throw new Error('数据格式不正确');
-        }
+        // 步骤3: 上传数据
+        updateProgress({
+          status: 'uploading',
+          progress: 50,
+          message: '正在上传数据...',
+          details: `准备导入 ${data.images?.length || 0} 张图片`
+        });
         
-        // 这里可以实现批量导入逻辑
+        // 使用XMLHttpRequest以获取上传进度
+        const result = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const uploadProgress = 50 + (event.loaded / event.total) * 30;
+              updateProgress({
+                status: 'uploading',
+                progress: uploadProgress,
+                message: '正在上传数据...',
+                details: `已上传: ${(event.loaded / 1024 / 1024).toFixed(2)} MB / ${(event.total / 1024 / 1024).toFixed(2)} MB`
+              });
+            }
+          };
+          
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(JSON.parse(xhr.responseText));
+            } else {
+              reject(new Error(xhr.statusText || '上传失败'));
+            }
+          };
+          
+          xhr.onerror = () => reject(new Error('网络错误'));
+          
+          xhr.open('POST', '/api/import');
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.send(JSON.stringify({
+            data,
+            options: {
+              mode: 'merge',
+              skipDuplicates: true,
+              preserveIds: false,
+            },
+          }));
+        });
+        
+        // 步骤4: 处理数据
+        updateProgress({
+          status: 'processing',
+          progress: 90,
+          message: '正在处理数据...',
+          details: '更新本地数据缓存'
+        });
+        
+        // 重新加载数据
         await loadData();
         
-        alert(`导入功能开发中`);
+        // 完成
+        updateProgress({
+          status: 'success',
+          progress: 100,
+          message: '导入完成！',
+          details: `成功导入 ${(result as any).summary.imagesImported} 张图片，${(result as any).summary.tagsImported} 个标签，${(result as any).summary.promptsImported} 个提示词`
+        });
+        
       } catch (error) {
         console.error('导入失败:', error);
-        alert('导入失败: ' + (error as Error).message);
+        updateProgress({
+          status: 'error',
+          progress: 0,
+          message: '导入失败',
+          error: (error as Error).message
+        });
       }
     };
     input.click();
-  }, []);
+  }, [updateProgress, resetProgress, loadData]);
 
   const handleExport = useCallback(async () => {
+    // 重置并显示进度弹窗
+    resetProgress();
+    setIsProgressModalOpen(true);
+    
     try {
-      const data = {
-        images,
-        tags,
-        exportDate: new Date().toISOString()
-      };
+      // 步骤1: 准备数据
+      updateProgress({
+        status: 'preparing',
+        progress: 20,
+        message: '正在准备导出数据...',
+        details: '收集图片、标签和提示词数据'
+      });
       
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      // 使用XMLHttpRequest以获取下载进度
+      const { blob, filename } = await new Promise<{blob: Blob, filename: string}>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const downloadProgress = 20 + (event.loaded / event.total) * 60;
+            updateProgress({
+              status: 'downloading',
+              progress: downloadProgress,
+              message: '正在下载数据...',
+              details: `已下载: ${(event.loaded / 1024 / 1024).toFixed(2)} MB / ${(event.total / 1024 / 1024).toFixed(2)} MB`
+            });
+          }
+        };
+        
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            // 获取文件名
+            const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+            const filename = contentDisposition
+              ? contentDisposition.split('filename="')[1]?.split('"')[0]
+              : `gallery-export-${new Date().toISOString().split('T')[0]}.json`;
+            
+            resolve({ blob: xhr.response, filename });
+          } else {
+            reject(new Error(xhr.statusText || '导出失败'));
+          }
+        };
+        
+        xhr.onerror = () => reject(new Error('网络错误'));
+        
+        xhr.open('GET', '/api/export');
+        xhr.responseType = 'blob';
+        xhr.send();
+      });
       
+      // 步骤2: 生成下载
+      updateProgress({
+        status: 'downloading',
+        progress: 90,
+        message: '正在生成下载文件...',
+        details: `文件大小: ${(blob.size / 1024 / 1024).toFixed(2)} MB`
+      });
+      
+      // 下载文件
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gooodcase-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
       
-      URL.revokeObjectURL(url);
+      // 完成
+      updateProgress({
+        status: 'success',
+        progress: 100,
+        message: '导出完成！',
+        details: `文件已保存: ${filename}`
+      });
       
-      alert(`成功导出 ${data.images.length} 张图片和 ${data.tags.length} 个标签`);
     } catch (error) {
       console.error('导出失败:', error);
-      alert('导出失败: ' + (error as Error).message);
+      updateProgress({
+        status: 'error',
+        progress: 0,
+        message: '导出失败',
+        error: (error as Error).message
+      });
     }
-  }, [images, tags]);
+  }, [updateProgress, resetProgress]);
 
   const handleFavorites = useCallback(() => {
     setActiveView('favorites');
@@ -262,7 +415,8 @@ export default function HomePage() {
 
   const handleSettings = useCallback(() => {
     setActiveView('settings');
-    // 这里可以打开设置弹窗
+    // 设置功能暂时禁用
+    console.log('设置功能');
   }, []);
 
   const handleLarkDoc = useCallback(() => {
@@ -279,6 +433,24 @@ export default function HomePage() {
   const closeUploadModal = useCallback(() => {
     setIsUploadModalOpen(false);
   }, []);
+
+  // 关闭进度弹窗
+  const closeProgressModal = useCallback(() => {
+    setIsProgressModalOpen(false);
+    resetProgress();
+  }, [resetProgress]);
+
+
+
+  // 取消操作
+  const handleCancelOperation = useCallback(() => {
+    updateProgress({
+      status: 'cancelled',
+      progress: 0,
+      message: '操作已取消'
+    });
+  }, [updateProgress]);
+
 
   if (isLoading) {
     return (
@@ -390,6 +562,18 @@ export default function HomePage() {
           onUpload={handleImageUpload}
           availableTags={tags}
           onCreateTag={handleTagCreate} />
+
+        {/* 进度弹窗 */}
+        <ProgressModal
+          isOpen={isProgressModalOpen}
+          onClose={closeProgressModal}
+          onCancel={handleCancelOperation}
+          progressInfo={progressInfo}
+          title={progressInfo.status === 'uploading' || progressInfo.status === 'reading' || progressInfo.status === 'parsing' ? '数据导入' : '数据导出'}
+          allowCancel={!['success', 'error', 'cancelled'].includes(progressInfo.status)}
+        />
+
+
       </div>
     </>
   );

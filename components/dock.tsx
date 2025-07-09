@@ -65,6 +65,13 @@ export function Dock({
       isActive: activeView === 'lark-doc'
     },
     {
+      id: 'settings',
+      icon: <Settings className="w-5 h-5" />,
+      label: '设置',
+      onClick: onSettings,
+      isActive: activeView === 'settings'
+    },
+    {
       id: 'favorites',
       icon: <Bot className="w-5 h-5" />,
       label: 'AI助手',
