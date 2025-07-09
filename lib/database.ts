@@ -275,12 +275,14 @@ export class Database {
       return {
         success: true,
         data: {
-          ...updatedImage,
+          id: updatedImage.id,
+          url: updatedImage.url,
+          title: updatedImage.title,
           prompts: (updatedPrompts || []) as any[],
           tags: (updatedTags || []) as any[],
           createdAt: updatedImage.createdAt,
           updatedAt: updatedImage.updatedAt,
-        },
+        } as ImageData,
       };
     } catch (error) {
       console.error('更新图片失败:', error);
