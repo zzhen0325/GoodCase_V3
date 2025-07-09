@@ -18,37 +18,52 @@ export class Database {
     }
     
     try {
-      // 获取图片基本信息
-      const images = await sql`
-        SELECT * FROM "Image" 
-        ORDER BY "createdAt" DESC
-      `;
+      // 使用优化的查询获取所有数据
+      const [images, prompts, imageTags] = await Promise.all([
+        // 获取所有图片
+        sql`SELECT * FROM "Image" ORDER BY "createdAt" DESC`,
+        
+        // 获取所有提示词
+        sql`SELECT * FROM "Prompt" ORDER BY "imageId", "order" ASC`,
+        
+        // 获取图片标签关联
+        sql`
+          SELECT it."A" as "imageId", t.* 
+          FROM "_ImageTags" it
+          JOIN "Tag" t ON t.id = it."B"
+          ORDER BY it."A", t."name"
+        `
+      ]);
 
-      // 为每个图片获取关联的prompts和tags
-      const imagesWithRelations = await Promise.all(
-        images.map(async (image: any) => {
-          const [prompts, tags] = await Promise.all([
-            sql`
-              SELECT * FROM "Prompt" 
-              WHERE "imageId" = ${image.id} 
-              ORDER BY "order" ASC
-            `,
-            sql`
-              SELECT t.* FROM "Tag" t
-              JOIN "_ImageToTag" it ON t.id = it."B"
-              WHERE it."A" = ${image.id}
-            `
-          ]);
+      // 构建数据映射
+      const promptsMap = new Map<string, any[]>();
+      const tagsMap = new Map<string, any[]>();
+      
+      // 按imageId分组prompts
+      prompts.forEach((prompt: any) => {
+        if (!promptsMap.has(prompt.imageId)) {
+          promptsMap.set(prompt.imageId, []);
+        }
+        promptsMap.get(prompt.imageId)!.push(prompt);
+      });
+      
+      // 按imageId分组tags
+      imageTags.forEach((item: any) => {
+        const { imageId, ...tag } = item;
+        if (!tagsMap.has(imageId)) {
+          tagsMap.set(imageId, []);
+        }
+        tagsMap.get(imageId)!.push(tag);
+      });
 
-          return {
-            ...image,
-            prompts: (prompts || []) as any[],
-            tags: (tags || []) as any[],
-            createdAt: image.createdAt.toISOString(),
-            updatedAt: image.updatedAt.toISOString(),
-          };
-        })
-      );
+      // 组装最终数据
+      const imagesWithRelations = images.map((image: any) => ({
+        ...image,
+        prompts: promptsMap.get(image.id) || [],
+        tags: tagsMap.get(image.id) || [],
+        createdAt: image.createdAt.toISOString(),
+        updatedAt: image.updatedAt.toISOString(),
+      }));
 
       return {
         success: true,
@@ -86,12 +101,15 @@ export class Database {
       // 处理标签
       const tagIds = [];
       for (const tag of tags) {
-        // 尝试插入标签，如果已存在则忽略
+        // 尝试插入标签，如果已存在则更新颜色和使用次数
         const tagId = tag.id || crypto.randomUUID();
         await sql`
-          INSERT INTO "Tag" (id, name, color)
-          VALUES (${tagId}, ${tag.name}, ${tag.color})
-          ON CONFLICT (name) DO UPDATE SET color = ${tag.color}
+          INSERT INTO "Tag" (id, name, color, "usageCount", "createdAt", "updatedAt")
+          VALUES (${tagId}, ${tag.name}, ${tag.color}, 1, ${now}, ${now})
+          ON CONFLICT (name) DO UPDATE SET 
+            color = ${tag.color},
+            "usageCount" = "Tag"."usageCount" + 1,
+            "updatedAt" = ${now}
         `;
         
         // 获取标签ID
@@ -117,8 +135,8 @@ export class Database {
       for (const prompt of prompts) {
         const promptId = crypto.randomUUID();
         await sql`
-          INSERT INTO "Prompt" (id, title, content, color, "order", "imageId")
-          VALUES (${promptId}, ${prompt.title}, ${prompt.content}, ${prompt.color}, ${prompt.order}, ${imageId})
+          INSERT INTO "Prompt" (id, title, content, color, "order", "imageId", "createdAt", "updatedAt")
+          VALUES (${promptId}, ${prompt.title}, ${prompt.content}, ${prompt.color}, ${prompt.order}, ${imageId}, ${now}, ${now})
         `;
       }
 
@@ -229,9 +247,12 @@ export class Database {
         for (const tag of tags) {
           const tagId = tag.id || crypto.randomUUID();
           await sql`
-            INSERT INTO "Tag" (id, name, color)
-            VALUES (${tagId}, ${tag.name}, ${tag.color})
-            ON CONFLICT (name) DO UPDATE SET color = ${tag.color}
+            INSERT INTO "Tag" (id, name, color, "usageCount", "createdAt", "updatedAt")
+            VALUES (${tagId}, ${tag.name}, ${tag.color}, 1, ${now}, ${now})
+            ON CONFLICT (name) DO UPDATE SET 
+              color = ${tag.color},
+              "usageCount" = "Tag"."usageCount" + 1,
+              "updatedAt" = ${now}
           `;
           
           const existingTag = await sql`
@@ -264,8 +285,8 @@ export class Database {
         for (const prompt of prompts) {
           const promptId = crypto.randomUUID();
           await sql`
-            INSERT INTO "Prompt" (id, title, content, color, "order", "imageId")
-            VALUES (${promptId}, ${prompt.title}, ${prompt.content}, ${prompt.color}, ${prompt.order}, ${id})
+            INSERT INTO "Prompt" (id, title, content, color, "order", "imageId", "createdAt", "updatedAt")
+            VALUES (${promptId}, ${prompt.title}, ${prompt.content}, ${prompt.color}, ${prompt.order}, ${id}, ${now}, ${now})
           `;
         }
       }
@@ -357,7 +378,8 @@ export class Database {
     
     try {
       const tags = await sql`
-        SELECT * FROM "Tag" ORDER BY name ASC
+        SELECT * FROM "Tag" 
+        ORDER BY "usageCount" DESC, "name" ASC
       `;
       
       return {
