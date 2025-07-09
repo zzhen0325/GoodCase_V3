@@ -1,13 +1,20 @@
 import { PrismaClient } from '@prisma/client';
 import { ImageData, Tag, DBResult } from '@/types';
 
-// 创建Prisma客户端实例
-const prisma = new PrismaClient();
+// 创建Prisma客户端实例 - 只在非服务端渲染时创建
+const prisma = typeof window === 'undefined' ? new PrismaClient() : null;
 
 // 数据库操作类
 export class Database {
   // 获取所有图片
   static async getAllImages(): Promise<DBResult<ImageData[]>> {
+    if (!prisma) {
+      return {
+        success: false,
+        error: 'Database not available',
+      };
+    }
+    
     try {
       const images = await prisma.image.findMany({
         include: {
@@ -38,6 +45,13 @@ export class Database {
 
   // 添加新图片
   static async addImage(imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>): Promise<DBResult<ImageData>> {
+    if (!prisma) {
+      return {
+        success: false,
+        error: 'Database not available',
+      };
+    }
+    
     try {
       const { prompts, tags, ...imageInfo } = imageData;
 
@@ -92,6 +106,13 @@ export class Database {
 
   // 更新图片
   static async updateImage(id: string, imageData: Partial<ImageData>): Promise<DBResult<ImageData>> {
+    if (!prisma) {
+      return {
+        success: false,
+        error: 'Database not available',
+      };
+    }
+    
     try {
       const { prompts, tags, ...imageInfo } = imageData;
 
@@ -162,6 +183,13 @@ export class Database {
 
   // 删除图片
   static async deleteImage(id: string): Promise<DBResult<void>> {
+    if (!prisma) {
+      return {
+        success: false,
+        error: 'Database not available',
+      };
+    }
+    
     try {
       await prisma.image.delete({
         where: { id },
@@ -181,6 +209,13 @@ export class Database {
 
   // 获取所有标签
   static async getAllTags(): Promise<DBResult<Tag[]>> {
+    if (!prisma) {
+      return {
+        success: false,
+        error: 'Database not available',
+      };
+    }
+    
     try {
       const tags = await prisma.tag.findMany();
       return {
