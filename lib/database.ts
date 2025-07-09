@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma';
 import { ImageData, Tag, DBResult } from '@/types';
 
 // 创建Prisma客户端实例 - 只在非服务端渲染时创建
