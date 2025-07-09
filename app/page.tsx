@@ -88,43 +88,31 @@ export default function HomePage() {
 
   // 处理图片更新
   const handleImageUpdate = useCallback(async (id: string, updates: Partial<ImageData>) => {
-    try {
-      const result = await ApiClient.updateImage(id, updates);
+    const result = await ApiClient.updateImage(id, updates);
+    
+    if (result.success) {
+      // 更新本地状态
+      setImages(prev => prev.map(img => 
+        img.id === id && result.data ? result.data : img
+      ));
       
-      if (result.success) {
-        // 更新本地状态
-        setImages(prev => prev.map(img => 
-          img.id === id && result.data ? result.data : img
-        ));
-        
-        // 更新选中的图片
-        if (selectedImage?.id === id && result.data) {
-          setSelectedImage(result.data);
-        }
-      } else {
-        console.error('更新图片失败:', result.error);
-        alert('更新图片失败: ' + result.error);
+      // 更新选中的图片
+      if (selectedImage?.id === id && result.data) {
+        setSelectedImage(result.data);
       }
-    } catch (error) {
-      console.error('更新图片失败:', error);
-      alert('更新图片失败: ' + (error as Error).message);
+    } else {
+      throw new Error(result.error || '更新失败');
     }
   }, [selectedImage]);
 
   // 处理图片上传
   const handleImageUpload = useCallback(async (imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const result = await ApiClient.addImage(imageData);
-      
-      if (result.success && result.data) {
-        setImages(prev => [result.data!, ...prev]);
-      } else {
-        console.error('上传图片失败:', result.error);
-        throw new Error(result.error || '上传失败');
-      }
-    } catch (error) {
-      console.error('上传图片失败:', error);
-      throw error;
+    const result = await ApiClient.addImage(imageData);
+    
+    if (result.success && result.data) {
+      setImages(prev => [result.data!, ...prev]);
+    } else {
+      throw new Error(result.error || '上传失败');
     }
   }, []);
 
@@ -157,22 +145,16 @@ export default function HomePage() {
 
   // 处理图片删除
   const handleImageDelete = useCallback(async (id: string) => {
-    try {
-      const result = await ApiClient.deleteImage(id);
-      
-      if (result.success) {
-        // 从本地状态中移除图片
-        setImages(prev => prev.filter(img => img.id !== id));
-        // 关闭弹窗
-        setIsImageModalOpen(false);
-        setSelectedImage(null);
-      } else {
-        console.error('删除图片失败:', result.error);
-        alert('删除图片失败: ' + result.error);
-      }
-    } catch (error) {
-      console.error('删除图片失败:', error);
-      alert('删除图片失败: ' + (error as Error).message);
+    const result = await ApiClient.deleteImage(id);
+    
+    if (result.success) {
+      // 从本地状态中移除图片
+      setImages(prev => prev.filter(img => img.id !== id));
+      // 关闭弹窗
+      setIsImageModalOpen(false);
+      setSelectedImage(null);
+    } else {
+      throw new Error(result.error || '删除失败');
     }
   }, []);
 

@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Metadata, Viewport } from 'next'
 import { DM_Mono } from 'next/font/google'
+import { ToastProvider } from '@/components/toast-provider'
 import './globals.css'
 
 const dmMono = DM_Mono({ 
@@ -38,9 +39,11 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body className={`${dmMono.className} antialiased`}>
-        <div className="min-h-screen bg-background text-foreground">
-          {children}
-        </div>
+        <ToastProvider>
+          <div className="min-h-screen bg-background text-foreground">
+            {children}
+          </div>
+        </ToastProvider>
       </body>
     </html>
   )
