@@ -11,6 +11,7 @@ import { ImageModal } from '@/components/image-modal';
 import { UploadModal } from '@/components/upload-modal';
 import { Dock } from '@/components/dock';
 import TextPressure from '@/components/text-pressure';
+import CircularText from '@/components/circular-text';
 
 // 主页面组件
 export default function HomePage() {
@@ -283,8 +284,13 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">加载中...</p>
+          <CircularText
+            text="LOADING • LOADING • "
+            spinDuration={3}
+            onHover={null}
+            className="text-primary mb-4"
+          />
+          <p className="text-muted-foreground"></p>
         </div>
       </div>
     );

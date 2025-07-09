@@ -128,7 +128,7 @@ export function Toast({
 
 export function ToastContainer({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm">
       <AnimatePresence mode="popLayout">
         {children}
       </AnimatePresence>
