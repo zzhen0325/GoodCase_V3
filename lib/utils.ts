@@ -9,7 +9,16 @@ export function cn(...inputs: ClassValue[]) {
 
 // 生成随机ID
 export function generateId(): string {
-  return crypto.randomUUID();
+  // 使用浏览器兼容的UUID生成方法
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // 降级方案：生成类似UUID的随机字符串
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 // 搜索和筛选图片

@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ImageData, Tag, SearchFilters } from '@/types';
+import { ImageData, Tag, Prompt, SearchFilters } from '@/types';
 import { ApiClient } from '@/lib/api';
-import { filterImages, copyToClipboard } from '@/lib/utils';
+import { Database } from '@/lib/database';
+import { filterImages, copyToClipboard, generateId } from '@/lib/utils';
 import { SearchBar } from '@/components/search-bar';
 import { ImageGrid } from '@/components/image-grid';
 import { ImageModal } from '@/components/image-modal';
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [images, setImages] = useState<ImageData[]>([]);
   const [filteredImages, setFilteredImages] = useState<ImageData[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [selectedImage, setSelectedImage] = useState<ImageData | null>(null);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     query: '',
@@ -36,47 +38,41 @@ export default function HomePage() {
 
   const [activeView, setActiveView] = useState('grid');
   
+
+  
   // 进度管理
   const { progressInfo, updateProgress, resetProgress } = useProgress();
 
-  // 初始化数据
-  useEffect(() => {
-    const initData = async () => {
-      try {
-        await loadData();
-      } catch (error) {
-        console.error('数据初始化失败:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initData();
-  }, []);
-
-  // 加载数据
-  const loadData = async () => {
+  // 加载所有数据
+  const loadAllData = useCallback(async () => {
     try {
-      const [imagesResult, tagsResult] = await Promise.all([
-        ApiClient.getAllImages(),
-        ApiClient.getAllTags()
+      setIsLoading(true);
+      
+      const [imagesData, tagsData, promptsData] = await Promise.all([
+        Database.getAllImagesMetadata(),
+        Database.getTags(),
+        Database.getPrompts()
       ]);
       
-      if (imagesResult.success && imagesResult.data) {
-        setImages(imagesResult.data);
-      } else {
-        console.error('加载图片失败:', imagesResult.error);
-      }
-      
-      if (tagsResult.success && tagsResult.data) {
-        setTags(tagsResult.data);
-      } else {
-        console.error('加载标签失败:', tagsResult.error);
-      }
+      setImages(imagesData);
+      setTags(tagsData);
+      setPrompts(promptsData);
     } catch (error) {
       console.error('加载数据失败:', error);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
+
+  // 初始化数据加载
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
+  
+  // 数据加载函数（用于导入后刷新）
+  const loadData = useCallback(async () => {
+    await loadAllData();
+  }, [loadAllData]);
 
   // 搜索和筛选图片
   useEffect(() => {
@@ -115,22 +111,17 @@ export default function HomePage() {
   }, [selectedImage]);
 
   // 处理图片上传
-  const handleImageUpload = useCallback(async (imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const result = await ApiClient.addImage(imageData);
-    
-    if (result.success && result.data) {
-      setImages(prev => [result.data!, ...prev]);
-    } else {
-      throw new Error(result.error || '上传失败');
-    }
-  }, []);
+  const handleImageUpload = useCallback(async (image: ImageData) => {
+    // 上传后刷新数据
+    await loadAllData();
+  }, [loadAllData]);
 
   // 处理标签创建
   const handleTagCreate = useCallback(async (tagData: Omit<Tag, 'id'>) => {
     try {
       // 创建一个新标签对象
       const newTag: Tag = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         ...tagData
       };
       
@@ -178,7 +169,7 @@ export default function HomePage() {
         // 复制提示词数组
         prompts: image.prompts.map(prompt => ({
           ...prompt,
-          id: crypto.randomUUID() // 为每个提示词生成新的ID
+          id: generateId() // 为每个提示词生成新的ID
         })),
         // 复制标签数组
         tags: [...image.tags]
@@ -502,6 +493,8 @@ export default function HomePage() {
             selectedTags={searchFilters.tags}
             onTagsChange={(tags) => setSearchFilters(prev => ({ ...prev, tags }))} />
           
+
+          
           {/* 图片网格 */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -513,6 +506,8 @@ export default function HomePage() {
               loading={isLoading}
               onImageClick={handleImageClick} />
           </motion.div>
+          
+
 
           {/* 统计信息 */}
           {filteredImages.length > 0 && (

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, FileImage } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ImageData, Tag } from '@/types';
@@ -12,12 +12,13 @@ import { useToastContext } from '@/components/toast-provider';
 
 import { generateId } from '@/lib/utils';
 import { uploadImageToStorage, validateImageFile, generateImageFilename } from '@/lib/image-storage';
+import { Database } from '@/lib/database';
 
 // 上传图片弹窗组件属性
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (image: Omit<ImageData, 'id'>) => Promise<void>;
+  onUpload: (image: ImageData) => Promise<void>;
   availableTags: Tag[];
   onCreateTag: (tag: Omit<Tag, 'id'>) => Promise<Tag>;
 }
@@ -137,18 +138,26 @@ export function UploadModal({
          }
        );
       
-      // 创建新的图片数据对象
-      const newImage: Omit<ImageData, 'id'> = {
+      const imageId = generateId();
+
+      const newImageData: Omit<ImageData, 'id'> = {
         title: title || '未命名图片',
-        url: imageUrl, // 存储 Firebase Storage URL
+        url: imageUrl,
         prompts: [],
         tags: selectedTags,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        usageCount: 0,
       };
-      
-      // 调用上传回调
-      await onUpload(newImage);
+
+      await Database.saveImageMetadata(newImageData, imageId);
+
+      const finalImage: ImageData = {
+        id: imageId,
+        ...newImageData,
+      };
+
+      await onUpload(finalImage);
       
       toast.resolve(toastId, '上传成功', '图片已添加到图库');
       
@@ -190,9 +199,14 @@ export function UploadModal({
         <div className="flex flex-col h-full">
           <DialogHeader className="p-6 pb-4 border-b">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg font-semibold">
-                上传图片
-              </DialogTitle>
+              <div>
+                <DialogTitle className="text-lg font-semibold">
+                  上传图片
+                </DialogTitle>
+                <DialogDescription>
+                  选择图片文件并添加标题和标签，然后上传到图库
+                </DialogDescription>
+              </div>
               <Button size="icon" variant="ghost" onClick={handleClose}>
                 <X className="w-4 h-4" />
               </Button>

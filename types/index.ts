@@ -7,6 +7,7 @@ export interface ImageData {
   tags: Tag[];
   createdAt: string;
   updatedAt: string;
+  usageCount?: number;
 }
 
 // 提示词类型

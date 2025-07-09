@@ -4,16 +4,8 @@ import { Database } from '@/lib/database';
 // GET - 获取所有标签
 export async function GET() {
   try {
-    const result = await Database.getAllTags();
-    
-    if (result.success) {
-      return NextResponse.json({ success: true, data: result.data });
-    } else {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 500 }
-      );
-    }
+    const tags = await Database.getTags();
+    return NextResponse.json({ success: true, data: tags });
   } catch (error) {
     console.error('获取标签失败:', error);
     return NextResponse.json(
