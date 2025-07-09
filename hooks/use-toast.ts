@@ -44,7 +44,7 @@ export function useToast() {
     setToasts(prev => [...prev, toast]);
 
     // 设置自动关闭定时器（如果duration > 0）
-    if (toast.duration > 0) {
+    if (toast.duration && toast.duration > 0) {
       const timeoutId = setTimeout(() => {
         removeToast(id);
       }, toast.duration);
