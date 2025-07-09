@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ImageData, Tag, SearchFilters } from '@/types';
-import { ImageDatabase } from '@/lib/database';
+import { Database } from '@/lib/database';
 import { filterImages, copyToClipboard } from '@/lib/utils';
 import { SearchBar } from '@/components/search-bar';
 import { ImageGrid } from '@/components/image-grid';
@@ -29,40 +29,41 @@ export default function HomePage() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeView, setActiveView] = useState('grid');
-  
-  // 数据库实例
-  const [database, setDatabase] = useState<ImageDatabase | null>(null);
 
-  // 初始化数据库
+  // 初始化数据
   useEffect(() => {
-    const initDatabase = async () => {
+    const initData = async () => {
       try {
-        const db = new ImageDatabase();
-        await db.init();
-        setDatabase(db);
-        
-        // 加载数据
-        await loadData(db);
+        await loadData();
       } catch (error) {
-        console.error('数据库初始化失败:', error);
+        console.error('数据初始化失败:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    initDatabase();
+    initData();
   }, []);
 
   // 加载数据
-  const loadData = async (db: ImageDatabase) => {
+  const loadData = async () => {
     try {
-      const [imagesData, tagsData] = await Promise.all([
-        db.getAllImages(),
-        db.getAllTags()
+      const [imagesResult, tagsResult] = await Promise.all([
+        Database.getAllImages(),
+        Database.getAllTags()
       ]);
       
-      setImages(imagesData);
-      setTags(tagsData);
+      if (imagesResult.success && imagesResult.data) {
+        setImages(imagesResult.data);
+      } else {
+        console.error('加载图片失败:', imagesResult.error);
+      }
+      
+      if (tagsResult.success && tagsResult.data) {
+        setTags(tagsResult.data);
+      } else {
+        console.error('加载标签失败:', tagsResult.error);
+      }
     } catch (error) {
       console.error('加载数据失败:', error);
     }
@@ -87,57 +88,62 @@ export default function HomePage() {
 
   // 处理图片更新
   const handleImageUpdate = useCallback(async (id: string, updates: Partial<ImageData>) => {
-    if (!database) return;
-
     try {
-      const updatedImage: ImageData = {
-        ...images.find(img => img.id === id)!,
-        ...updates,
-        updatedAt: new Date().toISOString()
-      };
+      const result = await Database.updateImage(id, updates);
       
-      await database.updateImage(id, updatedImage);
-      
-      // 更新本地状态
-      setImages(prev => prev.map(img => 
-        img.id === id ? updatedImage : img
-      ));
-      
-      // 更新选中的图片
-      if (selectedImage?.id === id) {
-        setSelectedImage(updatedImage);
+      if (result.success) {
+        // 更新本地状态
+        setImages(prev => prev.map(img => 
+          img.id === id && result.data ? result.data : img
+        ));
+        
+        // 更新选中的图片
+        if (selectedImage?.id === id && result.data) {
+          setSelectedImage(result.data);
+        }
+      } else {
+        console.error('更新图片失败:', result.error);
+        alert('更新图片失败: ' + result.error);
       }
     } catch (error) {
       console.error('更新图片失败:', error);
+      alert('更新图片失败: ' + (error as Error).message);
     }
-  }, [database, images, selectedImage]);
+  }, [selectedImage]);
 
   // 处理图片上传
-  const handleImageUpload = useCallback(async (imageData: Omit<ImageData, 'id'>) => {
-    if (!database) return;
-
+  const handleImageUpload = useCallback(async (imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const newImage = await database.addImage(imageData);
-      setImages(prev => [newImage, ...prev]);
+      const result = await Database.addImage(imageData);
+      
+      if (result.success) {
+        setImages(prev => [result.data, ...prev]);
+      } else {
+        console.error('上传图片失败:', result.error);
+        throw new Error(result.error);
+      }
     } catch (error) {
       console.error('上传图片失败:', error);
       throw error;
     }
-  }, [database]);
+  }, []);
 
   // 处理标签创建
   const handleTagCreate = useCallback(async (tagData: Omit<Tag, 'id'>) => {
-    if (!database) throw new Error('数据库未初始化');
-
     try {
-      const newTag = await database.addTag(tagData);
+      // 创建一个新标签对象
+      const newTag: Tag = {
+        id: crypto.randomUUID(),
+        ...tagData
+      };
+      
       setTags(prev => [...prev, newTag]);
       return newTag;
     } catch (error) {
       console.error('创建标签失败:', error);
       throw error;
     }
-  }, [database]);
+  }, []);
 
   // 处理提示词复制
   const handleCopyPrompt = useCallback(async (content: string) => {
@@ -151,10 +157,9 @@ export default function HomePage() {
 
   // 处理图片删除
   const handleImageDelete = useCallback(async (id: string) => {
-    if (!database) return;
-
     try {
-      const result = await database.deleteImage(id);
+      const result = await Database.deleteImage(id);
+      
       if (result.success) {
         // 从本地状态中移除图片
         setImages(prev => prev.filter(img => img.id !== id));
@@ -169,16 +174,13 @@ export default function HomePage() {
       console.error('删除图片失败:', error);
       alert('删除图片失败: ' + (error as Error).message);
     }
-  }, [database]);
+  }, []);
 
   // 处理图片复制
   const handleImageDuplicate = useCallback(async (image: ImageData) => {
-    if (!database) return;
-
     try {
       // 创建新的图片数据，移除id和更新时间戳
       const { id, createdAt, updatedAt, ...imageDataWithoutId } = image;
-      const now = new Date().toISOString();
       const duplicatedImageData = {
         ...imageDataWithoutId,
         title: `${image.title} (副本)`,
@@ -188,19 +190,22 @@ export default function HomePage() {
           id: crypto.randomUUID() // 为每个提示词生成新的ID
         })),
         // 复制标签数组
-        tags: [...image.tags],
-        // 添加时间戳
-        createdAt: now,
-        updatedAt: now
+        tags: [...image.tags]
       };
       
-      const newImage = await database.addImage(duplicatedImageData);
-      setImages(prev => [newImage, ...prev]);
+      const result = await Database.addImage(duplicatedImageData);
+      
+      if (result.success) {
+        setImages(prev => [result.data, ...prev]);
+      } else {
+        console.error('复制图片失败:', result.error);
+        throw new Error(result.error);
+      }
     } catch (error) {
       console.error('复制图片失败:', error);
       throw error;
     }
-  }, [database]);
+  }, []);
 
   // Dock 导航处理函数
   const handleUpload = useCallback(() => {
@@ -213,7 +218,7 @@ export default function HomePage() {
     input.accept = '.json';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file || !database) return;
+      if (!file) return;
       
       try {
         const text = await file.text();
@@ -224,23 +229,26 @@ export default function HomePage() {
           throw new Error('数据格式不正确');
         }
         
-        await database.importData(data);
-        await loadData(database);
+        // 这里可以实现批量导入逻辑
+        await loadData();
         
-        alert(`成功导入 ${data.images.length} 张图片和 ${data.tags.length} 个标签`);
+        alert(`导入功能开发中`);
       } catch (error) {
         console.error('导入失败:', error);
         alert('导入失败: ' + (error as Error).message);
       }
     };
     input.click();
-  }, [database]);
+  }, []);
 
   const handleExport = useCallback(async () => {
-    if (!database) return;
-    
     try {
-      const data = await database.exportData();
+      const data = {
+        images,
+        tags,
+        exportDate: new Date().toISOString()
+      };
+      
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       
@@ -256,7 +264,7 @@ export default function HomePage() {
       console.error('导出失败:', error);
       alert('导出失败: ' + (error as Error).message);
     }
-  }, [database]);
+  }, [images, tags]);
 
   const handleFavorites = useCallback(() => {
     setActiveView('favorites');
@@ -301,41 +309,39 @@ export default function HomePage() {
   }
 
   return (
-    
-      <><div className="flex justify-center w-full ">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-3/5"
-      >
-        <div className="text-center ">
-          <div className="h-auto mb-5 ">
-            <TextPressure
-              text="GoooodCase!"
-              fontFamily="Inter"
-              textColor="#000"
-              className="text-4xl font-bold"
-              minFontSize={32} />
+    <>
+      <div className="flex justify-center w-full ">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-3/5"
+        >
+          <div className="text-center ">
+            <div className="h-auto mb-5 ">
+              <TextPressure
+                text="GoooodCase!"
+                fontFamily="Inter"
+                textColor="#000"
+                className="text-4xl font-bold"
+                minFontSize={32} />
+            </div>
+            <p className="text-sm text-muted-foreground ">
+              Manage your images and prompt words to make creation more efficient.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground ">
-            Manage your images and prompt words to make creation more efficient.
-          </p>
-        
-        </div>
-
-
-      </motion.div>
-    </div><div className="min-h-screen bg-background">
+        </motion.div>
+      </div>
+      
+      <div className="min-h-screen bg-background">
         {/* 主要内容区域 */}
-        <div className=" container mx-auto px-4 mb-4 pb-24">
-          {/* 头部 */}
-
-  {/* 搜索栏 */}
+        <div className="container mx-auto px-4 mb-4 pb-24">
+          {/* 搜索栏 */}
           <SearchBar
             onSearch={setSearchFilters}
             selectedTags={searchFilters.tags}
             onTagsChange={(tags) => setSearchFilters(prev => ({ ...prev, tags }))} />
+          
           {/* 图片网格 */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -396,6 +402,7 @@ export default function HomePage() {
           onUpload={handleImageUpload}
           availableTags={tags}
           onCreateTag={handleTagCreate} />
-      </div></>
+      </div>
+    </>
   );
 }
