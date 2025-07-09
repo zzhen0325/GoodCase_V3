@@ -116,11 +116,11 @@ export default function HomePage() {
     try {
       const result = await Database.addImage(imageData);
       
-      if (result.success) {
-        setImages(prev => [result.data, ...prev]);
+      if (result.success && result.data) {
+        setImages(prev => [result.data!, ...prev]);
       } else {
         console.error('上传图片失败:', result.error);
-        throw new Error(result.error);
+        throw new Error(result.error || '上传失败');
       }
     } catch (error) {
       console.error('上传图片失败:', error);
@@ -195,12 +195,12 @@ export default function HomePage() {
       
       const result = await Database.addImage(duplicatedImageData);
       
-      if (result.success) {
-        setImages(prev => [result.data, ...prev]);
-      } else {
-        console.error('复制图片失败:', result.error);
-        throw new Error(result.error);
-      }
+             if (result.success && result.data) {
+         setImages(prev => [result.data!, ...prev]);
+       } else {
+         console.error('复制图片失败:', result.error);
+         throw new Error(result.error || '复制失败');
+       }
     } catch (error) {
       console.error('复制图片失败:', error);
       throw error;
