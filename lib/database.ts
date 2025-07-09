@@ -143,12 +143,14 @@ export class Database {
       return {
         success: true,
         data: {
-          ...createdImage,
+          id: createdImage.id,
+          url: createdImage.url,
+          title: createdImage.title,
           prompts: (createdPrompts || []) as any[],
           tags: (createdTags || []) as any[],
           createdAt: createdImage.createdAt,
           updatedAt: createdImage.updatedAt,
-        },
+        } as ImageData,
       };
     } catch (error) {
       console.error('添加图片失败:', error);
