@@ -232,7 +232,7 @@ export class Database {
           queryValues.push(id);
           
           // 使用动态SQL查询需要特殊处理
-          const result = await sql.unsafe(query, queryValues);
+          const result = await sql(query, queryValues);
         }
       }
 
