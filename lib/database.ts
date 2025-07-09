@@ -107,7 +107,7 @@ export class Database {
       // 创建图片-标签关联
       for (const tagId of tagIds) {
         await sql`
-          INSERT INTO "_ImageToTag" ("A", "B")
+          INSERT INTO "_ImageTags" ("A", "B")
           VALUES (${imageId}, ${tagId})
           ON CONFLICT DO NOTHING
         `;
@@ -135,7 +135,7 @@ export class Database {
         `,
         sql`
           SELECT t.* FROM "Tag" t
-          JOIN "_ImageToTag" it ON t.id = it."B"
+          JOIN "_ImageTags" it ON t.id = it."B"
           WHERE it."A" = ${imageId}
         `
       ]);
@@ -205,7 +205,7 @@ export class Database {
       if (tags) {
         // 删除旧的标签关联
         await sql`
-          DELETE FROM "_ImageToTag" WHERE "A" = ${id}
+          DELETE FROM "_ImageTags" WHERE "A" = ${id}
         `;
         
         // 处理新标签
@@ -230,7 +230,7 @@ export class Database {
         // 创建新的标签关联
         for (const tagId of tagIds) {
           await sql`
-            INSERT INTO "_ImageToTag" ("A", "B")
+            INSERT INTO "_ImageTags" ("A", "B")
             VALUES (${id}, ${tagId})
             ON CONFLICT DO NOTHING
           `;
@@ -310,7 +310,7 @@ export class Database {
       
       // 删除图片-标签关联
       await sql`
-        DELETE FROM "_ImageToTag" WHERE "A" = ${id}
+        DELETE FROM "_ImageTags" WHERE "A" = ${id}
       `;
       
       // 删除图片

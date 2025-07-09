@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ImageData, Tag, SearchFilters } from '@/types';
-import { Database } from '@/lib/database';
+import { ApiClient } from '@/lib/api';
 import { filterImages, copyToClipboard } from '@/lib/utils';
 import { SearchBar } from '@/components/search-bar';
 import { ImageGrid } from '@/components/image-grid';
@@ -49,8 +49,8 @@ export default function HomePage() {
   const loadData = async () => {
     try {
       const [imagesResult, tagsResult] = await Promise.all([
-        Database.getAllImages(),
-        Database.getAllTags()
+        ApiClient.getAllImages(),
+        ApiClient.getAllTags()
       ]);
       
       if (imagesResult.success && imagesResult.data) {
@@ -89,7 +89,7 @@ export default function HomePage() {
   // 处理图片更新
   const handleImageUpdate = useCallback(async (id: string, updates: Partial<ImageData>) => {
     try {
-      const result = await Database.updateImage(id, updates);
+      const result = await ApiClient.updateImage(id, updates);
       
       if (result.success) {
         // 更新本地状态
@@ -114,7 +114,7 @@ export default function HomePage() {
   // 处理图片上传
   const handleImageUpload = useCallback(async (imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const result = await Database.addImage(imageData);
+      const result = await ApiClient.addImage(imageData);
       
       if (result.success && result.data) {
         setImages(prev => [result.data!, ...prev]);
@@ -158,7 +158,7 @@ export default function HomePage() {
   // 处理图片删除
   const handleImageDelete = useCallback(async (id: string) => {
     try {
-      const result = await Database.deleteImage(id);
+      const result = await ApiClient.deleteImage(id);
       
       if (result.success) {
         // 从本地状态中移除图片
@@ -193,7 +193,7 @@ export default function HomePage() {
         tags: [...image.tags]
       };
       
-      const result = await Database.addImage(duplicatedImageData);
+      const result = await ApiClient.addImage(duplicatedImageData);
       
              if (result.success && result.data) {
          setImages(prev => [result.data!, ...prev]);
