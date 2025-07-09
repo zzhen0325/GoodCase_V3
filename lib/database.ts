@@ -193,11 +193,27 @@ export class Database {
         values.push(id);
         
         if (updateFields.length > 1) { // 除了updatedAt还有其他字段
-          await sql`
-            UPDATE "Image" 
-            SET ${sql.unsafe(updateFields.join(', '))}
-            WHERE id = ${id}
-          `;
+          // 构建动态SQL查询
+          let query = 'UPDATE "Image" SET ';
+          const setParts = [];
+          const queryValues = [];
+          
+          if (imageInfo.title !== undefined) {
+            setParts.push('title = $' + (queryValues.length + 1));
+            queryValues.push(imageInfo.title);
+          }
+          if (imageInfo.url !== undefined) {
+            setParts.push('url = $' + (queryValues.length + 1));
+            queryValues.push(imageInfo.url);
+          }
+          
+          setParts.push('"updatedAt" = $' + (queryValues.length + 1));
+          queryValues.push(now);
+          
+          query += setParts.join(', ') + ' WHERE id = $' + (queryValues.length + 1);
+          queryValues.push(id);
+          
+          await sql(query, queryValues);
         }
       }
 
@@ -267,7 +283,7 @@ export class Database {
         `,
         sql`
           SELECT t.* FROM "Tag" t
-          JOIN "_ImageToTag" it ON t.id = it."B"
+          JOIN "_ImageTags" it ON t.id = it."B"
           WHERE it."A" = ${id}
         `
       ]);
