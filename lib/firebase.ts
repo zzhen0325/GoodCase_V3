@@ -15,24 +15,41 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-90M1DVZKQT"
 };
 
-// 初始化Firebase应用
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// 延迟初始化Firebase应用（避免构建时初始化）
+let app: any = null;
 
-// 初始化 Firestore 时设置优化选项
-let db: Firestore;
-try {
-  db = initializeFirestore(app, {
-    // 启用离线持久化
-    localCache: {
-      kind: 'persistent',
-    },
-    // 强制使用长轮询，解决连接超时问题
-    experimentalForceLongPolling: true,
-    ignoreUndefinedProperties: true,
-  });
-} catch (error) {
-  // 如果已经初始化过，使用现有实例
-  db = getFirestore(app);
+function initializeFirebaseApp() {
+  // 仅在客户端运行时初始化Firebase
+  if (typeof window !== 'undefined' && !app) {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  }
+  return app;
+}
+
+// 延迟初始化 Firestore
+let db: Firestore | null = null;
+
+function initializeFirestoreDb() {
+  if (typeof window !== 'undefined' && !db) {
+    const firebaseApp = initializeFirebaseApp();
+    if (firebaseApp) {
+      try {
+        db = initializeFirestore(firebaseApp, {
+          // 启用离线持久化
+          localCache: {
+            kind: 'persistent',
+          },
+          // 强制使用长轮询，解决连接超时问题
+          experimentalForceLongPolling: true,
+          ignoreUndefinedProperties: true,
+        });
+      } catch (error) {
+        // 如果已经初始化过，使用现有实例
+        db = getFirestore(firebaseApp);
+      }
+    }
+  }
+  return db;
 }
 
 // 网络状态管理
@@ -46,22 +63,28 @@ if (typeof window !== 'undefined') {
     console.log('🌐 网络已连接，启用 Firestore');
     isOnline = true;
     networkRetryCount = 0;
-    try {
-      await enableNetwork(db);
-    } catch (error) {
-      console.warn('启用网络失败:', error);
-    }
-  });
+    const firestoreDb = initializeFirestoreDb();
+    if (firestoreDb) {
+        try {
+          await enableNetwork(firestoreDb);
+        } catch (error) {
+          console.warn('启用网络失败:', error);
+        }
+      }
+    });
 
-  window.addEventListener('offline', async () => {
-    console.log('📴 网络已断开，禁用 Firestore');
-    isOnline = false;
-    try {
-      await disableNetwork(db);
-    } catch (error) {
-      console.warn('禁用网络失败:', error);
-    }
-  });
+    window.addEventListener('offline', async () => {
+      console.log('📴 网络已断开，禁用 Firestore');
+      isOnline = false;
+      const firestoreDb = initializeFirestoreDb();
+      if (firestoreDb) {
+        try {
+          await disableNetwork(firestoreDb);
+        } catch (error) {
+          console.warn('禁用网络失败:', error);
+        }
+      }
+    });
 }
 
 // 连接重试机制
@@ -74,10 +97,16 @@ export async function retryConnection() {
   networkRetryCount++;
   console.log(`🔄 尝试重新连接 Firebase (${networkRetryCount}/${MAX_RETRY_COUNT})`);
 
+  const firestoreDb = initializeFirestoreDb();
+  if (!firestoreDb) {
+    console.error('❌ Firestore 未初始化');
+    return false;
+  }
+
   try {
-    await disableNetwork(db);
+    await disableNetwork(firestoreDb);
     await new Promise(resolve => setTimeout(resolve, 2000)); // 等待2秒
-    await enableNetwork(db);
+    await enableNetwork(firestoreDb);
     console.log('✅ Firebase 重新连接成功');
     networkRetryCount = 0;
     return true;
@@ -96,9 +125,44 @@ export function getConnectionStatus() {
   };
 }
 
-// 初始化其他服务
-export const storage = getStorage(app);
-export const auth = getAuth(app);
+// 延迟初始化其他服务
+let storage: any = null;
+let auth: any = null;
+
+function initializeStorage() {
+  if (typeof window !== 'undefined' && !storage) {
+    const firebaseApp = initializeFirebaseApp();
+    if (firebaseApp) {
+      storage = getStorage(firebaseApp);
+    }
+  }
+  return storage;
+}
+
+function initializeAuth() {
+  if (typeof window !== 'undefined' && !auth) {
+    const firebaseApp = initializeFirebaseApp();
+    if (firebaseApp) {
+      auth = getAuth(firebaseApp);
+    }
+  }
+  return auth;
+}
+
+// 导出获取实例的函数
+export function getDb() {
+  return initializeFirestoreDb();
+}
+
+export function getStorageInstance() {
+  return initializeStorage();
+}
+
+export function getAuthInstance() {
+  return initializeAuth();
+}
+
+// 向后兼容的导出
 export { db };
 
 // 开发环境下连接模拟器（推荐用于解决连接问题）
@@ -108,9 +172,19 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   
   if (useEmulator) {
     try {
-      connectFirestoreEmulator(db, 'localhost', 8080);
-      connectStorageEmulator(storage, 'localhost', 9199);
-      connectAuthEmulator(auth, 'http://localhost:9099');
+      const firestoreDb = initializeFirestoreDb();
+      const storageInstance = initializeStorage();
+      const authInstance = initializeAuth();
+      
+      if (firestoreDb) {
+        connectFirestoreEmulator(firestoreDb, 'localhost', 8080);
+      }
+      if (storageInstance) {
+        connectStorageEmulator(storageInstance, 'localhost', 9199);
+      }
+      if (authInstance) {
+        connectAuthEmulator(authInstance, 'http://localhost:9099');
+      }
       console.log('🔧 已连接到 Firebase 模拟器');
     } catch (error) {
       console.log('模拟器连接失败，使用生产环境');
@@ -118,4 +192,9 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   }
 }
 
-export default app;
+// 导出获取 Firebase App 实例的函数
+export function getFirebaseApp() {
+  return initializeFirebaseApp();
+}
+
+export default getFirebaseApp;

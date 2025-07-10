@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storage } from '@/lib/firebase';
+import { getStorageInstance } from '@/lib/firebase';
 import { ref as storageRef, listAll, getDownloadURL } from 'firebase/storage';
 import { Database } from '@/lib/database';
 import { ImageData } from '@/types';
@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
     };
     
     // 获取Storage中的所有JSON文件
-    const listRef = storageRef(storage, 'images/');
+    const storageInstance = getStorageInstance();
+    if (!storageInstance) {
+      throw new Error('Storage 未初始化');
+    }
+    const listRef = storageRef(storageInstance, 'images/');
     const res = await listAll(listRef);
     
     const jsonFiles = res.items.filter(itemRef => itemRef.name.endsWith('.json'));

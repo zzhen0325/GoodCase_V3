@@ -15,7 +15,7 @@ import {
   writeBatch,
   Timestamp
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { getDb } from './firebase';
 import { ImageData, Tag, Prompt, DBResult } from '@/types';
 
 // Firestore集合名称
@@ -28,7 +28,12 @@ const COLLECTIONS = {
 export class Database {
   // 获取所有图片（实时监听）
   static subscribeToImages(callback: (images: ImageData[]) => void, onError?: (error: Error) => void): () => void {
-    const imagesRef = collection(db, COLLECTIONS.IMAGES);
+    const dbInstance = getDb();
+    if (!dbInstance) {
+      onError?.(new Error('Firestore 未初始化'));
+      return () => {};
+    }
+    const imagesRef = collection(dbInstance, COLLECTIONS.IMAGES);
     const q = query(imagesRef, orderBy('createdAt', 'desc'));
     
     return onSnapshot(q, 
@@ -60,7 +65,12 @@ export class Database {
 
   // 获取所有标签（实时监听）- 从图片数据中提取
   static subscribeToTags(callback: (tags: Tag[]) => void, onError?: (error: Error) => void): () => void {
-    const imagesRef = collection(db, COLLECTIONS.IMAGES);
+    const dbInstance = getDb();
+    if (!dbInstance) {
+      onError?.(new Error('Firestore 未初始化'));
+      return () => {};
+    }
+    const imagesRef = collection(dbInstance, COLLECTIONS.IMAGES);
     const q = query(imagesRef, orderBy('createdAt', 'desc'));
     
     return onSnapshot(q,
@@ -103,7 +113,12 @@ export class Database {
 
   // 监听特定图片的变化
   static subscribeToImage(id: string, callback: (image: ImageData | null) => void, onError?: (error: Error) => void): () => void {
-    const docRef = doc(db, COLLECTIONS.IMAGES, id);
+    const dbInstance = getDb();
+    if (!dbInstance) {
+      onError?.(new Error('Firestore 未初始化'));
+      return () => {};
+    }
+    const docRef = doc(dbInstance, COLLECTIONS.IMAGES, id);
     
     return onSnapshot(docRef,
       (docSnap) => {
@@ -137,7 +152,12 @@ export class Database {
     try {
       const { prompt_blocks, ...mainImageData } = imageData;
 
-      const imageDocRef = await addDoc(collection(db, COLLECTIONS.IMAGES), {
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
+      const imageDocRef = await addDoc(collection(dbInstance, COLLECTIONS.IMAGES), {
         ...mainImageData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -146,8 +166,8 @@ export class Database {
 
       // 如果有 prompt_blocks，批量添加到子集合
       if (prompt_blocks && prompt_blocks.length > 0) {
-        const batch = writeBatch(db);
-        const promptsRef = collection(db, COLLECTIONS.IMAGES, imageDocRef.id, 'prompt_blocks');
+        const batch = writeBatch(dbInstance);
+        const promptsRef = collection(dbInstance, COLLECTIONS.IMAGES, imageDocRef.id, 'prompt_blocks');
         
         prompt_blocks.forEach(block => {
           const newPromptRef = doc(promptsRef);
@@ -182,7 +202,12 @@ export class Database {
   // 获取所有图片（一次性）
   static async getAllImages(): Promise<DBResult<ImageData[]>> {
     try {
-      const imagesRef = collection(db, COLLECTIONS.IMAGES);
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
+      const imagesRef = collection(dbInstance, COLLECTIONS.IMAGES);
       const q = query(imagesRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       
@@ -215,7 +240,12 @@ export class Database {
   // 根据ID获取单个图片
   static async getImageById(id: string): Promise<DBResult<ImageData>> {
     try {
-      const docRef = doc(db, COLLECTIONS.IMAGES, id);
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
+      const docRef = doc(dbInstance, COLLECTIONS.IMAGES, id);
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
@@ -254,7 +284,12 @@ export class Database {
   // 更新图片
   static async updateImage(id: string, updates: Partial<ImageData>): Promise<DBResult<ImageData>> {
     try {
-      const docRef = doc(db, COLLECTIONS.IMAGES, id);
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
+      const docRef = doc(dbInstance, COLLECTIONS.IMAGES, id);
       
       // 获取原始数据以比较标签变化
       const originalDoc = await getDoc(docRef);
@@ -310,7 +345,12 @@ export class Database {
   // 删除图片
   static async deleteImage(id: string): Promise<DBResult<void>> {
     try {
-      const docRef = doc(db, COLLECTIONS.IMAGES, id);
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
+      const docRef = doc(dbInstance, COLLECTIONS.IMAGES, id);
       
       // 获取图片数据以删除存储中的图片和更新标签
       const docSnap = await getDoc(docRef);
@@ -341,7 +381,12 @@ export class Database {
   // 获取所有标签 - 从图片数据中提取
   static async getAllTags(): Promise<DBResult<Tag[]>> {
     try {
-      const imagesRef = collection(db, COLLECTIONS.IMAGES);
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
+      const imagesRef = collection(dbInstance, COLLECTIONS.IMAGES);
       const q = query(imagesRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       

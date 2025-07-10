@@ -1,4 +1,4 @@
-import { db } from './firebase';
+import { getDb } from './firebase';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 
 // Firestore 连接状态管理
@@ -69,14 +69,19 @@ class FirestoreConnectionManager {
     console.log(`尝试重连 Firestore (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     try {
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
       // 先禁用网络连接
-      await disableNetwork(db);
+      await disableNetwork(dbInstance);
       
       // 等待一段时间
       await new Promise(resolve => setTimeout(resolve, this.reconnectDelay));
       
       // 重新启用网络连接
-      await enableNetwork(db);
+      await enableNetwork(dbInstance);
       
       console.log('Firestore 重连成功');
       this.reconnectAttempts = 0;
@@ -111,9 +116,14 @@ class FirestoreConnectionManager {
 
   public async testConnection(): Promise<boolean> {
     try {
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+      
       // 尝试执行一个简单的 Firestore 操作来测试连接
       const { doc, getDoc } = await import('firebase/firestore');
-      const testDoc = doc(db, 'test', 'connection');
+      const testDoc = doc(dbInstance, 'test', 'connection');
       await getDoc(testDoc);
       
       this.setConnectionStatus(true);

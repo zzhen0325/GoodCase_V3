@@ -1,4 +1,4 @@
-import { storage } from './firebase';
+import { getStorageInstance } from './firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -57,7 +57,11 @@ export class ImageStorageService {
       // 使用重试机制上传
       return await this.retryUpload(async () => {
         // 创建存储引用
-        const storageRef = ref(storage, filePath);
+        const storageInstance = getStorageInstance();
+        if (!storageInstance) {
+          throw new Error('Storage 未初始化');
+        }
+        const storageRef = ref(storageInstance, filePath);
         
         // 设置上传元数据
         const metadata = {
@@ -111,7 +115,11 @@ export class ImageStorageService {
       }
       
       const filePath = decodeURIComponent(pathMatch[1]);
-      const storageRef = ref(storage, filePath);
+      const storageInstance = getStorageInstance();
+      if (!storageInstance) {
+        throw new Error('Storage 未初始化');
+      }
+      const storageRef = ref(storageInstance, filePath);
       
       await deleteObject(storageRef);
     } catch (error) {

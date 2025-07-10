@@ -29,23 +29,33 @@ function getServiceAccount(): ServiceAccount {
   };
 }
 
-const serviceAccount = getServiceAccount();
+// 延迟初始化 Firebase Admin（避免构建时初始化）
+let adminApp: any = null;
 
-// 初始化 Firebase Admin
-let adminApp: any;
-if (!getApps().length) {
-  adminApp = initializeApp({
-    credential: cert(serviceAccount),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  });
-} else {
-  adminApp = getApps()[0];
+function initializeFirebaseAdmin() {
+  // 仅在运行时初始化Firebase（而非构建时）
+  if (typeof window === 'undefined' && !adminApp) {
+    if (!getApps().length) {
+      const serviceAccount = getServiceAccount();
+      adminApp = initializeApp({
+        credential: cert(serviceAccount),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      });
+    } else {
+      adminApp = getApps()[0];
+    }
+  }
+  return adminApp;
 }
 
 // 获取服务端 Firebase 实例
 export async function getServerFirebase() {
-  const db = getFirestore(adminApp);
-  const storage = getStorage(adminApp);
+  const app = initializeFirebaseAdmin();
+  if (!app) {
+    throw new Error('Firebase Admin not initialized - this function should only be called on server side');
+  }
+  const db = getFirestore(app);
+  const storage = getStorage(app);
   
   return {
     db,
