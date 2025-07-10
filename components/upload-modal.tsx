@@ -1,24 +1,23 @@
 "use client"
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, FileImage } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Upload, X, Image as ImageIcon, FileImage, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageData, Tag } from '@/types';
-import { TagManager } from '@/components/tag-manager';
+import { ImageData, Prompt, Tag } from '@/types';
+import { TagManager } from './tag-manager';
+import { PromptBlock } from './prompt-block';
 import { useToastContext } from '@/components/toast-provider';
-
 import { generateId } from '@/lib/utils';
-import { uploadImageToStorage, validateImageFile, generateImageFilename } from '@/lib/image-storage';
-import { Database } from '@/lib/database';
+import { ImageStorageService } from '@/lib/image-storage';
 
 // 上传图片弹窗组件属性
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (image: ImageData) => Promise<void>;
+  onUpload: (file: File, imageName: string, prompts: Prompt[], tags: Tag[]) => Promise<void>;
   availableTags: Tag[];
   onCreateTag: (tag: Omit<Tag, 'id'>) => Promise<Tag>;
 }
@@ -27,18 +26,19 @@ interface UploadModalProps {
 export function UploadModal({ 
   isOpen, 
   onClose, 
-  onUpload, 
+  onUpload,
   availableTags,
-  onCreateTag 
+  onCreateTag
 }: UploadModalProps) {
   const { toast } = useToastContext();
-  const [title, setTitle] = useState('');
+  const [imageName, setImageName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [isEditingPrompts, setIsEditingPrompts] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 处理文件选择
@@ -72,29 +72,50 @@ export function UploadModal({
     }
   };
 
+  // 将文件转换为base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   // 处理文件
   const processFile = async (file: File) => {
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
+      return;
+    }
+    
     try {
-      // 验证文件
-      validateImageFile(file);
+      // 转换为base64并设置预览
+      const base64 = await fileToBase64(file);
+      setSelectedFile(file);
+      setPreviewUrl(base64);
       
-      // 创建预览 URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        setSelectedFile(file);
-        setPreviewUrl(dataUrl);
-      };
-      reader.readAsDataURL(file);
+      // 使用文件名作为图片名称
+      const fileName = file.name.split('.').slice(0, -1).join('.');
+      setImageName(fileName);
       
-      // 如果没有标题，使用文件名作为默认标题
-      if (!title) {
-        const fileName = file.name.split('.').slice(0, -1).join('.');
-        setTitle(fileName);
+      // 创建默认的提示词块
+      if (prompts.length === 0) {
+        const defaultPrompt: Prompt = {
+          id: generateId(),
+          title: '默认提示词',
+          content: fileName,
+          color: 'slate',
+          order: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setPrompts([defaultPrompt]);
       }
     } catch (error) {
       console.error('文件处理失败:', error);
-      toast.error('文件处理失败', error instanceof Error ? error.message : '请重试');
+      alert('文件处理失败，请重试');
     }
   };
 
@@ -119,47 +140,30 @@ export function UploadModal({
       return;
     }
 
-    const toastId = toast.loading('上传中...', '正在处理图片');
+    if (!imageName.trim()) {
+      toast.error('图片名称不能为空');
+      return;
+    }
+
+    const toastId = toast.loading('上传中...', '正在上传图片', 0);
     
     try {
       setIsUploading(true);
-      setUploadProgress(0);
       
-      // 生成文件名
-      const filename = generateImageFilename(selectedFile.name);
+      // 模拟上传进度
+      const progressSteps = [10, 30, 50, 70, 90];
+      for (let i = 0; i < progressSteps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        toast.updateProgress(toastId, progressSteps[i]);
+      }
       
-      // 上传到 Firebase Storage
-       const imageUrl = await uploadImageToStorage(
-         selectedFile,
-         filename,
-         (progress) => {
-           setUploadProgress(progress);
-           toast.updateProgress(toastId, progress);
-         }
-       );
+      // 调用上传回调
+      await onUpload(selectedFile, imageName.trim(), prompts, selectedTags);
       
-      const imageId = generateId();
-
-      const newImageData: Omit<ImageData, 'id'> = {
-        title: title || '未命名图片',
-        url: imageUrl,
-        prompts: [],
-        tags: selectedTags,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        usageCount: 0,
-      };
-
-      await Database.saveImageMetadata(newImageData, imageId);
-
-      const finalImage: ImageData = {
-        id: imageId,
-        ...newImageData,
-      };
-
-      await onUpload(finalImage);
+      // 完成进度
+      toast.updateProgress(toastId, 100);
       
-      toast.resolve(toastId, '上传成功', '图片已添加到图库');
+      toast.resolve(toastId, '上传成功', '图片已成功上传');
       
       // 重置表单
       resetForm();
@@ -168,20 +172,20 @@ export function UploadModal({
       onClose();
     } catch (error) {
       console.error('上传失败:', error);
-      toast.reject(toastId, '上传失败', error instanceof Error ? error.message : '请检查文件格式后重试');
+      toast.reject(toastId, '上传失败', error instanceof Error ? error.message : '请检查网络连接后重试');
     } finally {
       setIsUploading(false);
-      setUploadProgress(0);
     }
   };
 
   // 重置表单
   const resetForm = () => {
-    setTitle('');
+    setImageName('');
     setSelectedFile(null);
     setPreviewUrl(null);
+    setPrompts([]);
     setSelectedTags([]);
-    setUploadProgress(0);
+    setIsEditingPrompts(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -193,20 +197,49 @@ export function UploadModal({
     onClose();
   }
 
+  // 添加新提示词
+  const addPrompt = () => {
+    const newPrompt: Prompt = {
+      id: generateId(),
+      title: '新提示词',
+      content: '',
+      color: 'slate',
+      order: prompts.length,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setPrompts([...prompts, newPrompt]);
+  };
+
+  // 更新提示词
+  const updatePrompt = (id: string, updates: Partial<Prompt>) => {
+    setPrompts(prompts.map(prompt => 
+      prompt.id === id 
+        ? { ...prompt, ...updates, updatedAt: new Date().toISOString() }
+        : prompt
+    ));
+  };
+
+  // 删除提示词
+  const deletePrompt = (id: string) => {
+    setPrompts(prompts.filter(prompt => prompt.id !== id));
+  };
+
+  // 复制提示词内容
+  const copyPromptContent = (content: string) => {
+    // 这里可以添加复制成功的提示
+    console.log('复制提示词:', content);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl h-[95vh] p-0 flex flex-col">
         <div className="flex flex-col h-full">
           <DialogHeader className="p-6 pb-4 border-b">
             <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="text-lg font-semibold">
-                  上传图片
-                </DialogTitle>
-                <DialogDescription>
-                  选择图片文件并添加标题和标签，然后上传到图库
-                </DialogDescription>
-              </div>
+              <DialogTitle className="text-lg font-semibold">
+                上传图片
+              </DialogTitle>
               <Button size="icon" variant="ghost" onClick={handleClose}>
                 <X className="w-4 h-4" />
               </Button>
@@ -269,20 +302,60 @@ export function UploadModal({
             </div>
 
             {/* 图片信息表单 */}
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* 图片名称显示 */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                  图片标题
+                  图片名称
                 </label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="输入图片标题"
-                />
+                <div className="p-3 bg-muted/50 rounded-lg border">
+                  <span className="text-sm font-medium">
+                    {imageName || '未选择文件'}
+                  </span>
+                </div>
               </div>
 
+              {/* 提示词块管理 */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    提示词块
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addPrompt}
+                    className="text-xs"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    添加提示词
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {prompts.map((prompt) => (
+                    <PromptBlock
+                      key={prompt.id}
+                      prompt={prompt}
+                      isEditing={isEditingPrompts}
+                      onUpdate={updatePrompt}
+                      onDelete={deletePrompt}
+                      onCopy={copyPromptContent}
+                    />
+                  ))}
+                  
+                  {prompts.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">暂无提示词块</p>
+                      <p className="text-xs mt-1">点击上方按钮添加提示词</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 标签管理 */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-3 block">
                   标签
                 </label>
                 <TagManager
@@ -297,31 +370,13 @@ export function UploadModal({
             </div>
           </div>
 
-          <div className="p-6 border-t bg-muted/30 space-y-4">
-            {/* 上传进度条 */}
-            {isUploading && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>上传进度</span>
-                  <span>{Math.round(uploadProgress)}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div className="flex justify-end">
-              <Button 
-                onClick={handleUpload} 
-                disabled={!selectedFile || isUploading}
-              >
-                {isUploading ? '上传中...' : '上传图片'}
-              </Button>
-            </div>
+          <div className="p-6 border-t bg-muted/30 flex justify-end">
+            <Button 
+              onClick={handleUpload} 
+              disabled={!selectedFile || !imageName.trim() || isUploading}
+            >
+              {isUploading ? '上传中...' : '提交'}
+            </Button>
           </div>
         </div>
       </DialogContent>

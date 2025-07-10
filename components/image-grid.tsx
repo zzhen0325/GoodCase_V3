@@ -12,7 +12,7 @@ interface ImageGridProps {
 }
 
 // 图片网格组件
-export function ImageGrid({ images, onImageClick, loading = false }: ImageGridProps) {
+export const ImageGrid = React.memo(function ImageGrid({ images, onImageClick, loading = false }: ImageGridProps) {
   // 加载状态
   if (loading) {
     return (
@@ -68,4 +68,4 @@ export function ImageGrid({ images, onImageClick, loading = false }: ImageGridPr
       ))}
     </div>
   );
-}
+});

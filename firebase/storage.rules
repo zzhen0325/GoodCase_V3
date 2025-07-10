@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 图片存储规则 - 所有人都可以读写
+    match /images/{imageId} {
+      allow read, write, delete: if true;
+    }
+    
+    // 图库图片存储规则 - 所有人都可以读写
+    match /gallery/{imageId} {
+      allow read, write, delete: if true;
+    }
+    
+    // 通用规则 - 所有文件都允许读写
+    match /{allPaths=**} {
+      allow read, write, delete: if true;
+    }
+  }
+}

@@ -95,18 +95,33 @@ export function ImageModal({
     }
   }, [image, isOpen]);
 
+
+
   // 保存更改
   const saveChanges = async () => {
     if (!image) return;
 
-    const toastId = toast.loading('保存中...', '正在更新图片信息');
+    const toastId = toast.loading('保存中...', '正在更新图片信息', 0);
     
     try {
-      await onUpdate(image.id, {
+      // 模拟保存进度
+      toast.updateProgress(toastId, 20);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      toast.updateProgress(toastId, 60);
+      
+      // 确保数据同步保存
+      const updateData = {
         title: editedTitle,
         prompts: prompts,
-        tags: tags
-      });
+        tags: tags,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await onUpdate(image.id, updateData);
+      
+      // 完成进度
+      toast.updateProgress(toastId, 100);
       
       toast.resolve(toastId, '保存成功', '图片信息已更新');
       setIsEditing(false);
@@ -206,10 +221,20 @@ export function ImageModal({
       if (image && onDelete) {
         setDeleteStatus('deleting');
         
-        const toastId = toast.loading('删除中...', '正在删除图片');
+        const toastId = toast.loading('删除中...', '正在删除图片', 0);
         
         try {
+          // 模拟删除进度
+          toast.updateProgress(toastId, 30);
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          toast.updateProgress(toastId, 70);
+          
           await onDelete(image.id);
+          
+          // 完成进度
+          toast.updateProgress(toastId, 100);
+          
           toast.resolve(toastId, '删除成功', '图片已从图库中移除');
           onClose();
         } catch (error) {
@@ -224,15 +249,41 @@ export function ImageModal({
   // 复制图片
   const handleDuplicate = async () => {
     if (image && onDuplicate) {
+      const toastId = toast.loading('复制中...', '正在创建新图片', 0);
+      
       try {
-        onDuplicate(image);
+        // 模拟复制进度
+        toast.updateProgress(toastId, 25);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        toast.updateProgress(toastId, 50);
+        
+        // 创建包含当前编辑数据的新图片
+        const duplicatedImage = {
+          ...image,
+          title: editedTitle,
+          prompts: prompts,
+          tags: tags
+        };
+        
+        toast.updateProgress(toastId, 80);
+        
+        await onDuplicate(duplicatedImage);
+        
+        // 完成进度
+        toast.updateProgress(toastId, 100);
+        
         setDuplicateStatus('success');
+        toast.resolve(toastId, '复制成功', '新图片已创建并保存');
+        
         // 复制成功后自动进入编辑模式
         setIsEditing(true);
         // 2秒后重置状态
         setTimeout(() => setDuplicateStatus('idle'), 2000);
       } catch (error) {
+        console.error('复制失败:', error);
         setDuplicateStatus('error');
+        toast.reject(toastId, '复制失败', '请稍后重试');
         // 2秒后重置状态
         setTimeout(() => setDuplicateStatus('idle'), 2000);
       }

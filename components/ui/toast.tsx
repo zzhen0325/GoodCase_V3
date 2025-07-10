@@ -127,7 +127,7 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(({
   );
 });
 
-Toast.displayName = 'Toast';
+Toast.displayName = "Toast";
 
 export function ToastContainer({ children }: { children: React.ReactNode }) {
   return (

@@ -8,6 +8,7 @@ export interface ImageData {
   createdAt: string;
   updatedAt: string;
   usageCount?: number;
+  isLocal?: boolean;
 }
 
 // 提示词类型
@@ -45,10 +46,6 @@ export interface SearchFilters {
   sortBy?: string;
   sortOrder?: string;
   isFavorite?: boolean;
-  dateRange?: {
-    start?: string;
-    end?: string;
-  };
 }
 
 // 数据库操作结果
@@ -81,7 +78,30 @@ export const getColorTheme = (colorName: string): ColorTheme => {
   return COLOR_THEMES.find(theme => theme.name === colorName) || COLOR_THEMES[0];
 };
 
-// 导出数据格式
+// 数据库文档类型（用于Firestore存储）
+export interface ImageDocument {
+  id: string;
+  url: string;
+  title: string;
+  tags: Tag[];
+  prompts?: Prompt[];
+  createdAt: string;
+  updatedAt: string;
+  usageCount?: number;
+}
+
+export interface PromptDocument {
+  id: string;
+  imageId: string;
+  title: string;
+  content: string;
+  color: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 导出数据类型
 export interface ExportData {
   version: string;
   exportedAt: string;
@@ -93,71 +113,3 @@ export interface ExportData {
     totalPrompts: number;
   };
 }
-
-// 导入选项
-export interface ImportOptions {
-  mode: 'merge' | 'replace'; // 合并模式或替换模式
-  skipDuplicates: boolean; // 是否跳过重复项
-  preserveIds: boolean; // 是否保留原始ID
-}
-
-// 导入结果
-export interface ImportResult {
-  success: boolean;
-  importedImages: number;
-  importedTags: number;
-  importedPrompts: number;
-  skippedImages: number;
-  errors: string[];
-  error?: string;
-}
-
-// Firestore 文档类型定义
-
-// 图片文档（Firestore）
-export interface ImageDocument {
-  id: string;
-  url: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  usageCount?: number;
-}
-
-// 提示词文档（Firestore）
-export interface PromptDocument {
-  id: string;
-  imageId: string; // 关联的图片ID
-  title: string;
-  content: string;
-  color: string;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// 标签文档（Firestore）
-export interface TagDocument {
-  id: string;
-  name: string;
-  color: string;
-  usageCount?: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// 图片标签关联文档（Firestore）
-export interface ImageTagDocument {
-  id: string;
-  imageId: string;
-  tagId: string;
-  createdAt: string;
-}
-
-// Firestore 集合名称常量
-export const COLLECTIONS = {
-  IMAGES: 'images',
-  PROMPTS: 'prompts', 
-  TAGS: 'tags',
-  IMAGE_TAGS: 'image_tags'
-} as const;

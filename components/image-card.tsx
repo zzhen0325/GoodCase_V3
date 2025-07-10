@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { ImageData } from '@/types';
@@ -14,92 +14,77 @@ interface ImageCardProps {
   index: number;
 }
 
+// 预定义动画变体，避免每次渲染重新创建
+const cardVariants = {
+  hidden: {
+    opacity: 0,
+    y: 20,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut",
+    },
+  },
+};
+
+const hoverVariants = {
+  hover: {
+    y: -4,
+    transition: {
+      duration: 0.2,
+      ease: "easeOut"
+    }
+  }
+};
+
 // 图片卡片组件
-export function ImageCard({ image, onClick, index }: ImageCardProps) {
+export const ImageCard = React.memo(function ImageCard({ image, onClick, index }: ImageCardProps) {
   // 使用 Intersection Observer 检测元素是否进入视口
   const { ref, inView } = useInView({
     threshold: 0.1,
     triggerOnce: true,
   });
 
-  // 简单淡入动画变体
-  const cardVariants = {
-    hidden: {
-      opacity: 0,
-      y: 20,
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        delay: index * 0.05, // 错开动画时间
-        ease: "easeOut",
-      },
-    },
-  };
+  // 使用 useCallback 缓存点击处理函数
+  const handleClick = useCallback(() => {
+    onClick(image);
+  }, [image, onClick]);
 
-  // hover动画变体
-  const hoverVariants = {
-    hover: {
-      y: -4,
-      transition: {
-        duration: 0.2,
-        ease: "easeOut"
-      }
-    }
-  };
+  // 使用 useMemo 缓存合并的动画变体
+  const combinedVariants = useMemo(() => ({
+    ...cardVariants,
+    ...hoverVariants
+  }), []);
 
   return (
     <motion.div
       ref={ref}
-      variants={{...cardVariants, ...hoverVariants}}
+      variants={combinedVariants}
       initial="hidden"
       animate={inView ? "visible" : "hidden"}
       whileHover="hover"
       className="cursor-pointer"
-      onClick={() => onClick(image)}
+      onClick={handleClick}
     >
       <Magnet
         padding={40}
         magnetStrength={3}
         activeTransition="transform 0.2s ease-out"
-        inactiveTransition="transform 0.4s ease-in-out"
       >
         <Card className="aspect-square overflow-hidden rounded-[2rem]   hover:shadow-xl transition-shadow duration-300">
           <div className="relative w-full h-full">
             {/* 图片容器 */}
-            <div className="w-full h-full bg-muted rounded-[2rem] flex items-center justify-center relative">
+            <div className="w-full h-full bg-muted rounded-[2rem] flex items-center justify-center">
               {image.url ? (
-                inView ? (
-                  <>
-                    <img
-                      src={image.url}
-                      alt={image.title}
-                      className="w-full h-full object-cover rounded-[2rem] transition-opacity duration-300"
-                      loading="lazy"
-                      onLoad={(e) => {
-                        e.currentTarget.style.opacity = '1';
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const errorDiv = e.currentTarget.parentElement?.querySelector('.error-placeholder');
-                        if (errorDiv) {
-                          errorDiv.classList.remove('hidden');
-                        }
-                      }}
-                      style={{ opacity: 0 }}
-                    />
-                    {/* 错误状态占位符 */}
-                    <div className="error-placeholder hidden absolute inset-0 w-full h-full bg-muted rounded-[2rem] flex items-center justify-center text-muted-foreground text-sm">
-                      图片加载失败
-                    </div>
-                  </>
-                ) : (
-                  <div className="w-full h-full bg-muted/50 rounded-[2rem] flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-                  </div>
-                )
+                <img
+                  src={image.url}
+                  alt={image.title}
+                  className="w-full h-full object-cover rounded-[2rem] transition-all duration-300 hover:scale-105 hover:border-4 hover:border-white"
+                  loading="lazy"
+                />
               ) : (
                 <div className="text-muted-foreground text-sm text-center p-4 rounded-[2rem]">
                   暂无图片
@@ -135,4 +120,4 @@ export function ImageCard({ image, onClick, index }: ImageCardProps) {
       </Magnet>
     </motion.div>
   );
-}
+});
