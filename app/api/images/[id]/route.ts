@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Database } from '@/lib/database';
+import { Database, AdminDatabase } from '@/lib/database';
 import { ImageData } from '@/types';
 
 // PUT - 更新图片
@@ -30,7 +30,34 @@ export async function PUT(
   }
 }
 
-// DELETE - 删除图片
+// GET - 获取单个图片
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    
+    const result = await Database.getImageById(id);
+    
+    if (result.success) {
+      return NextResponse.json({ success: true, data: result.data });
+    } else {
+      return NextResponse.json(
+        { success: false, error: result.error },
+        { status: result.error === '图片不存在' ? 404 : 500 }
+      );
+    }
+  } catch (error) {
+    console.error('获取图片失败:', error);
+    return NextResponse.json(
+      { success: false, error: '获取图片失败' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - 删除图片（包括存储中的文件）
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -38,14 +65,15 @@ export async function DELETE(
   try {
     const { id } = params;
     
-    const result = await Database.deleteImage(id);
+    // 使用AdminDatabase来删除图片和存储文件
+    const result = await AdminDatabase.deleteImageWithStorage(id);
     
     if (result.success) {
       return NextResponse.json({ success: true });
     } else {
       return NextResponse.json(
         { success: false, error: result.error },
-        { status: 500 }
+        { status: result.error === '图片不存在' ? 404 : 500 }
       );
     }
   } catch (error) {

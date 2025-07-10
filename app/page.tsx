@@ -4,12 +4,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ImageData, Tag, SearchFilters } from '@/types';
 import { ApiClient } from '@/lib/api';
+import IndexedDBManager from '@/lib/indexed-db';
 import { filterImages, copyToClipboard } from '@/lib/utils';
+import { useRealtimeListeners, ListenerManager } from '@/lib/listeners';
 import { SearchBar } from '@/components/search-bar';
 import { ImageGrid } from '@/components/image-grid';
 import { ImageModal } from '@/components/image-modal';
 import { UploadModal } from '@/components/upload-modal';
 import { Dock } from '@/components/dock';
+import { ConnectionStatus } from '@/components/connection-status';
 import TextPressure from '@/components/text-pressure';
 import CircularText from '@/components/circular-text';
 
@@ -30,24 +33,99 @@ export default function HomePage() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeView, setActiveView] = useState('grid');
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
 
-  // 初始化数据
+  // 初始化实时监听
   useEffect(() => {
-    const initData = async () => {
-      try {
-        await loadData();
-      } catch (error) {
-        console.error('数据初始化失败:', error);
-      } finally {
-        setIsLoading(false);
-      }
+    console.log('🚀 初始化实时数据监听...');
+    
+    // 监听图片数据变化
+    const unsubscribeImages = ListenerManager.subscribeToImages((newImages) => {
+      console.log('📸 图片数据更新:', newImages.length, '张图片');
+      setImages(newImages);
+      setIsLoading(false);
+      setConnectionStatus('connected');
+    });
+
+    // 监听标签数据变化
+    const unsubscribeTags = ListenerManager.subscribeToTags((newTags) => {
+      console.log('🏷️ 标签数据更新:', newTags.length, '个标签');
+      setTags(newTags);
+    });
+
+    // 监听网络状态
+    const handleOnline = () => {
+      console.log('🌐 网络已连接');
+      setConnectionStatus('connected');
     };
 
-    initData();
+    const handleOffline = () => {
+      console.log('🔌 网络已断开');
+      setConnectionStatus('disconnected');
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+    }
+
+    // 清理函数
+    return () => {
+      console.log('🧹 清理监听器...');
+      ListenerManager.unregisterAllListeners();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      }
+    };
   }, []);
 
-  // 加载数据
-  const loadData = async () => {
+  // 后台同步 IndexedDB 到 Firestore
+  useEffect(() => {
+    const syncInterval = setInterval(async () => {
+      console.log('🔄 检查 IndexedDB 中的待上传图片...');
+      const imagesToUpload = await IndexedDBManager.getImages();
+      const pendingImages = imagesToUpload.filter(img => !img.is_valid);
+
+      if (pendingImages.length > 0) {
+        console.log(`📤 发现 ${pendingImages.length} 张待上传图片，开始同步...`);
+        for (const image of pendingImages) {
+          try {
+            // 将 base64 转换回 File 对象
+            const res = await fetch(image.image_data);
+            const blob = await res.blob();
+            const file = new File([blob], image.image_name, { type: blob.type });
+
+            const result = await ApiClient.addImage(file, image.description, image.tags.map(name => ({ id: '', name })));
+            if (result.success && result.data) {
+              console.log(`✅ 图片 ${image.image_name} 同步成功`);
+              // 用服务器返回的数据替换本地临时数据
+              setImages(prevImages => 
+                prevImages.map(prevImage => 
+                  prevImage.id === image.id ? { ...result.data, isLocal: false } : prevImage
+                )
+              );
+              // 从 IndexedDB 中删除
+              await IndexedDBManager.deleteImage(image.id);
+            } else {
+              console.error(`❌ 图片 ${image.image_name} 同步失败:`, result.error);
+            }
+          } catch (error) {
+            console.error(`❌ 同步图片 ${image.image_name} 时出错:`, error);
+          }
+        }
+      } else {
+        console.log('✅ 无待上传图片');
+      }
+    }, 30000); // 每30秒检查一次
+
+    return () => clearInterval(syncInterval);
+  }, []);
+
+  // 手动刷新数据（备用方法）
+  const refreshData = async () => {
+    console.log('🔄 手动刷新数据...');
+    setConnectionStatus('reconnecting');
     try {
       const [imagesResult, tagsResult] = await Promise.all([
         ApiClient.getAllImages(),
@@ -56,18 +134,26 @@ export default function HomePage() {
       
       if (imagesResult.success && imagesResult.data) {
         setImages(imagesResult.data);
-      } else {
-        console.error('加载图片失败:', imagesResult.error);
+        console.log('📸 手动刷新图片成功');
       }
       
       if (tagsResult.success && tagsResult.data) {
         setTags(tagsResult.data);
-      } else {
-        console.error('加载标签失败:', tagsResult.error);
+        console.log('🏷️ 手动刷新标签成功');
       }
+      
+      setConnectionStatus('connected');
     } catch (error) {
-      console.error('加载数据失败:', error);
+      console.error('手动刷新数据失败:', error);
+      setConnectionStatus('disconnected');
     }
+  };
+
+  // 获取监听器状态
+  const getConnectionInfo = () => {
+    const status = ListenerManager.getListenerStatus();
+    console.log('📊 监听器状态:', status);
+    return status;
   };
 
   // 搜索和筛选图片
@@ -89,48 +175,81 @@ export default function HomePage() {
 
   // 处理图片更新
   const handleImageUpdate = useCallback(async (id: string, updates: Partial<ImageData>) => {
+    console.log('🔄 更新图片:', id, updates);
     const result = await ApiClient.updateImage(id, updates);
     
     if (result.success) {
-      // 更新本地状态
-      setImages(prev => prev.map(img => 
-        img.id === id && result.data ? result.data : img
-      ));
+      console.log('✅ 图片更新成功，实时监听器将自动更新UI');
+      // 实时监听器会自动更新images状态，无需手动更新
       
-      // 更新选中的图片
+      // 更新选中的图片（如果正在查看）
       if (selectedImage?.id === id && result.data) {
         setSelectedImage(result.data);
       }
     } else {
+      console.error('❌ 图片更新失败:', result.error);
       throw new Error(result.error || '更新失败');
     }
   }, [selectedImage]);
 
   // 处理图片上传
-  const handleImageUpload = useCallback(async (imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const result = await ApiClient.addImage(imageData);
-    
-    if (result.success && result.data) {
-      setImages(prev => [result.data!, ...prev]);
-    } else {
-      throw new Error(result.error || '上传失败');
-    }
+  const handleImageUpload = useCallback(async (file: File, title: string, tags: Tag[]) => {
+    console.log('📤 处理图片上传:', title);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const tempId = `temp_${Date.now()}`;
+
+      const localImageData: ImageData = {
+        id: tempId,
+        url: base64, // 使用 base64 作为本地预览 URL
+        title: title,
+        tags: tags.map(t => t.name),
+        prompts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isLocal: true, // 标记为本地临时图片
+      };
+
+      // 1. 立即更新UI
+      setImages(prevImages => [localImageData, ...prevImages]);
+
+      // 2. 存入IndexedDB以备后台同步
+      const dbImageData = {
+        id: tempId,
+        image_name: file.name,
+        image_data: base64,
+        tags: tags.map(t => t.name),
+        upload_time: new Date(),
+        description: title,
+        is_valid: false,
+        prompt_blocks: [],
+      };
+
+      try {
+        await IndexedDBManager.addImage(dbImageData);
+        console.log('✅ 图片已暂存到 IndexedDB');
+      } catch (error) {
+        console.error('❌ 暂存图片到 IndexedDB 失败:', error);
+        // 如果暂存失败，可以考虑从UI中移除
+        setImages(prev => prev.filter(img => img.id !== tempId));
+      }
+    };
   }, []);
 
   // 处理标签创建
   const handleTagCreate = useCallback(async (tagData: Omit<Tag, 'id'>) => {
-    try {
-      // 创建一个新标签对象
-      const newTag: Tag = {
-        id: crypto.randomUUID(),
-        ...tagData
-      };
-      
-      setTags(prev => [...prev, newTag]);
-      return newTag;
-    } catch (error) {
-      console.error('创建标签失败:', error);
-      throw error;
+    console.log('🏷️ 创建标签:', tagData.name);
+    const result = await ApiClient.addTag(tagData);
+    
+    if (result.success && result.data) {
+      console.log('✅ 标签创建成功，实时监听器将自动更新UI');
+      // 实时监听器会自动更新tags状态，无需手动更新
+      return result.data;
+    } else {
+      console.error('❌ 标签创建失败:', result.error);
+      throw new Error(result.error || '创建失败');
     }
   }, []);
 
@@ -146,15 +265,17 @@ export default function HomePage() {
 
   // 处理图片删除
   const handleImageDelete = useCallback(async (id: string) => {
+    console.log('🗑️ 删除图片:', id);
     const result = await ApiClient.deleteImage(id);
     
     if (result.success) {
-      // 从本地状态中移除图片
-      setImages(prev => prev.filter(img => img.id !== id));
+      console.log('✅ 图片删除成功，实时监听器将自动更新UI');
+      // 实时监听器会自动更新images状态，无需手动更新
       // 关闭弹窗
       setIsImageModalOpen(false);
       setSelectedImage(null);
     } else {
+      console.error('❌ 图片删除失败:', result.error);
       throw new Error(result.error || '删除失败');
     }
   }, []);
@@ -298,6 +419,13 @@ export default function HomePage() {
 
   return (
     <>
+      {/* 连接状态指示器 */}
+      <ConnectionStatus
+        status={connectionStatus}
+        onRefresh={refreshData}
+        listenerInfo={getConnectionInfo()}
+      />
+      
       <div className="flex justify-center w-full ">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
