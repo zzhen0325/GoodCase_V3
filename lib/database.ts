@@ -1,73 +1,34 @@
-import { neon } from '@neondatabase/serverless';
+import { db, COLLECTIONS } from './firebase';
 import { ImageData, Tag, DBResult } from '@/types';
-
-// 创建 Neon 数据库连接
-const sql = typeof window === 'undefined' && process.env.DATABASE_URL 
-  ? neon(process.env.DATABASE_URL) 
-  : null;
+import { FieldValue } from 'firebase-admin/firestore';
 
 // 数据库操作类
 export class Database {
   // 获取所有图片
   static async getAllImages(): Promise<DBResult<ImageData[]>> {
-    if (!sql) {
-      return {
-        success: false,
-        error: 'Database not available',
-      };
-    }
-    
     try {
-      // 使用优化的查询获取所有数据
-      const [images, prompts, imageTags] = await Promise.all([
-        // 获取所有图片
-        sql`SELECT * FROM "Image" ORDER BY "createdAt" DESC`,
-        
-        // 获取所有提示词
-        sql`SELECT * FROM "Prompt" ORDER BY "imageId", "order" ASC`,
-        
-        // 获取图片标签关联
-        sql`
-          SELECT it."A" as "imageId", t.* 
-          FROM "_ImageTags" it
-          JOIN "Tag" t ON t.id = it."B"
-          ORDER BY it."A", t."name"
-        `
-      ]);
+      const imagesSnapshot = await db.collection(COLLECTIONS.IMAGES)
+        .orderBy('createdAt', 'desc')
+        .get();
 
-      // 构建数据映射
-      const promptsMap = new Map<string, any[]>();
-      const tagsMap = new Map<string, any[]>();
+      const images: ImageData[] = [];
       
-      // 按imageId分组prompts
-      prompts.forEach((prompt: any) => {
-        if (!promptsMap.has(prompt.imageId)) {
-          promptsMap.set(prompt.imageId, []);
-        }
-        promptsMap.get(prompt.imageId)!.push(prompt);
-      });
-      
-      // 按imageId分组tags
-      imageTags.forEach((item: any) => {
-        const { imageId, ...tag } = item;
-        if (!tagsMap.has(imageId)) {
-          tagsMap.set(imageId, []);
-        }
-        tagsMap.get(imageId)!.push(tag);
-      });
-
-      // 组装最终数据
-      const imagesWithRelations = images.map((image: any) => ({
-        ...image,
-        prompts: promptsMap.get(image.id) || [],
-        tags: tagsMap.get(image.id) || [],
-        createdAt: image.createdAt.toISOString(),
-        updatedAt: image.updatedAt.toISOString(),
-      }));
+      for (const doc of imagesSnapshot.docs) {
+        const data = doc.data();
+        images.push({
+          id: doc.id,
+          url: data.url,
+          title: data.title,
+          prompts: data.prompts || [],
+          tags: data.tags || [],
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+        });
+      }
 
       return {
         success: true,
-        data: imagesWithRelations,
+        data: images,
       };
     } catch (error) {
       console.error('获取图片失败:', error);
@@ -78,96 +39,91 @@ export class Database {
     }
   }
 
+  // 数据规范化处理
+  private static normalizeImageData(imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>) {
+    return {
+      title: imageData.title?.trim() || '',
+      url: imageData.url?.trim() || '',
+      prompts: Array.isArray(imageData.prompts) ? imageData.prompts.filter(p => p && p.content?.trim()) : [],
+      tags: Array.isArray(imageData.tags) ? imageData.tags.filter(t => t && t.name?.trim()) : [],
+    };
+  }
+
   // 添加新图片
   static async addImage(imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>): Promise<DBResult<ImageData>> {
-    if (!sql) {
-      return {
-        success: false,
-        error: 'Database not available',
-      };
-    }
-    
     try {
-      const { prompts, tags, ...imageInfo } = imageData;
-      const imageId = crypto.randomUUID();
-      const now = new Date().toISOString();
+      // 数据验证
+      if (!imageData.title?.trim() && !imageData.url?.trim()) {
+        return {
+          success: false,
+          error: '图片标题和URL不能同时为空'
+        };
+      }
 
-      // 创建图片记录
-      await sql`
-        INSERT INTO "Image" (id, title, url, "createdAt", "updatedAt")
-        VALUES (${imageId}, ${imageInfo.title}, ${imageInfo.url}, ${now}, ${now})
-      `;
+      const now = FieldValue.serverTimestamp();
+      const docRef = db.collection(COLLECTIONS.IMAGES).doc();
+      
+      // 规范化数据
+      const normalizedData = this.normalizeImageData(imageData);
+      
+      const newImage = {
+        ...normalizedData,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-      // 处理标签
-      const tagIds = [];
-      for (const tag of tags) {
-        // 尝试插入标签，如果已存在则更新颜色和使用次数
-        const tagId = tag.id || crypto.randomUUID();
-        await sql`
-          INSERT INTO "Tag" (id, name, color, "usageCount", "createdAt", "updatedAt")
-          VALUES (${tagId}, ${tag.name}, ${tag.color}, 1, ${now}, ${now})
-          ON CONFLICT (name) DO UPDATE SET 
-            color = ${tag.color},
-            "usageCount" = "Tag"."usageCount" + 1,
-            "updatedAt" = ${now}
-        `;
+      await docRef.set(newImage);
+
+      // 处理标签更新使用次数
+      if (normalizedData.tags && normalizedData.tags.length > 0) {
+        const batch = db.batch();
         
-        // 获取标签ID
-        const existingTag = await sql`
-          SELECT id FROM "Tag" WHERE name = ${tag.name}
-        `;
-        
-        if (existingTag[0]) {
-          tagIds.push(existingTag[0].id);
+        for (const tag of normalizedData.tags) {
+          // 确保标签名称有效
+          if (!tag.name?.trim()) continue;
+          
+          const tagQuery = await db.collection(COLLECTIONS.TAGS)
+            .where('name', '==', tag.name.trim())
+            .limit(1)
+            .get();
+          
+          if (!tagQuery.empty) {
+            // 标签存在，增加使用次数
+            const tagDoc = tagQuery.docs[0];
+            batch.update(tagDoc.ref, {
+              usageCount: FieldValue.increment(1),
+              updatedAt: now,
+            });
+          } else {
+            // 标签不存在，创建新标签
+            const newTagRef = db.collection(COLLECTIONS.TAGS).doc();
+            batch.set(newTagRef, {
+              name: tag.name,
+              color: tag.color,
+              usageCount: 1,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
         }
+        
+        await batch.commit();
       }
 
-      // 创建图片-标签关联
-      for (const tagId of tagIds) {
-        await sql`
-          INSERT INTO "_ImageTags" ("A", "B")
-          VALUES (${imageId}, ${tagId})
-          ON CONFLICT DO NOTHING
-        `;
-      }
-
-      // 创建提示词
-      for (const prompt of prompts) {
-        const promptId = crypto.randomUUID();
-        await sql`
-          INSERT INTO "Prompt" (id, title, content, color, "order", "imageId", "createdAt", "updatedAt")
-          VALUES (${promptId}, ${prompt.title}, ${prompt.content}, ${prompt.color}, ${prompt.order}, ${imageId}, ${now}, ${now})
-        `;
-      }
-
-      // 获取完整的图片数据
-      const [createdImage] = await sql`
-        SELECT * FROM "Image" WHERE id = ${imageId}
-      `;
-
-      const [createdPrompts, createdTags] = await Promise.all([
-        sql`
-          SELECT * FROM "Prompt" 
-          WHERE "imageId" = ${imageId} 
-          ORDER BY "order" ASC
-        `,
-        sql`
-          SELECT t.* FROM "Tag" t
-          JOIN "_ImageTags" it ON t.id = it."B"
-          WHERE it."A" = ${imageId}
-        `
-      ]);
+      // 获取创建的文档数据
+      const createdDoc = await docRef.get();
+      const createdData = createdDoc.data();
 
       return {
         success: true,
         data: {
-          id: createdImage.id,
-          url: createdImage.url,
-          title: createdImage.title,
-          prompts: (createdPrompts || []) as any[],
-          tags: (createdTags || []) as any[],
-          createdAt: createdImage.createdAt,
-          updatedAt: createdImage.updatedAt,
+          id: docRef.id,
+          url: createdData!.url,
+          title: createdData!.title,
+          prompts: createdData!.prompts || [],
+          tags: createdData!.tags || [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         } as ImageData,
       };
     } catch (error) {
@@ -181,125 +137,82 @@ export class Database {
 
   // 更新图片
   static async updateImage(id: string, imageData: Partial<ImageData>): Promise<DBResult<ImageData>> {
-    if (!sql) {
-      return {
-        success: false,
-        error: 'Database not available',
-      };
-    }
-    
     try {
-      const { prompts, tags, ...imageInfo } = imageData;
-      const now = new Date().toISOString();
-
-      // 更新图片基本信息
-      if (Object.keys(imageInfo).length > 0) {
-        // 根据需要更新的字段组合不同的SQL语句
-        if (imageInfo.title !== undefined && imageInfo.url !== undefined) {
-          await sql`
-            UPDATE "Image" 
-            SET title = ${imageInfo.title}, url = ${imageInfo.url}, "updatedAt" = ${now}
-            WHERE id = ${id}
-          `;
-        } else if (imageInfo.title !== undefined) {
-          await sql`
-            UPDATE "Image" 
-            SET title = ${imageInfo.title}, "updatedAt" = ${now}
-            WHERE id = ${id}
-          `;
-        } else if (imageInfo.url !== undefined) {
-          await sql`
-            UPDATE "Image" 
-            SET url = ${imageInfo.url}, "updatedAt" = ${now}
-            WHERE id = ${id}
-          `;
-        }
+      const docRef = db.collection(COLLECTIONS.IMAGES).doc(id);
+      const doc = await docRef.get();
+      
+      if (!doc.exists) {
+        return {
+          success: false,
+          error: '图片不存在',
+        };
       }
 
-      // 更新标签
-      if (tags) {
-        // 删除旧的标签关联
-        await sql`
-          DELETE FROM "_ImageTags" WHERE "A" = ${id}
-        `;
+      const updateData: any = {
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      // 更新基本信息
+      if (imageData.title !== undefined) {
+        updateData.title = imageData.title;
+      }
+      if (imageData.url !== undefined) {
+        updateData.url = imageData.url;
+      }
+      if (imageData.prompts !== undefined) {
+        updateData.prompts = imageData.prompts;
+      }
+      if (imageData.tags !== undefined) {
+        updateData.tags = imageData.tags;
         
-        // 处理新标签
-        const tagIds = [];
-        for (const tag of tags) {
-          const tagId = tag.id || crypto.randomUUID();
-          await sql`
-            INSERT INTO "Tag" (id, name, color, "usageCount", "createdAt", "updatedAt")
-            VALUES (${tagId}, ${tag.name}, ${tag.color}, 1, ${now}, ${now})
-            ON CONFLICT (name) DO UPDATE SET 
-              color = ${tag.color},
-              "usageCount" = "Tag"."usageCount" + 1,
-              "updatedAt" = ${now}
-          `;
+        // 处理标签使用次数更新
+        const batch = db.batch();
+        
+        for (const tag of imageData.tags) {
+          const tagQuery = await db.collection(COLLECTIONS.TAGS)
+            .where('name', '==', tag.name)
+            .limit(1)
+            .get();
           
-          const existingTag = await sql`
-            SELECT id FROM "Tag" WHERE name = ${tag.name}
-          `;
-          
-          if (existingTag[0]) {
-            tagIds.push(existingTag[0].id);
+          if (!tagQuery.empty) {
+            // 标签存在，增加使用次数
+            const tagDoc = tagQuery.docs[0];
+            batch.update(tagDoc.ref, {
+              usageCount: FieldValue.increment(1),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          } else {
+            // 标签不存在，创建新标签
+            const newTagRef = db.collection(COLLECTIONS.TAGS).doc();
+            batch.set(newTagRef, {
+              name: tag.name,
+              color: tag.color,
+              usageCount: 1,
+              createdAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
           }
         }
-
-        // 创建新的标签关联
-        for (const tagId of tagIds) {
-          await sql`
-            INSERT INTO "_ImageTags" ("A", "B")
-            VALUES (${id}, ${tagId})
-            ON CONFLICT DO NOTHING
-          `;
-        }
+        
+        await batch.commit();
       }
 
-      // 更新提示词
-      if (prompts) {
-        // 删除旧的提示词
-        await sql`
-          DELETE FROM "Prompt" WHERE "imageId" = ${id}
-        `;
+      await docRef.update(updateData);
 
-        // 创建新的提示词
-        for (const prompt of prompts) {
-          const promptId = crypto.randomUUID();
-          await sql`
-            INSERT INTO "Prompt" (id, title, content, color, "order", "imageId", "createdAt", "updatedAt")
-            VALUES (${promptId}, ${prompt.title}, ${prompt.content}, ${prompt.color}, ${prompt.order}, ${id}, ${now}, ${now})
-          `;
-        }
-      }
-
-      // 获取更新后的完整图片数据
-      const [updatedImage] = await sql`
-        SELECT * FROM "Image" WHERE id = ${id}
-      `;
-
-      const [updatedPrompts, updatedTags] = await Promise.all([
-        sql`
-          SELECT * FROM "Prompt" 
-          WHERE "imageId" = ${id} 
-          ORDER BY "order" ASC
-        `,
-        sql`
-          SELECT t.* FROM "Tag" t
-          JOIN "_ImageTags" it ON t.id = it."B"
-          WHERE it."A" = ${id}
-        `
-      ]);
+      // 获取更新后的数据
+      const updatedDoc = await docRef.get();
+      const updatedData = updatedDoc.data()!;
 
       return {
         success: true,
         data: {
-          id: updatedImage.id,
-          url: updatedImage.url,
-          title: updatedImage.title,
-          prompts: (updatedPrompts || []) as any[],
-          tags: (updatedTags || []) as any[],
-          createdAt: updatedImage.createdAt,
-          updatedAt: updatedImage.updatedAt,
+          id: updatedDoc.id,
+          url: updatedData.url,
+          title: updatedData.title,
+          prompts: updatedData.prompts || [],
+          tags: updatedData.tags || [],
+          createdAt: updatedData.createdAt?.toDate?.()?.toISOString() || updatedData.createdAt,
+          updatedAt: updatedData.updatedAt?.toDate?.()?.toISOString() || updatedData.updatedAt,
         } as ImageData,
       };
     } catch (error) {
@@ -313,28 +226,19 @@ export class Database {
 
   // 删除图片
   static async deleteImage(id: string): Promise<DBResult<void>> {
-    if (!sql) {
-      return {
-        success: false,
-        error: 'Database not available',
-      };
-    }
-    
     try {
-      // 删除相关的提示词
-      await sql`
-        DELETE FROM "Prompt" WHERE "imageId" = ${id}
-      `;
+      const docRef = db.collection(COLLECTIONS.IMAGES).doc(id);
+      const doc = await docRef.get();
       
-      // 删除图片-标签关联
-      await sql`
-        DELETE FROM "_ImageTags" WHERE "A" = ${id}
-      `;
-      
-      // 删除图片
-      await sql`
-        DELETE FROM "Image" WHERE id = ${id}
-      `;
+      if (!doc.exists) {
+        return {
+          success: false,
+          error: '图片不存在',
+        };
+      }
+
+      // 在Firestore中，删除文档会自动删除所有嵌套数据
+      await docRef.delete();
 
       return {
         success: true,
@@ -350,23 +254,30 @@ export class Database {
 
   // 获取所有标签
   static async getAllTags(): Promise<DBResult<Tag[]>> {
-    if (!sql) {
-      return {
-        success: false,
-        error: 'Database not available',
-      };
-    }
-    
     try {
-      const tags = await sql`
-        SELECT * FROM "Tag" 
-        ORDER BY "usageCount" DESC, "name" ASC
-      `;
+      const tagsSnapshot = await db.collection(COLLECTIONS.TAGS)
+        .orderBy('usageCount', 'desc')
+        .orderBy('name', 'asc')
+        .get();
+
+      const tags: Tag[] = [];
+      
+      for (const doc of tagsSnapshot.docs) {
+        const data = doc.data();
+        tags.push({
+          id: doc.id,
+          name: data.name,
+          color: data.color,
+          usageCount: data.usageCount || 0,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+        });
+      }
       
       return {
-         success: true,
-         data: tags as any[],
-       };
+        success: true,
+        data: tags,
+      };
     } catch (error) {
       console.error('获取标签失败:', error);
       return {

@@ -49,18 +49,19 @@ const progressColorMap = {
   info: 'bg-gray-500'
 };
 
-export function Toast({ 
+export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(({ 
   id, 
   type, 
   title, 
   description, 
   progress, 
   onClose 
-}: ToastProps) {
+}, ref) => {
   const Icon = iconMap[type];
   
   return (
     <motion.div
+      ref={ref}
       layout
       variants={toastVariants}
       initial="initial"
@@ -124,7 +125,9 @@ export function Toast({
       )}
     </motion.div>
   );
-}
+});
+
+Toast.displayName = 'Toast';
 
 export function ToastContainer({ children }: { children: React.ReactNode }) {
   return (

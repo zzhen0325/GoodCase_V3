@@ -117,27 +117,43 @@ export function UploadModal({
     }
   };
 
-  // 处理上传
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error('请选择图片文件');
-      return;
+  // 数据验证和规范化
+  const validateAndNormalizeData = () => {
+    // 验证必要字段
+    if (!selectedFile && !previewUrl) {
+      throw new Error('请选择图片文件');
     }
 
+    // 规范化标题
+    const normalizedTitle = title?.trim() || '未命名图片';
+    
+    // 规范化标签 - 过滤掉空标签
+    const normalizedTags = selectedTags.filter(tag => 
+      tag && tag.name?.trim() && tag.id?.trim()
+    ).map(tag => ({
+      ...tag,
+      name: tag.name.trim()
+    }));
+
+    return {
+      title: normalizedTitle,
+      url: previewUrl || '',
+      prompts: [], // 初始化为空数组
+      tags: normalizedTags,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  };
+
+  // 处理上传
+  const handleUpload = async () => {
     const toastId = toast.loading('上传中...', '正在处理图片文件');
     
     try {
       setIsUploading(true);
       
-      // 创建新的图片数据对象
-      const newImage: Omit<ImageData, 'id'> = {
-        title: title || '未命名图片',
-        url: previewUrl || '', // 现在存储base64数据
-        prompts: [],
-        tags: selectedTags,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      // 验证和规范化数据
+      const newImage = validateAndNormalizeData();
       
       // 调用上传回调
       await onUpload(newImage);

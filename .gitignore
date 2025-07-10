@@ -40,4 +40,5 @@ next-env.d.ts
 
 # swc
 *.node 
-/generated/prisma
+# Firebase service account key (if using file-based auth)
+firebase-service-account.json

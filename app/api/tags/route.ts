@@ -16,6 +16,19 @@ export async function GET() {
     }
   } catch (error) {
     console.error('获取标签失败:', error);
+    
+    // 检查是否是 Firestore 模式错误
+    if (error instanceof Error && error.message.includes('Datastore Mode')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Firebase 项目配置错误：请在 Firebase Console 中将数据库切换为 Firestore 原生模式',
+          details: 'The Cloud Firestore API is not available for Firestore in Datastore Mode'
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
       { success: false, error: '获取标签失败' },
       { status: 500 }
