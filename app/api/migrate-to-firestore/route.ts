@@ -115,7 +115,11 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     // 获取Storage中的JSON文件数量
-    const listRef = storageRef(storage, 'images/');
+    const storageInstance = getStorageInstance();
+    if (!storageInstance) {
+      throw new Error('Firebase Storage not initialized');
+    }
+    const listRef = storageRef(storageInstance, 'images/');
     const res = await listAll(listRef);
     const jsonFiles = res.items.filter(itemRef => itemRef.name.endsWith('.json'));
     
