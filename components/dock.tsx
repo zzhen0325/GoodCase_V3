@@ -271,12 +271,7 @@ export function Dock({
       onClick: onEdit || (() => {}),
       isActive: isEditMode,
     },
-     {
-      id: 'upload',
-      icon: <Plus className="w-5 h-5" />,
-      label: '上传图片',
-      onClick: onUpload || (() => {}),
-    },
+     {      id: 'upload',      icon: <Upload className="w-5 h-5" />,      label: '上传图片',      onClick: onUpload || (() => {}),    },
     {
       id: 'robot',
       icon: <Bot className="w-5 h-5" />,
