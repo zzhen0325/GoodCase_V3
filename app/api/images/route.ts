@@ -51,30 +51,34 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const title = formData.get('title') as string;
-    const tags = JSON.parse(formData.get('tags') as string || '[]') as { id: string, name: string }[];
-    const description = formData.get('description') as string || '';
-    const prompt_blocks = JSON.parse(formData.get('prompt_blocks') as string || '[]') as any[];
+    const prompt = formData.get('prompt') as string;
+    const tags = formData.get('tags') as string || '';
 
     if (!file) {
-      return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '请选择图片文件' }, { status: 400 });
+    }
+
+    if (!prompt) {
+      return NextResponse.json({ success: false, error: '请输入提示词' }, { status: 400 });
     }
 
     // 1. 上传图片到 Firebase Storage
-    const imageUrl = await ImageStorageService.uploadImage(file, 'gallery');
+    const imageUrl = await ImageStorageService.uploadImage(file, 'images');
 
     // 2. 准备要存入 Firestore 的数据
     const imageData = {
-      image_name: file.name,
-      image_path: imageUrl, // 保存的是 Storage 的路径或 URL
-      tags: tags.map(t => t.name),
-      description: title || description,
-      prompt_blocks: prompt_blocks, // 从表单获取
-      // is_valid 和时间戳由 database.ts 中的 addImage 方法处理
+      title: prompt, // 使用提示词作为标题
+      url: imageUrl, // 图片下载URL
+      prompts: [prompt], // 提示词数组
+      tags: tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : [], // 标签数组
     };
 
     // 3. 调用 Database 方法存入 Firestore
-    const result = await Database.addImage(imageData as any);
+    const imageDataWithTagObjects = {
+      ...imageData,
+      tags: imageData.tags.map(tag => ({ id: tag, name: tag, color: '#3b82f6' }))
+    };
+    const result = await Database.addImage(imageDataWithTagObjects);
 
     if (result.success) {
       return NextResponse.json({ success: true, data: result.data }, { status: 201 });

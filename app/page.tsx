@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ImageData, Tag, SearchFilters } from '@/types';
+import { ImageData, Tag, SearchFilters, Prompt } from '@/types';
 import { ApiClient } from '@/lib/api';
 import IndexedDBManager from '@/lib/indexed-db';
 import { filterImages, copyToClipboard } from '@/lib/utils';
-import { useRealtimeListeners, ListenerManager } from '@/lib/listeners';
+import { ListenerManager } from '@/lib/listeners';
 import { SearchBar } from '@/components/search-bar';
 import { ImageGrid } from '@/components/image-grid';
 import { ImageModal } from '@/components/image-modal';
@@ -96,13 +96,13 @@ export default function HomePage() {
             const blob = await res.blob();
             const file = new File([blob], image.image_name, { type: blob.type });
 
-            const result = await ApiClient.addImage(file, image.description, image.tags.map(name => ({ id: '', name })));
+            const result = await ApiClient.addImage(file, image.description, image.tags.join(','));
             if (result.success && result.data) {
               console.log(`✅ 图片 ${image.image_name} 同步成功`);
               // 用服务器返回的数据替换本地临时数据
               setImages(prevImages => 
                 prevImages.map(prevImage => 
-                  prevImage.id === image.id ? { ...result.data, isLocal: false } : prevImage
+                  prevImage.id === image.id ? { ...result.data!, isLocal: false } : prevImage
                 )
               );
               // 从 IndexedDB 中删除
@@ -193,50 +193,76 @@ export default function HomePage() {
   }, [selectedImage]);
 
   // 处理图片上传
-  const handleImageUpload = useCallback(async (file: File, title: string, tags: Tag[]) => {
-    console.log('📤 处理图片上传:', title);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      const tempId = `temp_${Date.now()}`;
+  const handleImageUpload = useCallback(async (file: File, imageName: string, prompts: Prompt[], tags: Tag[]) => {
+    console.log('📤 处理图片上传:', imageName);
+    try {
+      // 如果在线，直接上传到服务器
+      if (connectionStatus === 'connected') {
+        // 将新的数据结构转换为API期望的格式
+        const tagsString = tags.map(tag => tag.name).join(',');
+        const result = await ApiClient.addImage(file, imageName, tagsString);
+        if (result.success && result.data) {
+          // 上传成功后，更新图片的提示词块
+          if (prompts.length > 0) {
+            const updateResult = await ApiClient.updateImage(result.data.id, {
+              prompts: prompts
+            });
+            if (!updateResult.success) {
+              console.warn('⚠️ 提示词块更新失败:', updateResult.error);
+            }
+          }
+          console.log('✅ 图片上传成功:', result.data);
+        } else {
+          throw new Error(result.error || '上传失败');
+        }
+      } else {
+        // 如果离线，存储到IndexedDB
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+          const base64 = reader.result as string;
+          const tempId = `temp_${Date.now()}`;
 
-      const localImageData: ImageData = {
-        id: tempId,
-        url: base64, // 使用 base64 作为本地预览 URL
-        title: title,
-        tags: tags.map(t => t.name),
-        prompts: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isLocal: true, // 标记为本地临时图片
-      };
+          const localImageData: ImageData = {
+            id: tempId,
+            url: base64,
+            title: imageName,
+            tags: tags,
+            prompts: prompts,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isLocal: true,
+          };
 
-      // 1. 立即更新UI
-      setImages(prevImages => [localImageData, ...prevImages]);
+          // 立即更新UI
+          setImages(prevImages => [localImageData, ...prevImages]);
 
-      // 2. 存入IndexedDB以备后台同步
-      const dbImageData = {
-        id: tempId,
-        image_name: file.name,
-        image_data: base64,
-        tags: tags.map(t => t.name),
-        upload_time: new Date(),
-        description: title,
-        is_valid: false,
-        prompt_blocks: [],
-      };
+          // 存入IndexedDB以备后台同步
+          const dbImageData = {
+            id: tempId,
+            image_name: file.name,
+            image_data: base64,
+            tags: tags.map(tag => tag.name),
+            upload_time: new Date(),
+            description: imageName,
+            is_valid: false,
+            prompt_blocks: prompts,
+          };
 
-      try {
-        await IndexedDBManager.addImage(dbImageData);
-        console.log('✅ 图片已暂存到 IndexedDB');
-      } catch (error) {
-        console.error('❌ 暂存图片到 IndexedDB 失败:', error);
-        // 如果暂存失败，可以考虑从UI中移除
-        setImages(prev => prev.filter(img => img.id !== tempId));
+          try {
+            await IndexedDBManager.addImage(dbImageData);
+            console.log('✅ 图片已暂存到 IndexedDB');
+          } catch (error) {
+            console.error('❌ 暂存图片到 IndexedDB 失败:', error);
+            setImages(prev => prev.filter(img => img.id !== tempId));
+          }
+        };
       }
-    };
-  }, []);
+    } catch (error) {
+      console.error('❌ 上传失败:', error);
+      throw error;
+    }
+  }, [connectionStatus]);
 
   // 处理标签创建
   const handleTagCreate = useCallback(async (tagData: Omit<Tag, 'id'>) => {
@@ -283,28 +309,9 @@ export default function HomePage() {
   // 处理图片复制
   const handleImageDuplicate = useCallback(async (image: ImageData) => {
     try {
-      // 创建新的图片数据，移除id和更新时间戳
-      const { id, createdAt, updatedAt, ...imageDataWithoutId } = image;
-      const duplicatedImageData = {
-        ...imageDataWithoutId,
-        title: `${image.title} (副本)`,
-        // 复制提示词数组
-        prompts: image.prompts.map(prompt => ({
-          ...prompt,
-          id: crypto.randomUUID() // 为每个提示词生成新的ID
-        })),
-        // 复制标签数组
-        tags: [...image.tags]
-      };
-      
-      const result = await ApiClient.addImage(duplicatedImageData);
-      
-             if (result.success && result.data) {
-         setImages(prev => [result.data!, ...prev]);
-       } else {
-         console.error('复制图片失败:', result.error);
-         throw new Error(result.error || '复制失败');
-       }
+      // 复制功能暂时禁用，因为需要重新上传文件
+      console.log('复制功能开发中...');
+      alert('复制功能开发中，请手动重新上传图片');
     } catch (error) {
       console.error('复制图片失败:', error);
       throw error;
@@ -334,7 +341,7 @@ export default function HomePage() {
         }
         
         // 这里可以实现批量导入逻辑
-        await loadData();
+        await refreshData();
         
         alert(`导入功能开发中`);
       } catch (error) {

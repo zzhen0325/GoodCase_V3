@@ -7,6 +7,8 @@ export interface ImageData {
   tags: Tag[];
   createdAt: string;
   updatedAt: string;
+  usageCount?: number;
+  isLocal?: boolean;
 }
 
 // 提示词类型
@@ -75,3 +77,39 @@ export const TAG_COLORS = COLOR_THEMES.map(theme => theme.name);
 export const getColorTheme = (colorName: string): ColorTheme => {
   return COLOR_THEMES.find(theme => theme.name === colorName) || COLOR_THEMES[0];
 };
+
+// 数据库文档类型（用于Firestore存储）
+export interface ImageDocument {
+  id: string;
+  url: string;
+  title: string;
+  tags: Tag[];
+  prompts?: Prompt[];
+  createdAt: string;
+  updatedAt: string;
+  usageCount?: number;
+}
+
+export interface PromptDocument {
+  id: string;
+  imageId: string;
+  title: string;
+  content: string;
+  color: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 导出数据类型
+export interface ExportData {
+  version: string;
+  exportedAt: string;
+  images: ImageData[];
+  tags: Tag[];
+  metadata: {
+    totalImages: number;
+    totalTags: number;
+    totalPrompts: number;
+  };
+}

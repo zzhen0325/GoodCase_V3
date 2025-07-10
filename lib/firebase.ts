@@ -1,15 +1,15 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, initializeFirestore, enableNetwork, disableNetwork } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, initializeFirestore, enableNetwork, disableNetwork, Firestore } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 
 // Firebase配置
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCIQbFi0ogL2uAyRmAqeKn7iNGpun3AFfY",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "lemonzz.firebaseapp.com",
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://lemonzz-default-rtdb.firebaseio.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "lemonzz",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "lemon8.appspot.com",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "perceptive-map-465407-s9.firebaseapp.com",
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://perceptive-map-465407-s9-default-rtdb.firebaseio.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "perceptive-map-465407-s9",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "perceptive-map-465407-s9.firebasestorage.app",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "383688111435",
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:383688111435:web:948c86bc46b430222224ce",
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-90M1DVZKQT"
@@ -19,13 +19,12 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // 初始化 Firestore 时设置优化选项
-let db;
+let db: Firestore;
 try {
   db = initializeFirestore(app, {
     // 启用离线持久化
     localCache: {
       kind: 'persistent',
-      tabManager: 'optimistic',
       cacheSizeBytes: 50 * 1024 * 1024, // 50MB 缓存
     },
     // 强制使用长轮询，解决连接超时问题

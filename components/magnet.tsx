@@ -13,11 +13,11 @@ interface MagnetProps extends HTMLAttributes<HTMLDivElement> {
 
 const Magnet: React.FC<MagnetProps> = ({
   children,
-  padding = 150,
+  padding = 100,
   disabled = false,
-  magnetStrength = 2,
-  activeTransition = "transform 0.3s ease-out",
-  inactiveTransition = "transform 0.5s ease-in-out",
+  magnetStrength = 3,
+  activeTransition = "transform 0.8s ease-in-out",
+  inactiveTransition = "transform 0.8s linear(0,.5737 7.6%,.8382 11.87%,.9463 14.19%,1.0292 16.54%,1.0886 18.97%,1.1258 21.53%,1.137 22.97%,1.1424 24.48%,1.1423 26.1%,1.1366 27.86%,1.1165 31.01%,1.0507 38.62%,1.0219 42.57%,.9995 46.99%,.9872 51.63%,.9842 58.77%,1.0011 81.26%,1)",
   wrapperClassName = "",
   innerClassName = "",
   ...props
@@ -60,6 +60,7 @@ const Magnet: React.FC<MagnetProps> = ({
   }, [padding, disabled, magnetStrength]);
 
   const transitionStyle = isActive ? activeTransition : inactiveTransition;
+  const rotationAngle = isActive ? (position.x / 10) : 0;
 
   return (
     <div
@@ -71,11 +72,14 @@ const Magnet: React.FC<MagnetProps> = ({
       <div
         className={innerClassName}
         style={{
-          transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+          transform: `translate3d(${position.x}px, ${position.y}px, 0) rotate(${rotationAngle}deg)`,
           transition: transitionStyle,
           willChange: "transform",
           width: "100%",
           height: "100%",
+          filter: isActive ? "drop-shadow(0 20px 40px rgb(255, 255, 255))" : "none",
+          
+          borderRadius: isActive ? "2xl" : "0",
         }}
       >
         {children}

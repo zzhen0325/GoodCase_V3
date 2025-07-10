@@ -4,19 +4,14 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Wifi, WifiOff, RotateCcw, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+
 
 interface ConnectionStatusProps {
   status: 'connected' | 'disconnected' | 'reconnecting';
   onRefresh?: () => void;
-  listenerInfo?: {
-    isOnline: boolean;
-    activeListeners: string[];
-    reconnectAttempts: number;
-  };
 }
 
-export function ConnectionStatus({ status, onRefresh, listenerInfo }: ConnectionStatusProps) {
+export function ConnectionStatus({ status, onRefresh }: ConnectionStatusProps) {
   const getStatusConfig = () => {
     switch (status) {
       case 'connected':
@@ -61,8 +56,8 @@ export function ConnectionStatus({ status, onRefresh, listenerInfo }: Connection
   const config = getStatusConfig();
   const Icon = config.icon;
 
-  // 连接正常且没有额外信息时不显示
-  if (status === 'connected' && !listenerInfo) {
+  // 连接正常时不显示
+  if (status === 'connected') {
     return null;
   }
 
@@ -106,49 +101,7 @@ export function ConnectionStatus({ status, onRefresh, listenerInfo }: Connection
         )}
       </div>
 
-      {/* 监听器详细信息 */}
-      {listenerInfo && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700"
-        >
-          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-            <div className="flex justify-between">
-              <span>网络状态:</span>
-              <span className={listenerInfo.isOnline ? 'text-green-600' : 'text-red-600'}>
-                {listenerInfo.isOnline ? '在线' : '离线'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>活跃监听器:</span>
-              <span>{listenerInfo.activeListeners.length}</span>
-            </div>
-            {listenerInfo.reconnectAttempts > 0 && (
-              <div className="flex justify-between">
-                <span>重连次数:</span>
-                <span>{listenerInfo.reconnectAttempts}</span>
-              </div>
-            )}
-          </div>
-          
-          {listenerInfo.activeListeners.length > 0 && (
-            <div className="mt-1">
-              <div className="text-xs text-gray-400 mb-1">监听器:</div>
-              <div className="flex flex-wrap gap-1">
-                {listenerInfo.activeListeners.map((listener) => (
-                  <span
-                    key={listener}
-                    className="inline-block px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs"
-                  >
-                    {listener}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </motion.div>
-      )}
+
     </motion.div>
   );
 }

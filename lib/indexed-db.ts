@@ -6,12 +6,20 @@ const IMAGE_STORE_NAME = 'images';
 
 class IndexedDBManager {
   private db: IDBDatabase | null = null;
+  private isClient: boolean;
 
   constructor() {
-    this.init();
+    this.isClient = typeof window !== 'undefined' && typeof indexedDB !== 'undefined';
+    if (this.isClient) {
+      this.init();
+    }
   }
 
   private init(): Promise<void> {
+    if (!this.isClient) {
+      return Promise.resolve();
+    }
+    
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -35,6 +43,9 @@ class IndexedDBManager {
   }
 
   private async getDB(): Promise<IDBDatabase> {
+    if (!this.isClient) {
+      throw new Error('IndexedDB is not available in server environment');
+    }
     if (!this.db) {
       await this.init();
     }
@@ -42,6 +53,10 @@ class IndexedDBManager {
   }
 
   public async addImage(image: any): Promise<void> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, skipping addImage');
+      return;
+    }
     const db = await this.getDB();
     const transaction = db.transaction([IMAGE_STORE_NAME], 'readwrite');
     const store = transaction.objectStore(IMAGE_STORE_NAME);
@@ -54,6 +69,10 @@ class IndexedDBManager {
   }
 
   public async getImages(): Promise<any[]> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, returning empty array');
+      return [];
+    }
     const db = await this.getDB();
     const transaction = db.transaction([IMAGE_STORE_NAME], 'readonly');
     const store = transaction.objectStore(IMAGE_STORE_NAME);
@@ -66,6 +85,10 @@ class IndexedDBManager {
   }
 
     public async getImageById(id: string): Promise<any> {
+        if (!this.isClient) {
+            console.warn('IndexedDB not available, returning null');
+            return null;
+        }
         const db = await this.getDB();
         const transaction = db.transaction([IMAGE_STORE_NAME], 'readonly');
         const store = transaction.objectStore(IMAGE_STORE_NAME);
@@ -82,6 +105,10 @@ class IndexedDBManager {
     }
 
   public async deleteImage(id: string): Promise<void> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, skipping deleteImage');
+      return;
+    }
     const db = await this.getDB();
     const transaction = db.transaction([IMAGE_STORE_NAME], 'readwrite');
     const store = transaction.objectStore(IMAGE_STORE_NAME);

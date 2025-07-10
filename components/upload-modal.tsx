@@ -2,12 +2,13 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, Image as ImageIcon, FileImage } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, FileImage, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ImageData, Prompt, Tag } from '@/types';
 import { TagManager } from './tag-manager';
+import { PromptBlock } from './prompt-block';
 import { useToastContext } from '@/components/toast-provider';
 import { generateId } from '@/lib/utils';
 import { ImageStorageService } from '@/lib/image-storage';
@@ -16,7 +17,7 @@ import { ImageStorageService } from '@/lib/image-storage';
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (image: Omit<ImageData, 'id'>) => Promise<void>;
+  onUpload: (file: File, imageName: string, prompts: Prompt[], tags: Tag[]) => Promise<void>;
   availableTags: Tag[];
   onCreateTag: (tag: Omit<Tag, 'id'>) => Promise<Tag>;
 }
@@ -25,17 +26,19 @@ interface UploadModalProps {
 export function UploadModal({ 
   isOpen, 
   onClose, 
-  onUpload, 
+  onUpload,
   availableTags,
-  onCreateTag 
+  onCreateTag
 }: UploadModalProps) {
   const { toast } = useToastContext();
-  const [title, setTitle] = useState('');
+  const [imageName, setImageName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [isEditingPrompts, setIsEditingPrompts] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 处理文件选择
@@ -93,10 +96,22 @@ export function UploadModal({
       setSelectedFile(file);
       setPreviewUrl(base64);
       
-      // 如果没有标题，使用文件名作为默认标题
-      if (!title) {
-        const fileName = file.name.split('.').slice(0, -1).join('.');
-        setTitle(fileName);
+      // 使用文件名作为图片名称
+      const fileName = file.name.split('.').slice(0, -1).join('.');
+      setImageName(fileName);
+      
+      // 创建默认的提示词块
+      if (prompts.length === 0) {
+        const defaultPrompt: Prompt = {
+          id: generateId(),
+          title: '默认提示词',
+          content: fileName,
+          color: 'slate',
+          order: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setPrompts([defaultPrompt]);
       }
     } catch (error) {
       console.error('文件处理失败:', error);
@@ -125,13 +140,28 @@ export function UploadModal({
       return;
     }
 
-    const toastId = toast.loading('上传中...', '正在上传图片');
+    if (!imageName.trim()) {
+      toast.error('图片名称不能为空');
+      return;
+    }
+
+    const toastId = toast.loading('上传中...', '正在上传图片', 0);
     
     try {
       setIsUploading(true);
       
+      // 模拟上传进度
+      const progressSteps = [10, 30, 50, 70, 90];
+      for (let i = 0; i < progressSteps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        toast.updateProgress(toastId, progressSteps[i]);
+      }
+      
       // 调用上传回调
-      await onUpload(selectedFile, title, selectedTags);
+      await onUpload(selectedFile, imageName.trim(), prompts, selectedTags);
+      
+      // 完成进度
+      toast.updateProgress(toastId, 100);
       
       toast.resolve(toastId, '上传成功', '图片已成功上传');
       
@@ -150,10 +180,12 @@ export function UploadModal({
 
   // 重置表单
   const resetForm = () => {
-    setTitle('');
+    setImageName('');
     setSelectedFile(null);
     setPreviewUrl(null);
+    setPrompts([]);
     setSelectedTags([]);
+    setIsEditingPrompts(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -164,6 +196,40 @@ export function UploadModal({
     resetForm();
     onClose();
   }
+
+  // 添加新提示词
+  const addPrompt = () => {
+    const newPrompt: Prompt = {
+      id: generateId(),
+      title: '新提示词',
+      content: '',
+      color: 'slate',
+      order: prompts.length,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setPrompts([...prompts, newPrompt]);
+  };
+
+  // 更新提示词
+  const updatePrompt = (id: string, updates: Partial<Prompt>) => {
+    setPrompts(prompts.map(prompt => 
+      prompt.id === id 
+        ? { ...prompt, ...updates, updatedAt: new Date().toISOString() }
+        : prompt
+    ));
+  };
+
+  // 删除提示词
+  const deletePrompt = (id: string) => {
+    setPrompts(prompts.filter(prompt => prompt.id !== id));
+  };
+
+  // 复制提示词内容
+  const copyPromptContent = (content: string) => {
+    // 这里可以添加复制成功的提示
+    console.log('复制提示词:', content);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -236,20 +302,60 @@ export function UploadModal({
             </div>
 
             {/* 图片信息表单 */}
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* 图片名称显示 */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                  图片标题
+                  图片名称
                 </label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="输入图片标题"
-                />
+                <div className="p-3 bg-muted/50 rounded-lg border">
+                  <span className="text-sm font-medium">
+                    {imageName || '未选择文件'}
+                  </span>
+                </div>
               </div>
 
+              {/* 提示词块管理 */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    提示词块
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addPrompt}
+                    className="text-xs"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    添加提示词
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {prompts.map((prompt) => (
+                    <PromptBlock
+                      key={prompt.id}
+                      prompt={prompt}
+                      isEditing={isEditingPrompts}
+                      onUpdate={updatePrompt}
+                      onDelete={deletePrompt}
+                      onCopy={copyPromptContent}
+                    />
+                  ))}
+                  
+                  {prompts.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">暂无提示词块</p>
+                      <p className="text-xs mt-1">点击上方按钮添加提示词</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 标签管理 */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-3 block">
                   标签
                 </label>
                 <TagManager
@@ -267,9 +373,9 @@ export function UploadModal({
           <div className="p-6 border-t bg-muted/30 flex justify-end">
             <Button 
               onClick={handleUpload} 
-              disabled={!selectedFile || isUploading}
+              disabled={!selectedFile || !imageName.trim() || isUploading}
             >
-              {isUploading ? '上传中...' : '上传图片'}
+              {isUploading ? '上传中...' : '提交'}
             </Button>
           </div>
         </div>

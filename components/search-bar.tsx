@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ interface SearchBarProps {
 }
 
 // 搜索框组件
-export function SearchBar({ 
+export const SearchBar = React.memo(function SearchBar({ 
   onSearch, 
   selectedTags, 
   onTagsChange, 
@@ -25,7 +25,7 @@ export function SearchBar({
   const [query, setQuery] = useState('');
 
   // 防抖搜索函数
-  const debouncedSearch = React.useMemo(
+  const debouncedSearch = useMemo(
     () => debounce((searchQuery: string) => {
       onSearch({
         query: searchQuery,
@@ -36,19 +36,24 @@ export function SearchBar({
   );
 
   // 处理搜索输入变化
-  const handleSearchChange = (value: string) => {
+  const handleSearchChange = useCallback((value: string) => {
     setQuery(value);
     debouncedSearch(value);
-  };
+  }, [debouncedSearch]);
 
   // 清空搜索
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setQuery('');
     onSearch({
       query: '',
       tags: selectedTags
     });
-  };
+  }, [onSearch, selectedTags]);
+
+  // 处理输入框变化
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleSearchChange(e.target.value);
+  }, [handleSearchChange]);
 
   return (
     <div className="relative w-full rounded-2xl mb-10">
@@ -58,7 +63,7 @@ export function SearchBar({
           type="text"
           placeholder={placeholder}
           value={query}
-          onChange={(e) => handleSearchChange(e.target.value)}
+          onChange={handleInputChange}
           className="pl-10 pr-10 rounded-2xl mt-6 mb-3"
         />
         {query && (
@@ -74,4 +79,4 @@ export function SearchBar({
       </div>
     </div>
   );
-}
+});

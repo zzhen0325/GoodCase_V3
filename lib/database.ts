@@ -6,6 +6,7 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
+  setDoc,
   query, 
   orderBy, 
   where, 
@@ -20,7 +21,6 @@ import { ImageData, Tag, Prompt, DBResult } from '@/types';
 // Firestore集合名称
 const COLLECTIONS = {
   IMAGES: 'images',
-  TAGS: 'tags',
   PROMPTS: 'prompts'
 } as const;
 
@@ -58,24 +58,39 @@ export class Database {
     );
   }
 
-  // 获取所有标签（实时监听）
+  // 获取所有标签（实时监听）- 从图片数据中提取
   static subscribeToTags(callback: (tags: Tag[]) => void, onError?: (error: Error) => void): () => void {
-    const tagsRef = collection(db, COLLECTIONS.TAGS);
-    const q = query(tagsRef, orderBy('usageCount', 'desc'));
+    const imagesRef = collection(db, COLLECTIONS.IMAGES);
+    const q = query(imagesRef, orderBy('createdAt', 'desc'));
     
     return onSnapshot(q,
       (snapshot) => {
-        const tags: Tag[] = snapshot.docs.map(doc => {
+        const tagMap = new Map<string, Tag>();
+        
+        // 从所有图片中提取标签
+        snapshot.docs.forEach(doc => {
           const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name,
-            color: data.color,
-            usageCount: data.usageCount || 0,
-            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
-          };
+          const imageTags = data.tags || [];
+          
+          imageTags.forEach((tag: Tag) => {
+            if (tagMap.has(tag.name)) {
+              const existingTag = tagMap.get(tag.name)!;
+              existingTag.usageCount = (existingTag.usageCount || 0) + 1;
+              // 保持最新的更新时间
+              if (tag.updatedAt && (!existingTag.updatedAt || tag.updatedAt > existingTag.updatedAt)) {
+                existingTag.updatedAt = tag.updatedAt;
+              }
+            } else {
+              tagMap.set(tag.name, {
+                ...tag,
+                usageCount: 1
+              });
+            }
+          });
         });
+        
+        // 转换为数组并按使用次数排序
+        const tags = Array.from(tagMap.values()).sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
         
         callback(tags);
       },
@@ -151,8 +166,11 @@ export class Database {
           const query = searchQuery.toLowerCase();
           images = images.filter(image => 
             image.title.toLowerCase().includes(query) ||
-            image.prompts.some(prompt => prompt.toLowerCase().includes(query)) ||
-            image.tags.some(tag => tag.toLowerCase().includes(query))
+            image.prompts.some(prompt => 
+              prompt.title.toLowerCase().includes(query) ||
+              prompt.content.toLowerCase().includes(query)
+            ) ||
+            image.tags.some(tag => tag.name.toLowerCase().includes(query))
           );
         }
         
@@ -282,46 +300,7 @@ export class Database {
     }
   }
   
-  // 添加新图片
-  static async addImage(imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>): Promise<DBResult<ImageData>> {
-    try {
-      const now = serverTimestamp();
-      const docData = {
-        title: imageData.title,
-        url: imageData.url,
-        prompts: imageData.prompts,
-        tags: imageData.tags,
-        createdAt: now,
-        updatedAt: now
-      };
-      
-      const docRef = await addDoc(collection(db, COLLECTIONS.IMAGES), docData);
-      
-      // 更新标签使用次数
-      await this.updateTagsUsage(imageData.tags, 'increment');
-      
-      const createdImage: ImageData = {
-        id: docRef.id,
-        title: imageData.title,
-        url: imageData.url,
-        prompts: imageData.prompts,
-        tags: imageData.tags,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      return {
-        success: true,
-        data: createdImage
-      };
-    } catch (error) {
-      console.error('添加图片失败:', error);
-      return {
-        success: false,
-        error: '添加图片失败'
-      };
-    }
-  }
+
   
   // 更新图片
   static async updateImage(id: string, updates: Partial<ImageData>): Promise<DBResult<ImageData>> {
@@ -351,12 +330,6 @@ export class Database {
       delete updateData.createdAt;
       
       await updateDoc(docRef, updateData);
-      
-      // 更新标签使用次数
-      if (updates.tags) {
-        await this.updateTagsUsage(originalTags, 'decrement');
-        await this.updateTagsUsage(newTags, 'increment');
-      }
       
       // 获取更新后的数据
       const updatedDoc = await getDoc(docRef);
@@ -404,11 +377,6 @@ export class Database {
       // 删除Firestore中的文档
       await deleteDoc(docRef);
       
-      // 更新标签使用次数
-      if (imageData.tags) {
-        await this.updateTagsUsage(imageData.tags, 'decrement');
-      }
-      
       return {
         success: true
       };
@@ -421,24 +389,39 @@ export class Database {
     }
   }
   
-  // 获取所有标签
+  // 获取所有标签 - 从图片数据中提取
   static async getAllTags(): Promise<DBResult<Tag[]>> {
     try {
-      const tagsRef = collection(db, COLLECTIONS.TAGS);
-      const q = query(tagsRef, orderBy('usageCount', 'desc'));
+      const imagesRef = collection(db, COLLECTIONS.IMAGES);
+      const q = query(imagesRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       
-      const tags: Tag[] = snapshot.docs.map(doc => {
+      const tagMap = new Map<string, Tag>();
+      
+      // 从所有图片中提取标签
+      snapshot.docs.forEach(doc => {
         const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name,
-          color: data.color,
-          usageCount: data.usageCount || 0,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
-        };
+        const imageTags = data.tags || [];
+        
+        imageTags.forEach((tag: Tag) => {
+          if (tagMap.has(tag.name)) {
+            const existingTag = tagMap.get(tag.name)!;
+            existingTag.usageCount = (existingTag.usageCount || 0) + 1;
+            // 保持最新的更新时间
+            if (tag.updatedAt && (!existingTag.updatedAt || tag.updatedAt > existingTag.updatedAt)) {
+              existingTag.updatedAt = tag.updatedAt;
+            }
+          } else {
+            tagMap.set(tag.name, {
+              ...tag,
+              usageCount: 1
+            });
+          }
+        });
       });
+      
+      // 转换为数组并按使用次数排序
+      const tags = Array.from(tagMap.values()).sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
       
       return {
         success: true,
@@ -453,28 +436,16 @@ export class Database {
     }
   }
 
-  // 添加新标签
+  // 创建新标签对象
   static async addTag(tagData: Omit<Tag, 'id' | 'usageCount' | 'createdAt' | 'updatedAt'>): Promise<DBResult<Tag>> {
     try {
-      // 使用标签名作为文档ID，以确保唯一性
-      const tagRef = doc(db, COLLECTIONS.TAGS, tagData.name);
-      const docSnap = await getDoc(tagRef);
-
-      if (docSnap.exists()) {
+      // 检查标签是否已存在（从现有图片中查找）
+      const existingTags = await this.getAllTags();
+      if (existingTags.success && existingTags.data && existingTags.data.some(tag => tag.name === tagData.name)) {
         return { success: false, error: `标签 "${tagData.name}" 已存在` };
       }
 
-      const now = serverTimestamp();
-      const newTagData = {
-        ...tagData,
-        usageCount: 0, // 新创建的标签使用次数为0
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      // 使用 setDoc 创建文档，以 tagData.name 为 ID
-      await setDoc(tagRef, newTagData);
-
+      // 创建新标签对象（不保存到独立集合）
       const createdTag: Tag = {
         id: tagData.name,
         ...tagData,
@@ -488,8 +459,8 @@ export class Database {
         data: createdTag,
       };
     } catch (error) {
-      console.error('添加标签失败:', error);
-      return { success: false, error: '添加标签失败' };
+      console.error('创建标签失败:', error);
+      return { success: false, error: '创建标签失败' };
     }
   }
   
@@ -545,37 +516,7 @@ export class Database {
     }
   }
   
-  // 更新标签使用次数
-  private static async updateTagsUsage(tags: Tag[], operation: 'increment' | 'decrement'): Promise<void> {
-    const batch = writeBatch(db);
-    
-    for (const tag of tags) {
-      const tagRef = doc(db, COLLECTIONS.TAGS, tag.name); // 使用标签名作为文档ID
-      const increment = operation === 'increment' ? 1 : -1;
-      
-      // 检查标签是否存在
-      const tagDoc = await getDoc(tagRef);
-      if (tagDoc.exists()) {
-        const currentUsage = tagDoc.data().usageCount || 0;
-        const newUsage = Math.max(0, currentUsage + increment);
-        batch.update(tagRef, { 
-          usageCount: newUsage,
-          updatedAt: serverTimestamp()
-        });
-      } else if (operation === 'increment') {
-        // 创建新标签
-        batch.set(tagRef, {
-          name: tag.name,
-          color: tag.color,
-          usageCount: 1,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      }
-    }
-    
-    await batch.commit();
-  }
+  // 标签使用次数现在通过图片数据自动计算，无需单独更新
 }
 
 // 注意：AdminDatabase 类已移至 API 路由中，避免在客户端引入服务端依赖

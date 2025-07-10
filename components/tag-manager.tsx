@@ -39,8 +39,8 @@ export function TagManager({
     setShowDropdown(false);
   };
 
-  // 创建新标签
-  const createNewTag = async () => {
+  // 创建新标签（不立即保存到数据库）
+  const createNewTag = () => {
     if (!newTagName.trim()) return;
     
     // 检查是否已存在同名标签
@@ -55,22 +55,20 @@ export function TagManager({
       return;
     }
 
-    try {
-      // 随机选择颜色主题
-      const randomTheme = COLOR_THEMES[Math.floor(Math.random() * COLOR_THEMES.length)];
-      const randomColor = randomTheme.name;
-      
-      const newTag = await onCreateTag({
-        name: newTagName.trim(),
-        color: randomColor
-      });
-      
-      onTagsChange([...selectedTags, newTag]);
-      setNewTagName('');
-      setIsCreating(false);
-    } catch (error) {
-      console.error('创建标签失败:', error);
-    }
+    // 随机选择颜色主题
+    const randomTheme = COLOR_THEMES[Math.floor(Math.random() * COLOR_THEMES.length)];
+    const randomColor = randomTheme.name;
+    
+    // 创建临时标签对象（使用临时ID）
+    const newTag: Tag = {
+      id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: newTagName.trim(),
+      color: randomColor
+    };
+    
+    onTagsChange([...selectedTags, newTag]);
+    setNewTagName('');
+    setIsCreating(false);
   };
 
   // 删除标签
