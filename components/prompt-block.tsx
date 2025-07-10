@@ -17,6 +17,7 @@ interface PromptBlockProps {
   onUpdate: (id: string, updates: Partial<Prompt>) => void;
   onDelete: (id: string) => void;
   onCopy: (content: string) => void;
+  onEnterEditMode?: () => void;
 }
 
 // 提示词块组件
@@ -25,7 +26,8 @@ export function PromptBlock({
   isEditing, 
   onUpdate, 
   onDelete, 
-  onCopy 
+  onCopy,
+  onEnterEditMode 
 }: PromptBlockProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
@@ -115,11 +117,11 @@ export function PromptBlock({
       >
         {/* 拖拽按钮 */}
         {isEditing && (
-          <div className="flex items-start  pt-[-1] mr-1">
+          <div className="flex items-center mr-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 cursor-grab active:cursor-grabbing hover:bg-gray-100"
+              className="h-8 w-8 cursor-grab active:cursor-grabbing hover:bg-gray-100"
               style={{ color: currentTheme.text }}
               {...attributes}
               {...listeners}
@@ -132,114 +134,123 @@ export function PromptBlock({
         
         {/* 主要内容区域 */}
         <div className="flex-1">
-          {/* 操作按钮 - 移动到右上角 */}
-          <div className="absolute top-2 right-2 flex items-center gap-1">
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 transition-colors ${
-                  copyStatus === 'success' ? 'text-green-600 hover:text-green-700' :
-                  copyStatus === 'error' ? 'text-red-600 hover:text-red-700' : ''
-                }`}
-                style={{ color: currentTheme.text }}
-                onClick={handleCopy}
-                title={copyStatus === 'success' ? '复制成功' : copyStatus === 'error' ? '复制失败' : '复制'}
-              >
-                {copyStatus === 'success' ? (
-                  <Check className="h-4 w-4" />
-                ) : copyStatus === 'error' ? (
-                  <X className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-              
-              {/* 状态提示 */}
-              {copyStatus !== 'idle' && (
-                <div className={`absolute -bottom-8 right-0 px-2 py-1 text-xs rounded shadow-lg z-20 whitespace-nowrap ${
-                  copyStatus === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
-                  'bg-red-100 text-red-800 border border-red-200'
-                }`}>
-                  {copyStatus === 'success' ? '复制成功' : '复制失败'}
-                </div>
+          {/* 标题和操作按钮在同一行 */}
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex-1 mr-2">
+              {isEditingTitle ? (
+                <Input
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveTitle();
+                    if (e.key === 'Escape') cancelTitleEdit();
+                  }}
+                  className="text-sm font-light"
+                  autoFocus
+                />
+              ) : (
+                <h4
+                  className="text-sm font-regular cursor-pointer"
+                  style={{ color: currentTheme.text }}
+                  onDoubleClick={() => {
+                    if (isEditing) {
+                      setIsEditingTitle(true);
+                    } else if (onEnterEditMode) {
+                      onEnterEditMode();
+                      setTimeout(() => setIsEditingTitle(true), 100);
+                    }
+                  }}
+                >
+                  | {prompt.title || '未命名提示词'}
+                </h4>
               )}
             </div>
             
-            {isEditing && (
-              <>
-                <div className="relative">
-                  <Button
-                    variant="ghost"
-                    style={{ color: currentTheme.text }}
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setShowColorPicker(!showColorPicker)}
-                    title="更改颜色"
-                  >
-                    <Palette className="h-4 w-4" />
-                  </Button>
-                  
-                  {/* 颜色选择器 */}
-                  {showColorPicker && (
-                    <div className="absolute top-full right-0 mt-1 p-3 bg-background border rounded-lg shadow-lg z-10 min-w-[200px]">
-                      <div className="grid grid-cols-4 gap-2">
-                        {COLOR_THEMES.map((theme) => (
-                          <button
-                            key={theme.name}
-                            className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform flex items-center justify-center text-xs font-bold"
-                            style={{ 
-                              backgroundColor: theme.bg,
-                              color: theme.text,
-                              borderColor: prompt.color === theme.name ? '#000' : 'transparent'
-                            }}
-                            onClick={() => changeColor(theme.name)}
-                            title={theme.name}
-                          >
-                            {theme.name.charAt(0).toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
+            {/* 操作按钮 */}
+            <div className="flex items-center gap-1">
+              <div className="relative">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={() => onDelete(prompt.id)}
-                  title="删除"
+                  className={`h-8 w-8 transition-colors ${
+                    copyStatus === 'success' ? 'text-green-600 hover:text-green-700' :
+                    copyStatus === 'error' ? 'text-red-600 hover:text-red-700' : ''
+                  }`}
+                  style={{ color: currentTheme.text }}
+                  onClick={handleCopy}
+                  title={copyStatus === 'success' ? '复制成功' : copyStatus === 'error' ? '复制失败' : '复制'}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {copyStatus === 'success' ? (
+                    <Check className="h-4 w-4" />
+                  ) : copyStatus === 'error' ? (
+                    <X className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
-              </>
-            )}
-          </div>
-
-          {/* 标题 */}
-          <div className="mb-2 pr-20">
-            {isEditingTitle ? (
-              <Input
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                onBlur={saveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveTitle();
-                  if (e.key === 'Escape') cancelTitleEdit();
-                }}
-                className="text-sm font-light"
-                autoFocus
-              />
-            ) : (
-              <h4
-                className="text-sm font-regular cursor-pointer"
-                style={{ color: currentTheme.text }}
-                onDoubleClick={() => isEditing && setIsEditingTitle(true)}
-              >
-                | {prompt.title || '未命名提示词'}
-              </h4>
-            )}
+                
+                {/* 状态提示 */}
+                {copyStatus !== 'idle' && (
+                  <div className={`absolute -bottom-8 right-0 px-2 py-1 text-xs rounded shadow-lg z-20 whitespace-nowrap ${
+                    copyStatus === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+                    'bg-red-100 text-red-800 border border-red-200'
+                  }`}>
+                    {copyStatus === 'success' ? '复制成功' : '复制失败'}
+                  </div>
+                )}
+              </div>
+              
+              {isEditing && (
+                <>
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      style={{ color: currentTheme.text }}
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setShowColorPicker(!showColorPicker)}
+                      title="更改颜色"
+                    >
+                      <Palette className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* 颜色选择器 */}
+                    {showColorPicker && (
+                      <div className="absolute top-full right-0 mt-1 p-3 bg-background border rounded-lg shadow-lg z-10 min-w-[200px]">
+                        <div className="grid grid-cols-4 gap-2">
+                          {COLOR_THEMES.map((theme) => (
+                            <button
+                              key={theme.name}
+                              className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform flex items-center justify-center text-xs font-bold"
+                              style={{ 
+                                backgroundColor: theme.bg,
+                                color: theme.text,
+                                borderColor: prompt.color === theme.name ? '#000' : 'transparent'
+                              }}
+                              onClick={() => changeColor(theme.name)}
+                              title={theme.name}
+                            >
+                              {theme.name.charAt(0).toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => onDelete(prompt.id)}
+                    title="删除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* 内容 */}
@@ -253,17 +264,28 @@ export function PromptBlock({
                   if (e.key === 'Enter' && e.ctrlKey) saveContent();
                   if (e.key === 'Escape') cancelContentEdit();
                 }}
-                className="w-full p-2 text-sm border rounded resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full p-2 text-sm border rounded-2xl resize-none min-h-[80px] max-h-[200px] overflow-y-auto focus:outline-none focus:ring-0 focus:ring-ring break-words"
                 autoFocus
                 style={{ color: currentTheme.text }}
               />
             ) : (
               <p
-                className="text-md text-bold whitespace-pre-wrap cursor-pointer"
-                style={{ color: currentTheme.text }}
-                onDoubleClick={() => isEditing && setIsEditingContent(true)}
+                className="text-md text-bold whitespace-pre-wrap cursor-pointer break-words overflow-hidden"
+                style={{ 
+                  color: prompt.content ? currentTheme.text : `${currentTheme.text}80`,
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word'
+                }}
+                onDoubleClick={() => {
+                  if (isEditing) {
+                    setIsEditingContent(true);
+                  } else if (onEnterEditMode) {
+                    onEnterEditMode();
+                    setTimeout(() => setIsEditingContent(true), 100);
+                  }
+                }}
               >
-                {prompt.content || '   '}
+                {prompt.content || ' 双击以进行编辑  '}
               </p>
             )}
           </div>

@@ -368,6 +368,7 @@ export function ImageModal({
                             onUpdate={updatePrompt}
                             onDelete={deletePrompt}
                             onCopy={handleCopyPrompt}
+                            onEnterEditMode={() => setIsEditing(true)}
                           />
                         ))}
                     </div>

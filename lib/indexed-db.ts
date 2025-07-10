@@ -1,8 +1,9 @@
 // lib/indexed-db.ts
 
 const DB_NAME = 'ImageGalleryDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const IMAGE_STORE_NAME = 'images';
+const IMAGE_CACHE_STORE_NAME = 'image_cache';
 
 class IndexedDBManager {
   private db: IDBDatabase | null = null;
@@ -27,6 +28,9 @@ class IndexedDBManager {
         const db = (event.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains(IMAGE_STORE_NAME)) {
           db.createObjectStore(IMAGE_STORE_NAME, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(IMAGE_CACHE_STORE_NAME)) {
+          db.createObjectStore(IMAGE_CACHE_STORE_NAME, { keyPath: 'id' });
         }
       };
 
@@ -118,6 +122,127 @@ class IndexedDBManager {
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
+  }
+
+  // 缓存图片blob数据
+  public async cacheImageBlob(id: string, blob: Blob, extension?: string): Promise<void> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, skipping cacheImageBlob');
+      return;
+    }
+    
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction([IMAGE_CACHE_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+      
+      const cacheData = {
+        id,
+        blob,
+        extension: extension || 'jpg',
+        cachedAt: new Date().toISOString()
+      };
+      
+      store.put(cacheData);
+      
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('Failed to cache image blob:', error);
+    }
+  }
+
+  // 获取缓存的图片blob数据
+  public async getCachedImageBlob(id: string): Promise<any> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, returning null');
+      return null;
+    }
+    
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction([IMAGE_CACHE_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+      const request = store.get(id);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Failed to get cached image blob:', error);
+      return null;
+    }
+  }
+
+  // 删除缓存的图片blob数据
+  public async deleteCachedImageBlob(id: string): Promise<void> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, skipping deleteCachedImageBlob');
+      return;
+    }
+    
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction([IMAGE_CACHE_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+      store.delete(id);
+      
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('Failed to delete cached image blob:', error);
+    }
+  }
+
+  // 获取所有缓存的图片
+  public async getAllCachedImages(): Promise<any[]> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, returning empty array');
+      return [];
+    }
+    
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction([IMAGE_CACHE_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+      const request = store.getAll();
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Failed to get all cached images:', error);
+      return [];
+    }
+  }
+
+  // 清理过期的缓存（可选功能）
+  public async cleanExpiredCache(maxAgeHours: number = 24 * 7): Promise<void> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, skipping cleanExpiredCache');
+      return;
+    }
+    
+    try {
+      const cachedImages = await this.getAllCachedImages();
+      const now = new Date();
+      const maxAge = maxAgeHours * 60 * 60 * 1000; // 转换为毫秒
+      
+      for (const cached of cachedImages) {
+        const cachedAt = new Date(cached.cachedAt);
+        if (now.getTime() - cachedAt.getTime() > maxAge) {
+          await this.deleteCachedImageBlob(cached.id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to clean expired cache:', error);
+    }
   }
 }
 

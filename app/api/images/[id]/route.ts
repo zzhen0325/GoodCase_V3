@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Database, AdminDatabase } from '@/lib/database';
+import { Database } from '@/lib/database';
 import { ImageData } from '@/types';
 
 // PUT - 更新图片
@@ -65,8 +65,8 @@ export async function DELETE(
   try {
     const { id } = params;
     
-    // 使用AdminDatabase来删除图片和存储文件
-    const result = await AdminDatabase.deleteImageWithStorage(id);
+    // 删除图片
+    const result = await Database.deleteImage(id);
     
     if (result.success) {
       return NextResponse.json({ success: true });

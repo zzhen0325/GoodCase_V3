@@ -130,58 +130,7 @@ export class Database {
     );
   }
 
-  // 搜索图片（实时监听）
-  static subscribeToSearchImages(
-    searchQuery: string, 
-    tags: Tag[] = [], 
-    callback: (images: ImageData[]) => void,
-    onError?: (error: Error) => void
-  ): () => void {
-    const imagesRef = collection(db, COLLECTIONS.IMAGES);
-    let q = query(imagesRef, orderBy('createdAt', 'desc'));
-    
-    // 如果有标签筛选，添加标签过滤条件
-    if (tags.length > 0) {
-      const tagNames = tags.map(tag => tag.name);
-      q = query(imagesRef, where('tags', 'array-contains-any', tagNames), orderBy('createdAt', 'desc'));
-    }
-    
-    return onSnapshot(q,
-      (snapshot) => {
-        let images: ImageData[] = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            title: data.title,
-            url: data.url,
-            prompts: data.prompts || [],
-            tags: data.tags || [],
-            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
-          };
-        });
-        
-        // 如果有搜索查询，进行客户端过滤
-        if (searchQuery.trim()) {
-          const query = searchQuery.toLowerCase();
-          images = images.filter(image => 
-            image.title.toLowerCase().includes(query) ||
-            image.prompts.some(prompt => 
-              prompt.title.toLowerCase().includes(query) ||
-              prompt.content.toLowerCase().includes(query)
-            ) ||
-            image.tags.some(tag => tag.name.toLowerCase().includes(query))
-          );
-        }
-        
-        callback(images);
-      },
-      (error) => {
-        console.error('搜索图片监听错误:', error);
-        if (onError) onError(error);
-      }
-    );
-  }
+  // 注意：搜索功能已移至前端实现，使用 filterImages 函数
   
   // 添加图片到 Firestore
   static async addImage(imageData: Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'> & { prompt_blocks?: any[] }): Promise<DBResult<ImageData>> {
@@ -464,57 +413,7 @@ export class Database {
     }
   }
   
-  // 搜索图片
-  static async searchImages(searchQuery: string, tags: Tag[] = []): Promise<DBResult<ImageData[]>> {
-    try {
-      const imagesRef = collection(db, COLLECTIONS.IMAGES);
-      let q = query(imagesRef, orderBy('createdAt', 'desc'));
-      
-      // 如果有标签筛选，添加标签过滤条件
-      if (tags.length > 0) {
-        const tagNames = tags.map(tag => tag.name);
-        q = query(imagesRef, where('tags', 'array-contains-any', tagNames), orderBy('createdAt', 'desc'));
-      }
-      
-      const snapshot = await getDocs(q);
-      let images: ImageData[] = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          title: data.title,
-          url: data.url,
-          prompts: data.prompts || [],
-          tags: data.tags || [],
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
-        };
-      });
-      
-      // 客户端文本搜索过滤
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        images = images.filter(image => 
-          image.title.toLowerCase().includes(query) ||
-          image.prompts.some(prompt => 
-            prompt.title.toLowerCase().includes(query) ||
-            prompt.content.toLowerCase().includes(query)
-          ) ||
-          image.tags.some(tag => tag.name.toLowerCase().includes(query))
-        );
-      }
-      
-      return {
-        success: true,
-        data: images
-      };
-    } catch (error) {
-      console.error('搜索图片失败:', error);
-      return {
-        success: false,
-        error: '搜索图片失败'
-      };
-    }
-  }
+  // 注意：搜索功能已移至前端实现，使用 filterImages 函数
   
   // 标签使用次数现在通过图片数据自动计算，无需单独更新
 }

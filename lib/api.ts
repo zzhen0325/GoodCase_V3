@@ -1,30 +1,9 @@
-import { ImageData, Tag, SearchFilters } from '@/types';
+import { ImageData, Tag } from '@/types';
 
 export class ApiClient {
   private static baseUrl = '/api';
 
-  // 搜索图片（支持搜索词和标签过滤）
-  static async searchImages(filters?: SearchFilters): Promise<ImageData[]> {
-    const params = new URLSearchParams();
-    
-    if (filters?.query) {
-      params.append('search', filters.query);
-    }
-    
-    if (filters?.tags && filters.tags.length > 0) {
-      params.append('tags', filters.tags.join(','));
-    }
-    
-    const url = `${this.baseUrl}/images${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetch(url);
-    const result = await response.json();
-    
-    if (result.success) {
-      return result.data;
-    } else {
-      throw new Error(result.error || '搜索图片失败');
-    }
-  }
+  // 注意：搜索功能已移至前端实现，使用 filterImages 函数
 
   // 获取所有图片（兼容旧接口）
   static async getAllImages(): Promise<{ success: boolean; data?: ImageData[]; error?: string }> {
@@ -180,6 +159,24 @@ export class ApiClient {
       return {
         success: false,
         error: error instanceof Error ? error.message : '添加标签失败'
+      };
+    }
+  }
+
+  // 删除标签
+  static async deleteTag(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/tags/${id}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('删除标签失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '删除标签失败'
       };
     }
   }

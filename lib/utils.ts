@@ -28,8 +28,8 @@ export function filterImages(images: ImageData[], filters: SearchFilters): Image
     const queryMatch = !filters.query || 
       image.title.toLowerCase().includes(filters.query.toLowerCase()) ||
       image.prompts.some(prompt => 
-        prompt.title.toLowerCase().includes(filters.query.toLowerCase()) ||
-        prompt.content.toLowerCase().includes(filters.query.toLowerCase())
+        (prompt.title && prompt.title.toLowerCase().includes(filters.query.toLowerCase())) ||
+        (prompt.content && prompt.content.toLowerCase().includes(filters.query.toLowerCase()))
       ) ||
       image.tags.some(tag => 
         tag.name.toLowerCase().includes(filters.query.toLowerCase())

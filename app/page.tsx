@@ -15,6 +15,7 @@ import { Dock } from '@/components/dock';
 import { ConnectionStatus } from '@/components/connection-status';
 import TextPressure from '@/components/text-pressure';
 import CircularText from '@/components/circular-text';
+import { DownloadProgressToast, useDownloadProgress } from '@/components/download-progress-toast';
 
 // 主页面组件
 export default function HomePage() {
@@ -34,6 +35,34 @@ export default function HomePage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeView, setActiveView] = useState('grid');
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
+  
+  // 下载进度管理
+  const {
+    isVisible: isDownloadVisible,
+    progress: downloadProgress,
+    startDownload,
+    updateProgress,
+    completeDownload,
+    errorDownload,
+    hideToast: hideDownloadToast
+  } = useDownloadProgress();
+
+  // ESC键退出编辑模式
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isEditMode) {
+        setIsEditMode(false);
+        setSelectedImageIds(new Set());
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isEditMode]);
 
   // 初始化实时监听
   useEffect(() => {
@@ -156,13 +185,13 @@ export default function HomePage() {
     return status;
   };
 
-  // 搜索和筛选图片
+  // 搜索和筛选图片（前端搜索）
   useEffect(() => {
     const filtered = filterImages(images, searchFilters);
     setFilteredImages(filtered);
   }, [images, searchFilters]);
 
-  // 处理搜索变化
+  // 处理搜索变化（前端搜索）
   const handleSearchChange = useCallback((filters: SearchFilters) => {
     setSearchFilters(filters);
   }, []);
@@ -324,58 +353,27 @@ export default function HomePage() {
   }, []);
 
   const handleImport = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        
-        // 验证数据格式
-        if (!data.images || !data.tags || !Array.isArray(data.images) || !Array.isArray(data.tags)) {
-          throw new Error('数据格式不正确');
-        }
-        
-        // 这里可以实现批量导入逻辑
-        await refreshData();
-        
-        alert(`导入功能开发中`);
-      } catch (error) {
-        console.error('导入失败:', error);
-        alert('导入失败: ' + (error as Error).message);
-      }
-    };
-    input.click();
-  }, []);
+    setIsEditMode(!isEditMode);
+    if (isEditMode) {
+      // 退出编辑模式时清空选择
+      setSelectedImageIds(new Set());
+    }
+  }, [isEditMode]);
 
   const handleExport = useCallback(async () => {
+    alert('暂时没用，为了对称');
+  }, []);
+  
+  // 辅助函数：从URL获取文件扩展名
+  const getFileExtensionFromUrl = (url: string): string => {
     try {
-      const data = {
-        images,
-        tags,
-        exportDate: new Date().toISOString()
-      };
-      
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `gooodcase-export-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      
-      URL.revokeObjectURL(url);
-      
-      alert(`成功导出 ${data.images.length} 张图片和 ${data.tags.length} 个标签`);
-    } catch (error) {
-      console.error('导出失败:', error);
-      alert('导出失败: ' + (error as Error).message);
+      const pathname = new URL(url).pathname;
+      const extension = pathname.split('.').pop();
+      return extension || 'jpg';
+    } catch {
+      return 'jpg';
     }
-  }, [images, tags]);
+  };
 
   const handleFavorites = useCallback(() => {
     setActiveView('favorites');
@@ -396,6 +394,161 @@ export default function HomePage() {
   const handleLarkDoc = useCallback(() => {
     window.open('https://bytedance.larkoffice.com/wiki/HNHvwAjVzicLVuk1r5ictnNKncg', '_blank');
   }, []);
+
+  // 处理标签删除
+  const handleTagDelete = useCallback(async (tagId: string) => {
+    const confirmed = confirm('确定要删除这个标签吗？删除后将从所有图片中移除。');
+    if (!confirmed) return;
+
+    try {
+      const result = await ApiClient.deleteTag(tagId);
+      if (result.success) {
+        console.log('✅ 标签删除成功，实时监听器将自动更新UI');
+        // 实时监听器会自动更新tags状态，无需手动更新
+      } else {
+        console.error('❌ 标签删除失败:', result.error);
+        alert('删除标签失败: ' + (result.error || '未知错误'));
+      }
+    } catch (error) {
+      console.error('❌ 删除标签时出错:', error);
+      alert('删除标签失败: ' + (error as Error).message);
+    }
+  }, []);
+
+  // 批量操作处理函数
+  const handleSelectImage = useCallback((imageId: string, selected: boolean) => {
+    setSelectedImageIds(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(imageId);
+      } else {
+        newSet.delete(imageId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedImageIds.size === filteredImages.length) {
+      // 如果已全选，则取消全选
+      setSelectedImageIds(new Set());
+    } else {
+      // 否则全选
+      setSelectedImageIds(new Set(filteredImages.map(img => img.id)));
+    }
+  }, [selectedImageIds.size, filteredImages]);
+
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedImageIds.size === 0) return;
+    
+    const confirmed = confirm(`确定要删除选中的 ${selectedImageIds.size} 张图片吗？`);
+    if (!confirmed) return;
+
+    try {
+      const deletePromises = Array.from(selectedImageIds).map(id => ApiClient.deleteImage(id));
+      await Promise.all(deletePromises);
+      setSelectedImageIds(new Set());
+      console.log('✅ 批量删除成功');
+    } catch (error) {
+      console.error('❌ 批量删除失败:', error);
+      alert('批量删除失败: ' + (error as Error).message);
+    }
+  }, [selectedImageIds]);
+
+
+
+  const handleBatchExport = useCallback(async () => {
+    if (selectedImageIds.size === 0) return;
+
+    try {
+      const selectedImages = filteredImages.filter(img => selectedImageIds.has(img.id));
+
+      // 导出图片
+      for (let i = 0; i < selectedImages.length; i++) {
+        const image = selectedImages[i];
+        if (!image.url) continue;
+
+        try {
+          const imgElements = document.querySelectorAll('img');
+          let cachedImg: HTMLImageElement | null = null;
+
+          for (let j = 0; j < imgElements.length; j++) {
+            const imgEl = imgElements[j];
+            if (imgEl.src === image.url) {
+              cachedImg = imgEl;
+              break;
+            }
+          }
+
+          let blob: Blob;
+
+          if (cachedImg && cachedImg.complete) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = cachedImg.naturalWidth;
+            canvas.height = cachedImg.naturalHeight;
+            ctx?.drawImage(cachedImg, 0, 0);
+            blob = await new Promise<Blob>((resolve) => {
+              canvas.toBlob((blob) => {
+                resolve(blob!);
+              }, 'image/png');
+            });
+          } else {
+            const response = await fetch(image.url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            blob = await response.blob();
+          }
+
+          const extension = getFileExtensionFromUrl(image.url);
+          const filename = `${image.title || `image-${image.id}`}.${extension}`;
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          if (i < selectedImages.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } catch (error) {
+          console.error(`❌ 下载图片 ${image.title || image.id} 失败:`, error);
+        }
+      }
+
+      // 导出JSON数据
+      const exportData = {
+        images: selectedImages,
+        tags: tags.filter(tag =>
+          selectedImages.some(img =>
+            img.tags.some(imgTag =>
+              typeof imgTag === 'string' ? imgTag === tag.name : imgTag.id === tag.id
+            )
+          )
+        ),
+        exportTime: new Date().toISOString(),
+        totalCount: selectedImages.length
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `selected-images-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert(`已开始下载 ${selectedImages.length} 张图片并导出JSON数据`);
+    } catch (error) {
+      console.error('❌ 批量导出失败:', error);
+      alert('批量导出失败: ' + (error as Error).message);
+    }
+  }, [selectedImageIds, filteredImages, tags, getFileExtensionFromUrl]);
 
   // 关闭图片详情弹窗
   const closeImageModal = useCallback(() => {
@@ -430,7 +583,6 @@ export default function HomePage() {
       <ConnectionStatus
         status={connectionStatus}
         onRefresh={refreshData}
-        listenerInfo={getConnectionInfo()}
       />
       
       <div className="flex justify-center w-full ">
@@ -441,7 +593,10 @@ export default function HomePage() {
           className="w-3/5"
         >
           <div className="text-center ">
-            <div className="h-auto mb-5 ">
+           <p className="text-sm text-gray-300 mt-20">
+              Manage your images and prompt words to make creation more efficient.
+            </p>
+            <div className="h-auto mb-1 ">
               <TextPressure
                 text="GoooodCase!"
                 fontFamily="Inter"
@@ -449,21 +604,98 @@ export default function HomePage() {
                 className="text-4xl font-bold"
                 minFontSize={32} />
             </div>
-            <p className="text-sm text-muted-foreground ">
-              Manage your images and prompt words to make creation more efficient.
-            </p>
+             
           </div>
         </motion.div>
       </div>
       
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen  bg-background">
         {/* 主要内容区域 */}
-        <div className="container mx-auto px-4 mb-4 pb-24">
-          {/* 搜索栏 */}
-          <SearchBar
-            onSearch={setSearchFilters}
-            selectedTags={searchFilters.tags}
-            onTagsChange={(tags) => setSearchFilters(prev => ({ ...prev, tags }))} />
+        <div className="w-[70%] mx-auto px-4 mb-4 pb-24 mt-10">
+          {/* 搜索栏
+          {!isEditMode && (
+            <SearchBar
+              onSearch={setSearchFilters}
+              selectedTags={searchFilters.tags}
+              onTagsChange={(tags) => setSearchFilters(prev => ({ ...prev, tags }))}
+              availableTags={tags} />
+          )} */}
+          
+          {/* 批量操作工具栏 */}
+          {isEditMode && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-muted rounded-2xl border mt-10"
+            >
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium">
+                    已选择 {selectedImageIds.size} 张图片
+                  </span>
+                  <button
+                    onClick={handleSelectAll}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    {selectedImageIds.size === filteredImages.length ? '取消全选' : '全选'}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 rounded-2xl">
+                  <button
+                    onClick={handleBatchExport}
+                    disabled={selectedImageIds.size === 0}
+                    className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    导出
+                  </button>
+                  <button
+                    onClick={handleBatchDelete}
+                    disabled={selectedImageIds.size === 0}
+                    className="px-4 py-2 text-sm bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* 标签管理区域
+          {isEditMode && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-muted rounded-2xl border"
+            >
+              <div className="flex gap-3  mb-3">
+                <h3 className="text-sm font-medium text-foreground mb-2">标签管理</h3>
+                <p className="text-xs text-muted-foreground">点击删除按钮可以清除无用的标签</p>
+              </div>
+              {tags.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <div
+                      key={tag.id}
+                      className="flex items-center gap-2 px-3 py-1 bg-background rounded-full border text-sm"
+                    >
+                      <span className="text-foreground">{tag.name}</span>
+                      <button
+                        onClick={() => handleTagDelete(tag.id)}
+                        className="text-destructive hover:text-destructive/80 transition-colors duration-200"
+                        title="删除标签"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">暂无标签</p>
+              )}
+            </motion.div>
+          )} */}
           
           {/* 图片网格 */}
           <motion.div
@@ -474,7 +706,10 @@ export default function HomePage() {
             <ImageGrid
               images={filteredImages}
               loading={isLoading}
-              onImageClick={handleImageClick} />
+              onImageClick={handleImageClick}
+              isEditMode={isEditMode}
+              selectedImageIds={selectedImageIds}
+              onSelectImage={handleSelectImage} />
           </motion.div>
 
           {/* 统计信息 */}
@@ -483,7 +718,7 @@ export default function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.4 }}
-              className="mt-8 text-center text-sm text-muted-foreground"
+              className="mt-20 text-center text-sm text-muted-foreground"
             >
               共找到 {filteredImages.length} 张图片
               {searchFilters.query && (
@@ -501,10 +736,18 @@ export default function HomePage() {
           onUpload={handleUpload}
           onImport={handleImport}
           onExport={handleExport}
-          onSettings={handleSettings}
           onFavorites={handleFavorites}
+          onSettings={handleSettings}
           onLarkDoc={handleLarkDoc}
-          activeView={activeView} />
+          onEdit={handleImport}
+          isEditMode={isEditMode}
+          onSearch={handleSearchChange}
+          selectedTags={searchFilters.tags}
+          onTagsChange={(tags) => setSearchFilters(prev => ({ ...prev, tags }))}
+          availableTags={tags}
+          searchQuery={searchFilters.query}
+          onSearchQueryChange={(query) => setSearchFilters(prev => ({ ...prev, query }))}
+        />
 
         {/* 图片详情弹窗 */}
         <ImageModal
@@ -525,6 +768,13 @@ export default function HomePage() {
           onUpload={handleImageUpload}
           availableTags={tags}
           onCreateTag={handleTagCreate} />
+        
+        {/* 下载进度Toast */}
+        <DownloadProgressToast
+          isVisible={isDownloadVisible}
+          progress={downloadProgress}
+          onClose={hideDownloadToast}
+        />
       </div>
     </>
   );
