@@ -5,23 +5,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 // Firebase Admin SDK 配置
 function getServiceAccount(): ServiceAccount {
-  // 优先使用Base64编码的服务账户（适用于CI/CD环境）
-  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-  if (serviceAccountBase64) {
-    try {
-      const serviceAccount = JSON.parse(Buffer.from(serviceAccountBase64, 'base64').toString('utf8'));
-      return {
-        projectId: serviceAccount.project_id,
-        clientEmail: serviceAccount.client_email,
-        privateKey: serviceAccount.private_key,
-      };
-    } catch (error) {
-      console.error('Failed to decode FIREBASE_SERVICE_ACCOUNT_BASE64:', error);
-      throw new Error('Invalid FIREBASE_SERVICE_ACCOUNT_BASE64 format');
-    }
-  }
-
-  // 回退到分离的环境变量（适用于开发环境）
+  // 使用分离的环境变量
   return {
     projectId: process.env.FIREBASE_PROJECT_ID!,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,

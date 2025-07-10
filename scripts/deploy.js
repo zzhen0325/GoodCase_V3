@@ -2,7 +2,7 @@
 
 /**
  * 部署脚本
- * 展示如何在生产环境中使用Base64编码的Firebase服务账户
+ * 使用分离的环境变量配置Firebase服务账户
  */
 
 const { execSync } = require('child_process');
@@ -14,7 +14,9 @@ function checkEnvironment() {
   console.log('🔍 检查环境变量...');
   
   const requiredEnvs = [
-    'FIREBASE_SERVICE_ACCOUNT_BASE64',
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_CLIENT_EMAIL',
+    'FIREBASE_PRIVATE_KEY',
     'NEXT_PUBLIC_FIREBASE_PROJECT_ID'
   ];
   
@@ -28,24 +30,28 @@ function checkEnvironment() {
   console.log('✅ 环境变量检查通过');
 }
 
-// 验证Base64编码的服务账户
+// 验证服务账户环境变量
 function validateServiceAccount() {
   console.log('🔐 验证Firebase服务账户...');
   
   try {
-    const base64Key = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-    const serviceAccount = JSON.parse(Buffer.from(base64Key, 'base64').toString('utf8'));
+    const requiredFields = {
+      'FIREBASE_PROJECT_ID': process.env.FIREBASE_PROJECT_ID,
+      'FIREBASE_CLIENT_EMAIL': process.env.FIREBASE_CLIENT_EMAIL,
+      'FIREBASE_PRIVATE_KEY': process.env.FIREBASE_PRIVATE_KEY
+    };
     
-    const requiredFields = ['type', 'project_id', 'private_key', 'client_email'];
-    const missingFields = requiredFields.filter(field => !serviceAccount[field]);
+    const missingFields = Object.entries(requiredFields)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
     
     if (missingFields.length > 0) {
-      throw new Error(`服务账户缺少字段: ${missingFields.join(', ')}`);
+      throw new Error(`缺少环境变量: ${missingFields.join(', ')}`);
     }
     
     console.log('✅ Firebase服务账户验证通过');
-    console.log(`📋 项目ID: ${serviceAccount.project_id}`);
-    console.log(`📧 客户端邮箱: ${serviceAccount.client_email}`);
+    console.log(`📋 项目ID: ${process.env.FIREBASE_PROJECT_ID}`);
+    console.log(`📧 客户端邮箱: ${process.env.FIREBASE_CLIENT_EMAIL}`);
     
   } catch (error) {
     console.error('❌ Firebase服务账户验证失败:', error.message);

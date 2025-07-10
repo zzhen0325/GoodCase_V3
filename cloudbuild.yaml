@@ -1,5 +1,5 @@
 # Cloud Build 配置文件示例
-# 展示如何使用Base64编码的Firebase服务账户
+# 使用分离的环境变量配置Firebase服务账户
 
 steps:
   # 构建步骤
@@ -9,28 +9,33 @@ steps:
   - name: 'gcr.io/cloud-builders/npm'
     args: ['run', 'build']
     env:
-      # 普通配置
+      # Firebase配置
       - 'FIREBASE_CONFIG=${_FIREBASE_CONFIG}'
-      # Base64编码的服务账号（从Secret Manager获取）
-      - 'FIREBASE_SERVICE_ACCOUNT_BASE64=${_FIREBASE_SERVICE_ACCOUNT_BASE64}'
-    secretEnv: ['FIREBASE_SERVICE_ACCOUNT_BASE64']
+      - 'FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
+      - 'FIREBASE_CLIENT_EMAIL=${_FIREBASE_CLIENT_EMAIL}'
+      - 'FIREBASE_PRIVATE_KEY=${_FIREBASE_PRIVATE_KEY}'
+    secretEnv: ['FIREBASE_PRIVATE_KEY']
     
   # 部署步骤
   - name: 'gcr.io/cloud-builders/npm'
     args: ['run', 'deploy']
     env:
-      - 'FIREBASE_SERVICE_ACCOUNT_BASE64=${_FIREBASE_SERVICE_ACCOUNT_BASE64}'
-    secretEnv: ['FIREBASE_SERVICE_ACCOUNT_BASE64']
+      - 'FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
+      - 'FIREBASE_CLIENT_EMAIL=${_FIREBASE_CLIENT_EMAIL}'
+      - 'FIREBASE_PRIVATE_KEY=${_FIREBASE_PRIVATE_KEY}'
+    secretEnv: ['FIREBASE_PRIVATE_KEY']
 
 # 声明加密的环境变量
 availableSecrets:
   secretManager:
-    - versionName: projects/${PROJECT_ID}/secrets/firebase-service-account/versions/latest
-      env: 'FIREBASE_SERVICE_ACCOUNT_BASE64'
+    - versionName: projects/${PROJECT_ID}/secrets/firebase-private-key/versions/latest
+      env: 'FIREBASE_PRIVATE_KEY'
 
 # 替换变量（在触发器中配置）
 substitutions:
   _FIREBASE_CONFIG: 'your-firebase-config'
+  _FIREBASE_PROJECT_ID: 'your-project-id'
+  _FIREBASE_CLIENT_EMAIL: 'your-service-account@your-project.iam.gserviceaccount.com'
   
 # 构建选项
 options:
