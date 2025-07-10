@@ -8,6 +8,26 @@ import { Input } from '@/components/ui/input';
 import { Tag, SearchFilters } from '@/types';
 import { debounce } from '@/lib/utils';
 
+// 统一的动画配置
+const ANIMATION_CONFIG = {
+  duration: 0.3,
+  ease: [0.25, 0.46, 0.45, 0.94] as const,
+  spring: {
+    type: 'spring' as const,
+    stiffness: 300,
+    damping: 25
+  },
+  hover: {
+    scale: 1.05,
+    y: -2,
+    transition: { duration: 0.2, ease: 'easeOut' }
+  },
+  tap: {
+    scale: 0.95,
+    transition: { duration: 0.1 }
+  }
+};
+
 // Dock导航项接口
 interface DockItem {
   id: string;
@@ -54,66 +74,55 @@ export function Dock({
 }: DockProps) {
   // 状态管理
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isTagsActive, setIsTagsActive] = useState(false);
-  const [isTagsExpanded, setIsTagsExpanded] = useState(false);
   const [query, setQuery] = useState(searchQuery);
-  const [isToggling, setIsToggling] = useState(false); // 防抖状态
+  const [isAnimating, setIsAnimating] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
-  const dockContainerRef = useRef<HTMLDivElement>(null);
-  // 监听页面滚动，自动收起扩展区域
+  const animationTimeoutRef = useRef<NodeJS.Timeout>();
+  // 监听页面滚动和外部点击，自动收起扩展区域
   useEffect(() => {
     const handleScroll = () => {
-      if (isSearchExpanded || isTagsExpanded) {
-        setIsSearchExpanded(false);
-        setIsTagsExpanded(false);
+      if (isSearchActive || isTagsActive) {
+        setIsSearchActive(false);
+        setIsTagsActive(false);
       }
     };
     
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isSearchExpanded, isTagsExpanded]);
-  
-  // 点击外部区域时收起扩展区域
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dockRef.current && !dockRef.current.contains(event.target as Node)) {
-        const wasActive = isSearchActive || isTagsActive;
-        setIsSearchExpanded(false);
-        setIsTagsExpanded(false);
         setIsSearchActive(false);
         setIsTagsActive(false);
-
       }
     };
     
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (isSearchActive || isTagsActive) {
-          setIsSearchActive(false);
-          setIsTagsActive(false);
-          setIsSearchExpanded(false);
-          setIsTagsExpanded(false);
-
-        }
+        setIsSearchActive(false);
+        setIsTagsActive(false);
       }
     };
     
+    window.addEventListener('scroll', handleScroll);
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
+    
     return () => {
+      window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isSearchActive, isTagsActive]);
   
-  // 搜索框展开时自动聚焦
+  // 搜索模式激活时自动聚焦
   useEffect(() => {
-    if (isSearchExpanded && searchInputRef.current) {
-      searchInputRef.current.focus();
+    if (isSearchActive && searchInputRef.current) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, ANIMATION_CONFIG.duration * 1000);
+      return () => clearTimeout(timer);
     }
-  }, [isSearchExpanded]);
+  }, [isSearchActive]);
   
   // 防抖搜索函数
   const debouncedSearch = React.useMemo(
@@ -193,50 +202,47 @@ export function Dock({
   
 
 
-  // 防抖的模式切换函数
-  const debouncedToggle = React.useMemo(
-    () => debounce((action: () => void) => {
-      action();
-      // 动画完成后重置防抖状态
-      setTimeout(() => setIsToggling(false), 400);
-    }, 150),
-    []
-  );
-
-  // 切换搜索展开状态
-  const toggleSearch = () => {
-    if (isToggling) return; // 防止快速连续点击
-    
-    setIsToggling(true);
-    
-    debouncedToggle(() => {
-      const nextIsActive = !isSearchActive;
-      setIsSearchActive(nextIsActive);
-      if (nextIsActive) {
-        // 关闭其他模式，启用搜索模式
-        setIsTagsActive(false);
-        setIsSearchExpanded(false);
-        setIsTagsExpanded(false);
+  // 清理动画定时器
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
       }
-    });
+    };
+  }, []);
+
+  // 切换搜索模式
+  const toggleSearch = () => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
+    const nextIsActive = !isSearchActive;
+    
+    setIsSearchActive(nextIsActive);
+    if (nextIsActive) {
+      setIsTagsActive(false);
+    }
+    
+    animationTimeoutRef.current = setTimeout(() => {
+      setIsAnimating(false);
+    }, ANIMATION_CONFIG.duration * 1000);
   };
   
-  // 切换标签展开状态
+  // 切换标签模式
   const toggleTags = () => {
-    if (isToggling) return; // 防止快速连续点击
+    if (isAnimating) return;
     
-    setIsToggling(true);
+    setIsAnimating(true);
+    const nextIsActive = !isTagsActive;
     
-    debouncedToggle(() => {
-      const nextIsActive = !isTagsActive;
-      setIsTagsActive(nextIsActive);
-      if (nextIsActive) {
-        // 关闭其他模式，启用标签模式
-        setIsSearchActive(false);
-        setIsSearchExpanded(false);
-        setIsTagsExpanded(false);
-      }
-    });
+    setIsTagsActive(nextIsActive);
+    if (nextIsActive) {
+      setIsSearchActive(false);
+    }
+    
+    animationTimeoutRef.current = setTimeout(() => {
+      setIsAnimating(false);
+    }, ANIMATION_CONFIG.duration * 1000);
   };
   
   const mainDockItems: DockItem[] = [
@@ -332,172 +338,81 @@ export function Dock({
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           whileHover={{ 
-            y: isSearchExpanded || isTagsExpanded ? 0 : -8,
-            transition: { duration: 0.2, ease: "easeOut" }
+            y: isSearchActive || isTagsActive ? 0 : -8,
+            transition: ANIMATION_CONFIG.hover.transition
           }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          transition={{ duration: ANIMATION_CONFIG.duration, ease: ANIMATION_CONFIG.ease }}
           className="relative"
         >
 {/* 选中标签固定显示在视图中间 */}
     
       
         
-        {/* 标签筛选展开区域 */}
-        <AnimatePresence>
-          {isTagsExpanded && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: 20, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute bottom-full mb-4 w-80 bg-background border rounded-2xl shadow-lg p-4"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <TagIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">标签筛选</span>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto">
-                {availableTags.map((tag) => {
-                  const isSelected = selectedTags.some(t => t.id === tag.id);
-                  return (
-                    <Button
-                      key={tag.id}
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleTagToggle(tag)}
-                      className={`h-7 px-2 text-xs rounded-full transition-all duration-200 ${
-                        isSelected 
-                          ? 'bg-primary text-primary-foreground shadow-sm' 
-                          : 'bg-background hover:bg-muted border-muted-foreground/20'
-                      }`}
-                    >
-                      {tag.name}
-                      {isSelected && (
-                        <X className="ml-1 h-3 w-3" />
-                      )}
-                    </Button>
-                  );
-                })}
-                
-                {(isTagsActive && selectedTags.length > 0) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearAllTags}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    清空 ({selectedTags.length})
-                  </Button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
         
         <motion.div 
-          ref={dockContainerRef}
           layout
           transition={{ 
-            width: { 
-              duration: isToggling ? 0.5 : 0.4, 
-              ease: [0.25, 0.46, 0.45, 0.94] // 自定义贝塞尔曲线，更流畅
-            },
             layout: { 
-              duration: isToggling ? 0.5 : 0.4, 
-              ease: [0.25, 0.46, 0.45, 0.94]
-            },
-            padding: {
-              duration: 0.3,
-              ease: "easeInOut"
+              duration: ANIMATION_CONFIG.duration, 
+              ease: ANIMATION_CONFIG.ease
             }
           }}
-          style={{ width: isTagsActive ? '70vw' : (isSearchActive ? '40vw' : '40vw') }}
-          className={`bg-black border border-gray-700 rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-black/50 ${isTagsActive ? 'p-10' : 'p-2'} transition-shadow duration-200 flex items-center justify-center`}>
-          <div className={`flex items-center justify-center ${isTagsActive ? 'gap-2' : (isSearchActive ? 'gap-2' : 'gap-4')}`}>
+          style={{ width: isTagsActive ? '90rem' : (isSearchActive ? '40rem' : 'auto') }}
+          className={`bg-black border border-gray-700 rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 flex items-center justify-center ${
+            isTagsActive ? 'p-6' : 'p-2'
+          }`}>
+          <div className={`flex items-center ${isTagsActive ? 'justify-center gap-2' : (isSearchActive ? 'justify-center gap-2' : 'justify-between px-4')}`}>
 
             
             
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{
+                staggerChildren: 0.05,
+                delayChildren: 0.1
+              }}
+              className={`flex items-center ${isTagsActive || isSearchActive ? 'justify-center gap-2' : 'justify-between w-full'}`}
+            >
             <AnimatePresence mode="wait">
-            {dockItems.map((item, index) => {
-              // 搜索按钮在搜索模式下不执行动画，标签按钮在标签模式下不执行动画
-              const isSearchButton = item.id === 'search';
-              const isTagsButton = item.id === 'tags';
-              const shouldAnimate = !((isSearchButton && isSearchActive) || (isTagsButton && isTagsActive));
-              
-              return (
+            {dockItems.map((item, index) => (
               <motion.div
                 key={item.id}
-                variants={{
-                  initial: { opacity: 0, scale: 0.8, y: 20 },
-                  animate: { 
-                    opacity: 1, 
-                    scale: 1, 
-                    y: 0,
-                    transition: {
-                      type: 'spring',
-                      stiffness: 400,
-                      damping: 25,
-                      delay: isTagsActive ? 0 : (isSearchActive ? 0 : index * 0.1 + 0.3)
-                    }
-                  },
-                  exit: {
-                    opacity: shouldAnimate ? 0 : 1,
-                    transition: {
-                      duration: shouldAnimate ? 0.2 : 0,
-                      delay: 0
-                    }
-                  },
-                  hover: { 
-                    scale: 1.1, 
-                    y: -2,
-                    transition: {
-                      type: 'spring',
-                      stiffness: 400,
-                      damping: 20
-                    }
-                  },
-                  tap: { 
-                    scale: 0.95,
-                    transition: {
-                      type: 'spring',
-                      stiffness: 600,
-                      damping: 30
-                    }
-                  }
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: 1, 
+                  y: 0
                 }}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                whileHover="hover"
-                whileTap="tap"
+                exit={{
+                  opacity: 0,
+                  scale: 0.8,
+                  y: 10
+                }}
+                whileHover={ANIMATION_CONFIG.hover}
+                whileTap={ANIMATION_CONFIG.tap}
+                transition={ANIMATION_CONFIG.spring}
                 className="relative group"
               >
               <Button
                 variant={item.isActive ? "default" : "ghost"}
                 size="sm"
                 onClick={item.onClick}
-                disabled={isToggling && (item.id === 'search' || item.id === 'tags')}
+                disabled={isAnimating && (item.id === 'search' || item.id === 'tags')}
                 className={`
                   relative h-12 w-12 rounded-xl transition-all duration-200
-                  hover:scale-110 group text-gray-100 hover:text-white
+                  group text-gray-100 hover:text-white
                   ${item.isActive ? 'bg-white text-black shadow-md' : ''}
-                  ${isToggling && (item.id === 'search' || item.id === 'tags') ? 'opacity-70 cursor-not-allowed' : ''}
+                  ${isAnimating && (item.id === 'search' || item.id === 'tags') ? 'opacity-70 cursor-not-allowed' : ''}
                 `}
               >
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ duration: 0.1 }}
-                >
-                  {item.icon}
-                </motion.div>
+                {item.icon}
                 
                 {/* 悬浮文字提示 */}
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                   <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded-md shadow-lg whitespace-nowrap border border-gray-600">
                     {item.label}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-800"></div>
                   </div>
                 </div>
                 
@@ -506,39 +421,31 @@ export function Dock({
                   <motion.div
                     layoutId="activeIndicator"
                     className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-black rounded-full"
-                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    transition={{ duration: ANIMATION_CONFIG.duration, ease: ANIMATION_CONFIG.ease }}
                   />
                 )}
               </Button>
             </motion.div>
-              );
-            })}
+            ))}
             </AnimatePresence>
-          </div>
+            </motion.div>          </div>
           <AnimatePresence>
             {isSearchActive && (
               <motion.div 
-                initial={{ opacity: 0, width: 0, scale: 0.8, x: -20 }}
+                initial={{ opacity: 0, width: 0, scale: 0.9 }}
                 animate={{ 
                   opacity: 1, 
                   width: '100%', 
-                  scale: 1, 
-                  x: 0,
-                  transition: {
-                    duration: 0.5,
-                    ease: [0.25, 0.46, 0.45, 0.94],
-                    opacity: { duration: 0.3, delay: 0.1 }
-                  }
+                  scale: 1
                 }}
                 exit={{ 
                   opacity: 0, 
                   width: 0, 
-                  scale: 0.8,
-                  x: -20,
-                  transition: {
-                    duration: 0.4,
-                    ease: [0.55, 0.06, 0.68, 0.19]
-                  }
+                  scale: 0.9
+                }}
+                transition={{
+                  duration: ANIMATION_CONFIG.duration,
+                  ease: ANIMATION_CONFIG.ease
                 }}
                 className="flex-grow pl-2">
                <div className="relative w-full text-white">
@@ -555,7 +462,7 @@ export function Dock({
                      initial={{ opacity: 0, scale: 0 }}
                      animate={{ opacity: 1, scale: 1 }}
                      exit={{ opacity: 0, scale: 0 }}
-                     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                     transition={ANIMATION_CONFIG.spring}
                    >
                      <Button
                        variant="ghost"
@@ -574,48 +481,46 @@ export function Dock({
           <AnimatePresence>
             {isTagsActive && (
               <motion.div 
-                initial={{ opacity: 0, width: 0, scale: 0.8, x: -20 }}
+                initial={{ opacity: 0, width: 0, scale: 0.9 }}
                 animate={{ 
                   opacity: 1, 
                   width: '100%', 
-                  scale: 1, 
-                  x: 0,
-                  transition: {
-                    duration: 0.5,
-                    ease: [0.25, 0.46, 0.45, 0.94],
-                    opacity: { duration: 0.3, delay: 0.1 }
-                  }
+                  scale: 1
                 }}
                 exit={{ 
                   opacity: 0, 
                   width: 0, 
-                  scale: 0.8,
-                  x: -20,
-                  transition: {
-                    duration: 0.4,
-                    ease: [0.55, 0.06, 0.68, 0.19]
-                  }
+                  scale: 0.9
+                }}
+                transition={{
+                  duration: ANIMATION_CONFIG.duration,
+                  ease: ANIMATION_CONFIG.ease
                 }}
                 className="flex-grow pl-2"
               >
-                <div className="flex flex-wrap gap-2 h-15 ml-4 overflow-y-auto">
+                <div className="flex flex-wrap gap-2 h-auto ml-4 overflow-y-auto">
                   {availableTags.map((tag) => {
                     const isSelected = selectedTags.some(t => t.id === tag.id);
                     return (
-                      <Button
+                      <motion.div
                         key={tag.id}
-                        variant={isSelected ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleTagToggle(tag)}
-                        className={`h-10 px-2 text-sm rounded-2xl transition-all duration-200 flex-shrink-0 ${
-                          isSelected 
-                            ? 'bg-white text-black hover:bg-gray-200' 
-                            : 'bg-transparent text-gray-100 border-gray-500 hover:bg-white hover:text-black'
-                        }`}
+                        whileHover={ANIMATION_CONFIG.hover}
+                        whileTap={ANIMATION_CONFIG.tap}
                       >
-                        {tag.name}
-                        {isSelected && <X className="ml-1 h-3 w-3" />}
-                      </Button>
+                        <Button
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleTagToggle(tag)}
+                          className={`h-8 px-3 text-sm rounded-full transition-all duration-200 flex-shrink-0 ${
+                            isSelected 
+                              ? 'bg-white text-black hover:bg-gray-200' 
+                              : 'bg-transparent text-gray-100 border-gray-500 hover:bg-white hover:text-black'
+                          }`}
+                        >
+                          {tag.name}
+                          {isSelected && <X className="ml-1 h-3 w-3" />}
+                        </Button>
+                      </motion.div>
                     );
                   })}
                   {availableTags.length === 0 && (
@@ -639,22 +544,16 @@ interface DockItemComponentProps {
 }
 
 export function DockItemComponent({ item, index }: DockItemComponentProps) {
-  // 判断是否为搜索或标签按钮，并且是否处于展开状态
-  const isSearchExpanded = item.id === 'search' && item.isActive;
-  const isTagsExpanded = item.id === 'tags' && item.isActive;
-  const isExpanded = isSearchExpanded || isTagsExpanded;
-  
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ 
-        duration: 0.2, 
-        delay: index * 0.05,
-        ease: "easeOut"
+        ...ANIMATION_CONFIG.spring,
+        delay: index * 0.05
       }}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={ANIMATION_CONFIG.hover}
+      whileTap={ANIMATION_CONFIG.tap}
     >
       <Button
         variant={item.isActive ? "default" : "ghost"}
@@ -663,26 +562,24 @@ export function DockItemComponent({ item, index }: DockItemComponentProps) {
         className={`
           relative h-12 w-12 rounded-xl transition-all duration-200
           group text-gray-100 hover:text-white
-          ${item.isActive ? isExpanded ? 'bg-white/80 text-black shadow-md' : 'bg-white text-black shadow-md' : ''}
+          ${item.isActive ? 'bg-white text-black shadow-md' : ''}
         `}
       >
         {item.icon}
         
-        {/* 悬浮标签 - 只在非展开状态下显示 */}
-        {!isExpanded && (
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-            <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded-md shadow-md whitespace-nowrap border border-gray-600">
-              {item.label}
-            </div>
+        {/* 悬浮标签 */}
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+          <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded-md shadow-md whitespace-nowrap border border-gray-600">
+            {item.label}
           </div>
-        )}
+        </div>
         
-        {/* 活跃状态指示器 - 为搜索和标签按钮使用不同的指示器样式 */}
+        {/* 活跃状态指示器 */}
         {item.isActive && (
           <motion.div
             layoutId="activeIndicator"
-            className={`absolute -bottom-1 left-1/2 -translate-x-1/2 ${isExpanded ? 'w-2 h-2' : 'w-1 h-1'} bg-black rounded-full`}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-black rounded-full"
+            transition={{ duration: ANIMATION_CONFIG.duration, ease: ANIMATION_CONFIG.ease }}
           />
         )}
       </Button>

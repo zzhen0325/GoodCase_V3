@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, Image as ImageIcon, FileImage, Plus } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ImageData, Prompt, Tag } from '@/types';
@@ -145,25 +145,38 @@ export function UploadModal({
       return;
     }
 
-    const toastId = toast.loading('上传中...', '正在上传图片', 0);
+    // 上传步骤节点
+    const uploadSteps = [
+      { step: 1, title: '准备上传', description: '正在验证文件信息...', progress: 10 },
+      { step: 2, title: '压缩图片', description: '正在优化图片大小...', progress: 30 },
+      { step: 3, title: '上传文件', description: '正在上传到云存储...', progress: 60 },
+      { step: 4, title: '保存数据', description: '正在保存图片信息...', progress: 85 },
+      { step: 5, title: '完成处理', description: '正在生成缩略图...', progress: 100 }
+    ];
+
+    const toastId = toast.loading('步骤 1/5: 准备上传', '正在验证文件信息...', 0);
     
     try {
       setIsUploading(true);
       
-      // 模拟上传进度
-      const progressSteps = [10, 30, 50, 70, 90];
-      for (let i = 0; i < progressSteps.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        toast.updateProgress(toastId, progressSteps[i]);
+      // 逐步显示上传流程
+      for (let i = 0; i < uploadSteps.length; i++) {
+        const currentStep = uploadSteps[i];
+        
+        // 更新 toast 显示当前步骤
+        const stepTitle = `步骤 ${currentStep.step}/${uploadSteps.length}: ${currentStep.title}`;
+        toast.update(toastId, stepTitle, currentStep.description, currentStep.progress);
+        
+        // 如果不是最后一步，模拟处理时间
+        if (i < uploadSteps.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        } else {
+          // 最后一步：实际执行上传
+          await onUpload(selectedFile, imageName.trim(), prompts, selectedTags);
+        }
       }
       
-      // 调用上传回调
-      await onUpload(selectedFile, imageName.trim(), prompts, selectedTags);
-      
-      // 完成进度
-      toast.updateProgress(toastId, 100);
-      
-      toast.resolve(toastId, '上传成功', '图片已成功上传');
+      toast.resolve(toastId, '上传完成', '图片已成功上传并保存');
       
       // 重置表单
       resetForm();
@@ -244,6 +257,9 @@ export function UploadModal({
                 <X className="w-4 h-4" />
               </Button>
             </div>
+            <DialogDescription className="sr-only">
+              上传图片并添加相关信息，包括图片名称、提示词和标签
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">

@@ -303,6 +303,7 @@ export function ImageModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className={MODAL_STYLES.dialog}>
+        <DialogTitle className="sr-only">{image.title || '图片详情'}</DialogTitle>
         {/* 主内容区域 - 左右分栏 */}
         <div className={MODAL_STYLES.content}>
           {/* 左侧 - 图片区域 */}

@@ -12,6 +12,7 @@ interface ToastContextType {
     error: (title: string, description?: string, duration?: number) => string;
     info: (title: string, description?: string, duration?: number) => string;
     updateProgress: (id: string, progress: number) => void;
+    update: (id: string, title?: string, description?: string, progress?: number) => void;
     resolve: (id: string, title?: string, description?: string) => void;
     reject: (id: string, title?: string, description?: string) => void;
     dismiss: (id: string) => void;

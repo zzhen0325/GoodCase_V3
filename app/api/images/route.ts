@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Database } from '@/lib/database';
+import { DatabaseAdmin } from '@/lib/database-admin';
 import { ImageData } from '@/types';
 
 // GET - 获取所有图片
 export async function GET(request: NextRequest) {
   try {
     // 获取所有图片（搜索功能在前端实现）
-    const result = await Database.getAllImages();
-    
-    if (result.success) {
-      return NextResponse.json({ success: true, data: result.data });
-    } else {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 500 }
-      );
-    }
+    const images = await DatabaseAdmin.getAllImages();
+    return NextResponse.json({ success: true, data: images });
   } catch (error) {
     console.error('获取图片失败:', error);
     return NextResponse.json(
@@ -25,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-import { ImageStorageService } from '@/lib/image-storage';
+import { AdminImageStorageService } from '@/lib/admin-image-storage';
 
 // POST - 添加新图片
 export async function POST(request: NextRequest) {
@@ -44,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. 上传图片到 Firebase Storage
-    const imageUrl = await ImageStorageService.uploadImage(file, 'images');
+    const imageUrl = await AdminImageStorageService.uploadImage(file, 'images');
 
     // 2. 准备要存入 Firestore 的数据
     const tagArray = tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
@@ -64,14 +57,9 @@ export async function POST(request: NextRequest) {
       tags: tagArray.map(tag => ({ id: tag, name: tag, color: '#3b82f6' })) // 标签对象数组
     };
 
-    // 3. 调用 Database 方法存入 Firestore
-    const result = await Database.addImage(imageData);
-
-    if (result.success) {
-      return NextResponse.json({ success: true, data: result.data }, { status: 201 });
-    } else {
-      return NextResponse.json({ success: false, error: result.error }, { status: 500 });
-    }
+    // 3. 调用 DatabaseAdmin 方法存入 Firestore（服务端）
+    const imageId = await DatabaseAdmin.createImage(imageData);
+    return NextResponse.json({ success: true, data: { id: imageId, ...imageData } }, { status: 201 });
   } catch (error) {
     console.error('添加图片失败:', error);
     return NextResponse.json({ success: false, error: '添加图片失败' }, { status: 500 });

@@ -21,7 +21,20 @@ let app: any = null;
 function initializeFirebaseApp() {
   // 仅在客户端运行时初始化Firebase
   if (typeof window !== 'undefined' && !app) {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    try {
+      console.log('正在初始化 Firebase 应用...');
+      console.log('Firebase 配置:', {
+        projectId: firebaseConfig.projectId,
+        storageBucket: firebaseConfig.storageBucket,
+        apiKey: firebaseConfig.apiKey ? '已设置' : '未设置'
+      });
+      
+      app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+      console.log('Firebase 应用初始化成功');
+    } catch (error) {
+      console.error('Firebase 应用初始化失败:', error);
+      throw error;
+    }
   }
   return app;
 }
@@ -131,9 +144,17 @@ let auth: any = null;
 
 function initializeStorage() {
   if (typeof window !== 'undefined' && !storage) {
-    const firebaseApp = initializeFirebaseApp();
-    if (firebaseApp) {
-      storage = getStorage(firebaseApp);
+    try {
+      const firebaseApp = initializeFirebaseApp();
+      if (firebaseApp) {
+        console.log('正在初始化 Firebase Storage...');
+        storage = getStorage(firebaseApp);
+        console.log('Firebase Storage 初始化成功');
+      } else {
+        console.error('Firebase 应用未初始化');
+      }
+    } catch (error) {
+      console.error('Firebase Storage 初始化失败:', error);
     }
   }
   return storage;

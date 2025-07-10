@@ -101,6 +101,10 @@ export function useToast() {
     updateProgress: (id: string, progress: number) => 
       updateToast(id, { progress }),
 
+    // 更新标题和描述
+    update: (id: string, title?: string, description?: string, progress?: number) => 
+      updateToast(id, { title, description, progress }),
+
     // 将loading toast转换为success/error
     resolve: (id: string, title?: string, description?: string) => {
       updateToast(id, { 

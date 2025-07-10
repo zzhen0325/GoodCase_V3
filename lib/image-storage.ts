@@ -35,6 +35,11 @@ export class ImageStorageService {
   // 上传图片到Firebase Storage
   static async uploadImage(file: File, folder: string = 'images'): Promise<string> {
     try {
+      // 确保在客户端环境
+      if (typeof window === 'undefined') {
+        throw new Error('图片上传只能在客户端环境中进行');
+      }
+
       // 检查文件大小 (限制为 10MB)
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
@@ -59,7 +64,8 @@ export class ImageStorageService {
         // 创建存储引用
         const storageInstance = getStorageInstance();
         if (!storageInstance) {
-          throw new Error('Storage 未初始化');
+          console.error('Storage 初始化失败，请检查 Firebase 配置');
+          throw new Error('Storage 未初始化，请刷新页面重试');
         }
         const storageRef = ref(storageInstance, filePath);
         
