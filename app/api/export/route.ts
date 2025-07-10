@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Database } from '@/lib/database';
+import { DatabaseAdmin } from '@/lib/database-admin';
 
 export async function GET(request: NextRequest) {
   try {
     // 导出所有数据
-    const result = await Database.exportAllData();
-    
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 500 }
-      );
-    }
-
-    const exportData = result.data!;
+    const exportData = await DatabaseAdmin.exportAllData();
     const filename = `gallery-export-${new Date().toISOString().split('T')[0]}.json`;
     
     // 返回JSON文件

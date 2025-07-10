@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import JSZip from 'jszip';
-import { exportAllData } from '@/lib/database-admin';
+import { DatabaseAdmin } from '@/lib/database-admin';
 
 export async function POST(request: NextRequest) {
   try {
     const { imageIds, cachedImages } = await request.json();
     
     // 获取所有数据
-    const exportData = await exportAllData();
+    const exportData = await DatabaseAdmin.exportAllData();
     
     // 创建ZIP文件
     const zip = new JSZip();

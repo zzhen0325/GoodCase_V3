@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
       
       try {
         // 检查Firestore中是否已存在该图片
-        const existingImage = await Database.getImageMetadata(imageId);
-        if (existingImage && !dryRun) {
+        const existingImageResult = await Database.getImageById(imageId);
+        if (existingImageResult.success && !dryRun) {
           migrationStats.skipped++;
           console.log(`跳过已存在的图片: ${imageId}`);
           continue;

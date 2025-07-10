@@ -25,7 +25,6 @@ try {
     // 启用离线持久化
     localCache: {
       kind: 'persistent',
-      cacheSizeBytes: 50 * 1024 * 1024, // 50MB 缓存
     },
     // 强制使用长轮询，解决连接超时问题
     experimentalForceLongPolling: true,

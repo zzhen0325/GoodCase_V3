@@ -156,16 +156,15 @@ export class ListenerManager {
     return unsubscribe;
   }
 
-  // 搜索监听器
+  // 搜索监听器 - 暂时使用普通图片监听器
   static subscribeToSearchImages(
     searchQuery: string,
     tags: Tag[],
     callback: (images: ImageData[]) => void,
     key: string = 'search'
   ) {
-    const unsubscribe = Database.subscribeToSearchImages(
-      searchQuery,
-      tags,
+    // 由于Database没有subscribeToSearchImages方法，使用subscribeToImages
+    const unsubscribe = Database.subscribeToImages(
       callback,
       (error) => this.handleError(key, error)
     );
