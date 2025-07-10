@@ -10,6 +10,7 @@ import { ImageData, Prompt, Tag } from '@/types';
 import { TagManager } from './tag-manager';
 import { useToastContext } from '@/components/toast-provider';
 import { generateId } from '@/lib/utils';
+import { ImageStorageService } from '@/lib/image-storage';
 
 // 上传图片弹窗组件属性
 interface UploadModalProps {
@@ -124,25 +125,15 @@ export function UploadModal({
       return;
     }
 
-    const toastId = toast.loading('上传中...', '正在处理图片文件');
+    const toastId = toast.loading('上传中...', '正在上传图片');
     
     try {
       setIsUploading(true);
       
-      // 创建新的图片数据对象
-      const newImage: Omit<ImageData, 'id'> = {
-        title: title || '未命名图片',
-        url: previewUrl || '', // 现在存储base64数据
-        prompts: [],
-        tags: selectedTags,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
       // 调用上传回调
-      await onUpload(newImage);
+      await onUpload(selectedFile, title, selectedTags);
       
-      toast.resolve(toastId, '上传成功', '图片已添加到图库');
+      toast.resolve(toastId, '上传成功', '图片已成功上传');
       
       // 重置表单
       resetForm();
@@ -151,7 +142,7 @@ export function UploadModal({
       onClose();
     } catch (error) {
       console.error('上传失败:', error);
-      toast.reject(toastId, '上传失败', '请检查文件格式后重试');
+      toast.reject(toastId, '上传失败', error instanceof Error ? error.message : '请检查网络连接后重试');
     } finally {
       setIsUploading(false);
     }

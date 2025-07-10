@@ -1,0 +1,61 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "images",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tags",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "images",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "url",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "images",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "prompts",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tags",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "usageCount",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
