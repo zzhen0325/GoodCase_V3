@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStorageInstance } from '@/lib/firebase';
-import { ref as storageRef, listAll, getDownloadURL } from 'firebase/storage';
+import { getAdminStorage } from '@/lib/firebase-admin';
+
 import { Database } from '@/lib/database';
 import { ImageData } from '@/types';
 
@@ -21,20 +21,20 @@ export async function POST(request: NextRequest) {
     };
     
     // 获取Storage中的所有JSON文件
-    const storageInstance = getStorageInstance();
+    const storageInstance = getAdminStorage();
     if (!storageInstance) {
       throw new Error('Storage 未初始化');
     }
-    const listRef = storageRef(storageInstance, 'images/');
-    const res = await listAll(listRef);
+    const bucket = getAdminStorage().bucket();
+    const [files] = await bucket.getFiles({ prefix: 'images/' });
     
-    const jsonFiles = res.items.filter(itemRef => itemRef.name.endsWith('.json'));
+    const jsonFiles = files.filter(file => file.name.endsWith('.json'));
     migrationStats.total = jsonFiles.length;
     
     console.log(`发现 ${jsonFiles.length} 个JSON文件需要迁移`);
     
-    for (const itemRef of jsonFiles) {
-      const imageId = itemRef.name.replace('.json', '');
+    for (const file of jsonFiles) {
+      const imageId = file.name.substring(file.name.lastIndexOf('/') + 1).replace('.json', '');
       
       try {
         // 检查Firestore中是否已存在该图片
@@ -46,7 +46,10 @@ export async function POST(request: NextRequest) {
         }
         
         // 从Storage读取JSON数据
-        const url = await getDownloadURL(itemRef);
+        const [url] = await file.getSignedUrl({
+          action: 'read',
+          expires: '03-09-2491' // A long, long time in the future
+        });
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -115,13 +118,13 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     // 获取Storage中的JSON文件数量
-    const storageInstance = getStorageInstance();
+    const storageInstance = getAdminStorage();
     if (!storageInstance) {
       throw new Error('Firebase Storage not initialized');
     }
-    const listRef = storageRef(storageInstance, 'images/');
-    const res = await listAll(listRef);
-    const jsonFiles = res.items.filter(itemRef => itemRef.name.endsWith('.json'));
+    const bucket = getAdminStorage().bucket();
+    const [files] = await bucket.getFiles({ prefix: 'images/' });
+    const jsonFiles = files.filter(file => file.name.endsWith('.json'));
     
     // 获取Firestore中的图片数量
     const firestoreResult = await Database.getAllImages();
