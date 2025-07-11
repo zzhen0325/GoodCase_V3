@@ -19,8 +19,8 @@ const firebaseConfig = {
 let app: any = null;
 
 function initializeFirebaseApp() {
-  // 仅在客户端运行时初始化Firebase
-  if (typeof window !== 'undefined' && !app) {
+  // 在客户端和服务器端都初始化Firebase
+  if (!app) {
     try {
       console.log('正在初始化 Firebase 应用...');
       console.log('Firebase 配置:', {
@@ -43,19 +43,25 @@ function initializeFirebaseApp() {
 let db: Firestore | null = null;
 
 function initializeFirestoreDb() {
-  if (typeof window !== 'undefined' && !db) {
+  if (!db) {
     const firebaseApp = initializeFirebaseApp();
     if (firebaseApp) {
       try {
-        db = initializeFirestore(firebaseApp, {
-          // 启用离线持久化
-          localCache: {
-            kind: 'persistent',
-          },
-          // 强制使用长轮询，解决连接超时问题
-          experimentalForceLongPolling: true,
-          ignoreUndefinedProperties: true,
-        });
+        // 在客户端启用离线持久化，服务器端使用默认配置
+        if (typeof window !== 'undefined') {
+          db = initializeFirestore(firebaseApp, {
+            // 启用离线持久化
+            localCache: {
+              kind: 'persistent',
+            },
+            // 强制使用长轮询，解决连接超时问题
+            experimentalForceLongPolling: true,
+            ignoreUndefinedProperties: true,
+          });
+        } else {
+          // 服务器端使用默认配置
+          db = getFirestore(firebaseApp);
+        }
       } catch (error) {
         // 如果已经初始化过，使用现有实例
         db = getFirestore(firebaseApp);
@@ -143,7 +149,7 @@ let storage: any = null;
 let auth: any = null;
 
 function initializeStorage() {
-  if (typeof window !== 'undefined' && !storage) {
+  if (!storage) {
     try {
       const firebaseApp = initializeFirebaseApp();
       if (firebaseApp) {
@@ -161,7 +167,7 @@ function initializeStorage() {
 }
 
 function initializeAuth() {
-  if (typeof window !== 'undefined' && !auth) {
+  if (!auth) {
     const firebaseApp = initializeFirebaseApp();
     if (firebaseApp) {
       auth = getAuth(firebaseApp);

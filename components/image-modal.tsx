@@ -6,7 +6,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Edit3, Save, X, Plus, FileImage, Calendar, Tag as TagIcon, Copy, Check, Trash2, Files } from 'lucide-react';
 import { ImageData, Prompt, Tag, PROMPT_COLORS } from '@/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PromptBlock } from './prompt-block';
@@ -194,13 +194,21 @@ export function ImageModal({
       if (success) {
         setCopyAllStatus('success');
         onCopyPrompt?.(allPromptsText);
+        toast.success('复制成功', '所有提示词已复制到剪贴板');
         // 2秒后重置状态
         setTimeout(() => setCopyAllStatus('idle'), 2000);
       } else {
         setCopyAllStatus('error');
+        toast.error('复制失败', '请稍后重试');
         // 2秒后重置状态
         setTimeout(() => setCopyAllStatus('idle'), 2000);
       }
+    } else {
+      // 没有有效的提示词内容
+      setCopyAllStatus('error');
+      toast.error('无内容可复制', '请先添加一些提示词内容');
+      // 2秒后重置状态
+      setTimeout(() => setCopyAllStatus('idle'), 2000);
     }
   };
 
@@ -304,6 +312,9 @@ export function ImageModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className={MODAL_STYLES.dialog}>
         <DialogTitle className="sr-only">{image.title || '图片详情'}</DialogTitle>
+        <DialogDescription className="sr-only">
+          查看和编辑图片的详细信息，包括提示词和标签
+        </DialogDescription>
         {/* 主内容区域 - 左右分栏 */}
         <div className={MODAL_STYLES.content}>
           {/* 左侧 - 图片区域 */}

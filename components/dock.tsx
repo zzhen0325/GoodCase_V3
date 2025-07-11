@@ -45,6 +45,7 @@ interface DockProps {
   onFavorites?: () => void;
   onSettings?: () => void;
   onLarkDoc?: () => void;
+  onLemoTagger?: () => void;
   onEdit?: () => void;
   isEditMode?: boolean;
   onSearch?: (filters: SearchFilters) => void;
@@ -63,6 +64,7 @@ export function Dock({
   onFavorites, 
   onSettings, 
   onLarkDoc, 
+  onLemoTagger,
   onEdit, 
   isEditMode,
   onSearch,
@@ -282,7 +284,7 @@ export function Dock({
       id: 'tools',
       icon: <Wrench className="w-5 h-5" />,
       label: 'Tagger tool',
-      onClick: () => window.open('file:///Users/bytedance/Desktop/seeseezz/good3/Lemo Image Tagger.html', '_blank'),
+      onClick: onLemoTagger || (() => {}),
     },
     {
       id: 'lark-doc',
@@ -370,7 +372,7 @@ export function Dock({
               }}
               className={`flex items-center ${isTagsActive || isSearchActive ? 'justify-center gap-2' : 'justify-between w-full'}`}
             >
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
             {dockItems.map((item, index) => (
               <motion.div
                 key={item.id}

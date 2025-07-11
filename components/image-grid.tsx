@@ -48,8 +48,8 @@ export const ImageGrid = React.memo(function ImageGrid({
     const activeMagnet = Array.from(magnetStates.values()).find(state => state.isActive && state.index !== currentIndex);
     if (!activeMagnet) return { x: 0, y: 0 };
 
-    // 计算网格位置
-    const cols = 5; // xl:grid-cols-5
+    // 计算网格位置 - 使用最大列数进行计算
+    const cols = 5; // 3xl:grid-cols-5
     const currentRow = Math.floor(currentIndex / cols);
     const currentCol = currentIndex % cols;
     const activeRow = Math.floor(activeMagnet.index / cols);
@@ -73,7 +73,7 @@ export const ImageGrid = React.memo(function ImageGrid({
   // 加载状态
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 3xl:grid-cols-5 gap-20">
         {Array.from({ length: 10 }).map((_, index) => (
           <div
             key={index}
@@ -114,7 +114,7 @@ export const ImageGrid = React.memo(function ImageGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-10  ">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 3xl:grid-cols-5 gap-20">
       {images.map((image, index) => {
         const nearbyOffset = calculateNearbyOffset(index);
         return (

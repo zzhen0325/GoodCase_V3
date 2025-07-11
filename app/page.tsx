@@ -16,6 +16,7 @@ import { ConnectionStatus } from '@/components/connection-status';
 import TextPressure from '@/components/text-pressure';
 import CircularText from '@/components/circular-text';
 import { DownloadProgressToast, useDownloadProgress } from '@/components/download-progress-toast';
+import { LemoTagger } from '@/components/lemo-tagger';
 
 // 主页面组件
 export default function HomePage() {
@@ -223,15 +224,45 @@ export default function HomePage() {
 
   // 处理图片上传
   const handleImageUpload = useCallback(async (file: File, imageName: string, prompts: Prompt[], tags: Tag[]) => {
-    console.log('📤 处理图片上传:', imageName);
+    console.log('📤 开始上传图片:', { fileName: file.name, imageName, promptsCount: prompts.length, tagsCount: tags.length });
+    
+    // 生成临时ID
+    const tempId = `temp_${Date.now()}`;
+    
+    // 创建预览URL
+    const previewUrl = URL.createObjectURL(file);
+    
+    // 立即在UI中显示加载状态的图片
+    const loadingImageData: ImageData = {
+      id: tempId,
+      url: previewUrl,
+      title: imageName,
+      tags: tags,
+      prompts: prompts,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isUploading: true, // 标记为上传中
+    };
+    
+    // 立即更新UI，在列表顶部显示加载状态的图片
+    setImages(prevImages => [loadingImageData, ...prevImages]);
+    
     try {
-      // 如果在线，直接上传到服务器
       if (connectionStatus === 'connected') {
-        // 将新的数据结构转换为API期望的格式
+        // 在线上传
         const tagsString = tags.map(tag => tag.name).join(',');
         const result = await ApiClient.addImage(file, imageName, tagsString);
+        
         if (result.success && result.data) {
-          // 上传成功后，更新图片的提示词块
+          console.log('✅ 图片上传成功，实时监听器将自动更新UI');
+          
+          // 移除临时图片，实时监听器会自动添加真实图片
+          setImages(prevImages => prevImages.filter(img => img.id !== tempId));
+          
+          // 清理预览URL
+          URL.revokeObjectURL(previewUrl);
+          
+          // 如果有提示词，批量更新
           if (prompts.length > 0) {
             const updateResult = await ApiClient.updateImage(result.data.id, {
               prompts: prompts
@@ -240,6 +271,7 @@ export default function HomePage() {
               console.warn('⚠️ 提示词块更新失败:', updateResult.error);
             }
           }
+          
           console.log('✅ 图片上传成功:', result.data);
         } else {
           throw new Error(result.error || '上传失败');
@@ -250,7 +282,6 @@ export default function HomePage() {
         reader.readAsDataURL(file);
         reader.onload = async () => {
           const base64 = reader.result as string;
-          const tempId = `temp_${Date.now()}`;
 
           const localImageData: ImageData = {
             id: tempId,
@@ -263,8 +294,15 @@ export default function HomePage() {
             isLocal: true,
           };
 
-          // 立即更新UI
-          setImages(prevImages => [localImageData, ...prevImages]);
+          // 更新临时图片为本地图片
+          setImages(prevImages => 
+            prevImages.map(img => 
+              img.id === tempId ? localImageData : img
+            )
+          );
+          
+          // 清理预览URL
+          URL.revokeObjectURL(previewUrl);
 
           // 存入IndexedDB以备后台同步
           const dbImageData = {
@@ -284,11 +322,19 @@ export default function HomePage() {
           } catch (error) {
             console.error('❌ 暂存图片到 IndexedDB 失败:', error);
             setImages(prev => prev.filter(img => img.id !== tempId));
+            throw error;
           }
         };
       }
     } catch (error) {
       console.error('❌ 上传失败:', error);
+      
+      // 移除临时图片
+      setImages(prevImages => prevImages.filter(img => img.id !== tempId));
+      
+      // 清理预览URL
+      URL.revokeObjectURL(previewUrl);
+      
       throw error;
     }
   }, [connectionStatus]);
@@ -335,17 +381,64 @@ export default function HomePage() {
     }
   }, []);
 
+  // 辅助函数：从URL获取文件扩展名
+  const getFileExtensionFromUrl = useCallback((url: string): string => {
+    try {
+      const pathname = new URL(url).pathname;
+      const extension = pathname.split('.').pop();
+      return extension || 'jpg';
+    } catch {
+      return 'jpg';
+    }
+  }, []);
+
+  // Lemo Tagger 状态
+  const [isLemoTaggerOpen, setIsLemoTaggerOpen] = useState(false);
+
   // 处理图片复制
   const handleImageDuplicate = useCallback(async (image: ImageData) => {
     try {
-      // 复制功能暂时禁用，因为需要重新上传文件
-      console.log('复制功能开发中...');
-      alert('复制功能开发中，请手动重新上传图片');
+      console.log('🔄 开始复制图片:', image.title);
+      
+      // 立即打开当前图片的详情弹窗并进入编辑模式
+      setSelectedImage(image);
+      setIsImageModalOpen(true);
+      
+      // 后台异步复制图片
+      (async () => {
+        try {
+          // 从图片URL下载文件
+          const response = await fetch(image.url);
+          if (!response.ok) {
+            throw new Error(`下载图片失败: ${response.status}`);
+          }
+          
+          const blob = await response.blob();
+          
+          // 获取文件扩展名
+          const extension = getFileExtensionFromUrl(image.url);
+          
+          // 创建新的文件对象
+          const newFileName = `${image.title}_copy.${extension}`;
+          const file = new File([blob], newFileName, { type: blob.type });
+          
+          // 创建新的标题
+          const newTitle = `${image.title} (副本)`;
+          
+          // 使用现有的上传逻辑，包含所有提示词和标签数据
+          await handleImageUpload(file, newTitle, image.prompts || [], image.tags || []);
+          
+          console.log('✅ 图片复制成功');
+        } catch (error) {
+          console.error('❌ 后台复制图片失败:', error);
+        }
+      })();
+      
     } catch (error) {
-      console.error('复制图片失败:', error);
+      console.error('❌ 复制图片失败:', error);
       throw error;
     }
-  }, []);
+  }, [handleImageUpload, getFileExtensionFromUrl]);
 
   // Dock 导航处理函数
   const handleUpload = useCallback(() => {
@@ -363,17 +456,6 @@ export default function HomePage() {
   const handleExport = useCallback(async () => {
     alert('暂时没用，为了对称');
   }, []);
-  
-  // 辅助函数：从URL获取文件扩展名
-  const getFileExtensionFromUrl = (url: string): string => {
-    try {
-      const pathname = new URL(url).pathname;
-      const extension = pathname.split('.').pop();
-      return extension || 'jpg';
-    } catch {
-      return 'jpg';
-    }
-  };
 
   const handleFavorites = useCallback(() => {
     setActiveView('favorites');
@@ -393,6 +475,16 @@ export default function HomePage() {
 
   const handleLarkDoc = useCallback(() => {
     window.open('https://bytedance.larkoffice.com/wiki/HNHvwAjVzicLVuk1r5ictnNKncg', '_blank');
+  }, []);
+
+  // 处理 Lemo Tagger
+  const handleLemoTagger = useCallback(() => {
+    setIsLemoTaggerOpen(true);
+  }, []);
+
+  // 关闭 Lemo Tagger
+  const closeLemoTagger = useCallback(() => {
+    setIsLemoTaggerOpen(false);
   }, []);
 
   // 处理标签删除
@@ -590,10 +682,10 @@ export default function HomePage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-3/5"
+          className="w-[55%]"
         >
           <div className="text-center ">
-           <p className="text-sm text-gray-300 mt-20">
+           <p className="text-sm text-gray-300 mt-10">
               Manage your images and prompt words to make creation more efficient.
             </p>
             <div className="h-auto mb-1 ">
@@ -611,7 +703,7 @@ export default function HomePage() {
       
       <div className="min-h-screen  bg-background">
         {/* 主要内容区域 */}
-        <div className="w-[70%] mx-auto px-4 mb-4 pb-24 mt-10">
+        <div className="w-[65%] mx-auto px-4 mb-4 pb-24 mt-10">
           {/* 搜索栏
           {!isEditMode && (
             <SearchBar
@@ -739,6 +831,7 @@ export default function HomePage() {
           onFavorites={handleFavorites}
           onSettings={handleSettings}
           onLarkDoc={handleLarkDoc}
+          onLemoTagger={handleLemoTagger}
           onEdit={handleImport}
           isEditMode={isEditMode}
           onSearch={handleSearchChange}
@@ -774,6 +867,12 @@ export default function HomePage() {
           isVisible={isDownloadVisible}
           progress={downloadProgress}
           onClose={hideDownloadToast}
+        />
+        
+        {/* Lemo Tagger 弹窗 */}
+        <LemoTagger
+          isOpen={isLemoTaggerOpen}
+          onClose={closeLemoTagger}
         />
       </div>
     </>

@@ -145,47 +145,26 @@ export function UploadModal({
       return;
     }
 
-    // 上传步骤节点
-    const uploadSteps = [
-      { step: 1, title: '准备上传', description: '正在验证文件信息...', progress: 10 },
-      { step: 2, title: '压缩图片', description: '正在优化图片大小...', progress: 30 },
-      { step: 3, title: '上传文件', description: '正在上传到云存储...', progress: 60 },
-      { step: 4, title: '保存数据', description: '正在保存图片信息...', progress: 85 },
-      { step: 5, title: '完成处理', description: '正在生成缩略图...', progress: 100 }
-    ];
-
-    const toastId = toast.loading('步骤 1/5: 准备上传', '正在验证文件信息...', 0);
-    
     try {
       setIsUploading(true);
       
-      // 逐步显示上传流程
-      for (let i = 0; i < uploadSteps.length; i++) {
-        const currentStep = uploadSteps[i];
-        
-        // 更新 toast 显示当前步骤
-        const stepTitle = `步骤 ${currentStep.step}/${uploadSteps.length}: ${currentStep.title}`;
-        toast.update(toastId, stepTitle, currentStep.description, currentStep.progress);
-        
-        // 如果不是最后一步，模拟处理时间
-        if (i < uploadSteps.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 800));
-        } else {
-          // 最后一步：实际执行上传
-          await onUpload(selectedFile, imageName.trim(), prompts, selectedTags);
-        }
-      }
+      // 立即关闭弹窗并重置表单
+      const uploadData = {
+        file: selectedFile,
+        imageName: imageName.trim(),
+        prompts: prompts,
+        selectedTags: selectedTags
+      };
       
-      toast.resolve(toastId, '上传完成', '图片已成功上传并保存');
-      
-      // 重置表单
       resetForm();
-      
-      // 关闭弹窗
       onClose();
+      
+      // 开始后台上传，传递上传数据
+      await onUpload(uploadData.file, uploadData.imageName, uploadData.prompts, uploadData.selectedTags);
+      
     } catch (error) {
       console.error('上传失败:', error);
-      toast.reject(toastId, '上传失败', error instanceof Error ? error.message : '请检查网络连接后重试');
+      toast.error('上传失败: ' + (error instanceof Error ? error.message : '请检查网络连接后重试'));
     } finally {
       setIsUploading(false);
     }

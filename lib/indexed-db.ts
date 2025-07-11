@@ -1,7 +1,7 @@
 // lib/indexed-db.ts
 
 const DB_NAME = 'ImageGalleryDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const IMAGE_STORE_NAME = 'images';
 const IMAGE_CACHE_STORE_NAME = 'image_cache';
 

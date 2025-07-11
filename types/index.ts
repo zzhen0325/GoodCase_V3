@@ -9,6 +9,7 @@ export interface ImageData {
   updatedAt: string;
   usageCount?: number;
   isLocal?: boolean;
+  isUploading?: boolean;
 }
 
 // 提示词类型

@@ -133,14 +133,28 @@ export const ImageCard = React.memo(function ImageCard({
             )}
             
             {/* 图片容器 */}
-            <div className="w-full h-full bg-muted rounded-3xl flex items-center justify-center">
+            <div className="w-full h-full bg-muted rounded-3xl flex items-center justify-center relative">
               {image.url ? (
-                <img
-                  src={image.url}
-                  alt={image.title}
-                  className="w-full h-full object-cover  transition-all duration-300 hover:scale-105"
-                  loading="lazy"
-                />
+                <>
+                  <img
+                    src={image.url}
+                    alt={image.title}
+                    className={`w-full h-full object-cover transition-all duration-300 hover:scale-105 ${
+                      image.isUploading ? 'opacity-70' : ''
+                    }`}
+                    loading="lazy"
+                  />
+                  {/* 上传中的蒙层和加载动画 */}
+                  {image.isUploading && (
+                    <div className="absolute inset-0 bg-black/30 rounded-3xl flex items-center justify-center">
+                      <div className="flex flex-col items-center space-y-2">
+                        {/* 旋转加载动画 */}
+                        <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-white text-xs font-medium">上传中...</span>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-muted-foreground text-sm text-center p-4 rounded-2xl">
                   暂无图片

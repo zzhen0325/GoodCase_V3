@@ -363,6 +363,17 @@ export class Database {
       
       const imageData = docSnap.data();
       
+      // 先删除Firebase Storage中的图片文件
+      if (imageData.url) {
+        try {
+          const imageStorageModule = await import('./image-storage');
+          await imageStorageModule.ImageStorage.deleteImage(imageData.url);
+        } catch (storageError) {
+          console.warn('删除存储中的图片失败，但继续删除数据库记录:', storageError);
+          // 不阻止删除流程，即使存储删除失败也要删除数据库记录
+        }
+      }
+      
       // 删除Firestore中的文档
       await deleteDoc(docRef);
       
