@@ -21,9 +21,29 @@ steps:
       - 'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$$_MEASUREMENT_ID'
     secretEnv: ['_PROJECT_ID', '_API_KEY', '_AUTH_DOMAIN', '_STORAGE_BUCKET', '_SENDER_ID', '_APP_ID', '_DATABASE_URL', '_MEASUREMENT_ID']
     
-  # 部署步骤
+  # 构建 Docker 镜像
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/goodcase-v3:$BUILD_ID', '.']
+    
+  # 推送镜像到 Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/goodcase-v3:$BUILD_ID']
+    
+  # 部署到 Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['app', 'deploy', 'app.yaml', '--quiet']
+    args: 
+      - 'run'
+      - 'deploy'
+      - 'goodcase-v3'
+      - '--image=gcr.io/$PROJECT_ID/goodcase-v3:$BUILD_ID'
+      - '--platform=managed'
+      - '--region=asia-east1'
+      - '--allow-unauthenticated'
+      - '--port=3000'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--max-instances=10'
+      - '--set-env-vars=NODE_ENV=production'
     env:
       - 'FIREBASE_CONFIG=$$_FIREBASE_CONFIG'
       - 'FIREBASE_CLIENT_EMAIL=$$_CLIENT_EMAIL'
