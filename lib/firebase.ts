@@ -66,7 +66,10 @@ function initializeFirestoreDb() {
 }
 
 // 网络状态管理
-let isOnline = navigator?.onLine ?? true;
+let isOnline = true;
+if (typeof window !== 'undefined') {
+  isOnline = navigator.onLine;
+}
 let networkRetryCount = 0;
 const MAX_RETRY_COUNT = 3;
 
