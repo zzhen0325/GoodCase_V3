@@ -42,16 +42,3 @@ handlers:
   - url: /.*
     script: auto
     secure: always
-
-# 跳过不需要的文件
-skip_files:
-  - ^(.*/)?#.*#$
-  - ^(.*/)?.*~$
-  - ^(.*/)?.*\.py[co]$
-  - ^(.*/)?\..*$
-  - ^(.*/)?node_modules/.*$
-  - ^(.*/)?.*\.md$
-  - ^(.*/)?.*\.log$
-  - ^(.*/)?.*\.lock$
-  - ^(.*/)?package-lock\.json$
-  - ^(.*/)?yarn\.lock$
