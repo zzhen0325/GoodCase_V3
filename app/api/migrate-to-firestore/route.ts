@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminStorage } from '@/lib/firebase-admin';
-
-import { Database } from '@/lib/database';
+import { getAdminStorage, getAdminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { ImageData } from '@/types';
 
 /**
@@ -32,14 +31,16 @@ export async function POST(request: NextRequest) {
     migrationStats.total = jsonFiles.length;
     
     console.log(`发现 ${jsonFiles.length} 个JSON文件需要迁移`);
-    
+
+    const db = getAdminDb();
     for (const file of jsonFiles) {
       const imageId = file.name.substring(file.name.lastIndexOf('/') + 1).replace('.json', '');
       
       try {
         // 检查Firestore中是否已存在该图片
-        const existingImageResult = await Database.getImageById(imageId);
-        if (existingImageResult.success && !dryRun) {
+        const imageRef = db.collection('images').doc(imageId);
+        const imageDoc = await imageRef.get();
+        if (imageDoc.exists && !dryRun) {
           migrationStats.skipped++;
           console.log(`跳过已存在的图片: ${imageId}`);
           continue;
@@ -61,21 +62,17 @@ export async function POST(request: NextRequest) {
         
         if (!dryRun) {
           // 迁移到Firestore
-          const result = await Database.addImage({
-            url: imageData.url,
-            title: imageData.title,
-            prompts: imageData.prompts || [],
-            tags: imageData.tags || [],
-            usageCount: imageData.usageCount || 0
+          // 使用 set 和 imageId 来保持 ID 一致
+          await db.collection('images').doc(imageId).set({
+              url: imageData.url,
+              title: imageData.title,
+              prompts: imageData.prompts || [],
+              tags: imageData.tags || [],
+              createdAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
           });
-          
-          if (result.success) {
-            migrationStats.migrated++;
-            console.log(`成功迁移图片: ${imageId}`);
-          } else {
-            migrationStats.failed++;
-            migrationStats.errors.push(`图片 ${imageId} 迁移失败: ${result.error}`);
-          }
+          migrationStats.migrated++;
+          console.log(`成功迁移图片: ${imageId}`);
         } else {
           // 干运行模式，只统计
           migrationStats.migrated++;
@@ -127,8 +124,9 @@ export async function GET() {
     const jsonFiles = files.filter(file => file.name.endsWith('.json'));
     
     // 获取Firestore中的图片数量
-    const firestoreResult = await Database.getAllImages();
-    const firestoreCount = firestoreResult.success ? firestoreResult.data!.length : 0;
+    const db = getAdminDb();
+    const imagesSnapshot = await db.collection('images').get();
+    const firestoreCount = imagesSnapshot.size;
     
     return NextResponse.json({
       success: true,
