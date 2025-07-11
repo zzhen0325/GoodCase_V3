@@ -11,7 +11,16 @@ steps:
     entrypoint: 'npm'
     args: ['run', 'build']
     env:
-      # Firebase配置
+      # Firebase配置（客户端）
+      - 'NEXT_PUBLIC_FIREBASE_API_KEY=${_NEXT_PUBLIC_FIREBASE_API_KEY}'
+      - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}'
+      - 'NEXT_PUBLIC_FIREBASE_DATABASE_URL=${_NEXT_PUBLIC_FIREBASE_DATABASE_URL}'
+      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_NEXT_PUBLIC_FIREBASE_PROJECT_ID}'
+      - 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}'
+      - 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}'
+      - 'NEXT_PUBLIC_FIREBASE_APP_ID=${_NEXT_PUBLIC_FIREBASE_APP_ID}'
+      - 'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${_NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}'
+      # Firebase配置（服务端）
       - 'FIREBASE_CONFIG=${_FIREBASE_CONFIG}'
       - 'FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
       - 'FIREBASE_CLIENT_EMAIL=${_FIREBASE_CLIENT_EMAIL}'
@@ -28,6 +37,16 @@ steps:
 
 # 替换变量（在触发器中配置）
 substitutions:
+  # Firebase客户端配置
+  _NEXT_PUBLIC_FIREBASE_API_KEY: 'AIzaSyCIQbFi0ogL2uAyRmAqeKn7iNGpun3AFfY'
+  _NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'perceptive-map-465407-s9.firebaseapp.com'
+  _NEXT_PUBLIC_FIREBASE_DATABASE_URL: 'https://perceptive-map-465407-s9-default-rtdb.firebaseio.com'
+  _NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'perceptive-map-465407-s9'
+  _NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'perceptive-map-465407-s9.firebasestorage.app'
+  _NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '383688111435'
+  _NEXT_PUBLIC_FIREBASE_APP_ID: '1:383688111435:web:948c86bc46b430222224ce'
+  _NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: 'G-90M1DVZKQT'
+  # Firebase服务端配置
   _FIREBASE_CONFIG: '{"projectId":"perceptive-map-465407-s9","authDomain":"perceptive-map-465407-s9.firebaseapp.com","storageBucket":"perceptive-map-465407-s9.appspot.com"}'
   _FIREBASE_PROJECT_ID: 'perceptive-map-465407-s9'
   _FIREBASE_CLIENT_EMAIL: 'firebase-adminsdk-fbsvc@perceptive-map-465407-s9.iam.gserviceaccount.com'
