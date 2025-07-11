@@ -15,7 +15,7 @@ import {
   writeBatch,
   Timestamp
 } from 'firebase/firestore';
-import { db } from './firebase-client';
+import { getDb } from './firebase';
 import { ImageData, Tag, Prompt, DBResult } from '@/types';
 
 // Firestore集合名称
@@ -28,7 +28,7 @@ const COLLECTIONS = {
 export class Database {
   // 获取所有图片（实时监听）
   static subscribeToImages(callback: (images: ImageData[]) => void, onError?: (error: Error) => void): () => void {
-    const dbInstance = db;
+    const dbInstance = getDb();
     if (!dbInstance) {
       onError?.(new Error('Firestore 未初始化'));
       return () => {};
@@ -65,7 +65,7 @@ export class Database {
 
   // 获取所有标签（实时监听）- 从图片数据中提取
   static subscribeToTags(callback: (tags: Tag[]) => void, onError?: (error: Error) => void): () => void {
-    const dbInstance = db;
+    const dbInstance = getDb();
     if (!dbInstance) {
       onError?.(new Error('Firestore 未初始化'));
       return () => {};
@@ -113,7 +113,7 @@ export class Database {
 
   // 监听特定图片的变化
   static subscribeToImage(id: string, callback: (image: ImageData | null) => void, onError?: (error: Error) => void): () => void {
-    const dbInstance = db;
+    const dbInstance = getDb();
     if (!dbInstance) {
       onError?.(new Error('Firestore 未初始化'));
       return () => {};
@@ -152,7 +152,7 @@ export class Database {
     try {
       const { prompt_blocks, ...mainImageData } = imageData;
 
-      const dbInstance = db;
+      const dbInstance = getDb();
       if (!dbInstance) {
         throw new Error('Firestore 未初始化');
       }
@@ -202,7 +202,7 @@ export class Database {
   // 获取所有图片（一次性）
   static async getAllImages(): Promise<DBResult<ImageData[]>> {
     try {
-      const dbInstance = db;
+      const dbInstance = getDb();
       if (!dbInstance) {
         throw new Error('Firestore 未初始化');
       }
@@ -240,7 +240,7 @@ export class Database {
   // 根据ID获取单个图片
   static async getImageById(id: string): Promise<DBResult<ImageData>> {
     try {
-      const dbInstance = db;
+      const dbInstance = getDb();
       if (!dbInstance) {
         throw new Error('Firestore 未初始化');
       }
@@ -284,7 +284,7 @@ export class Database {
   // 更新图片
   static async updateImage(id: string, updates: Partial<ImageData>): Promise<DBResult<ImageData>> {
     try {
-      const dbInstance = db;
+      const dbInstance = getDb();
       if (!dbInstance) {
         throw new Error('Firestore 未初始化');
       }
@@ -345,7 +345,7 @@ export class Database {
   // 删除图片
   static async deleteImage(id: string): Promise<DBResult<void>> {
     try {
-      const dbInstance = db;
+      const dbInstance = getDb();
       if (!dbInstance) {
         throw new Error('Firestore 未初始化');
       }
@@ -381,7 +381,7 @@ export class Database {
   // 获取所有标签 - 从图片数据中提取
   static async getAllTags(): Promise<DBResult<Tag[]>> {
     try {
-      const dbInstance = db;
+      const dbInstance = getDb();
       if (!dbInstance) {
         throw new Error('Firestore 未初始化');
       }

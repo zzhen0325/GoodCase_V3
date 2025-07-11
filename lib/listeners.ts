@@ -13,7 +13,7 @@ export class ListenerManager {
 
   // 初始化网络状态监听
   static initNetworkListener() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
       window.addEventListener('online', this.handleOnline.bind(this));
       window.addEventListener('offline', this.handleOffline.bind(this));
       this.isOnline = navigator.onLine;
@@ -107,7 +107,7 @@ export class ListenerManager {
     if (error.message.includes('network') || error.message.includes('offline')) {
       this.isOnline = false;
       setTimeout(() => {
-        if (navigator.onLine) {
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
           this.handleOnline();
         }
       }, this.reconnectDelay);

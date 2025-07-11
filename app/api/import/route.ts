@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { Database } from '@/lib/database';
 import { ExportData } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -22,16 +21,18 @@ export async function POST(request: NextRequest) {
     
     for (const image of data.images) {
       try {
-        const db = getAdminDb();
-        const docRef = await db.collection('images').add({
+        const result = await Database.addImage({
           title: image.title,
           url: image.url,
           prompts: image.prompts || [],
-          tags: image.tags || [],
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp()
+          tags: image.tags || []
         });
-        successCount++;
+        
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
       } catch (error) {
         errorCount++;
       }

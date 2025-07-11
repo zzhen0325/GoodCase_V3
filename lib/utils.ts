@@ -70,8 +70,19 @@ export function formatFileSize(bytes: number): string {
 // 复制到剪贴板
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } else {
+      // 降级方案：使用传统的复制方法
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return success;
+    }
   } catch (error) {
     console.error('复制失败:', error);
     return false;

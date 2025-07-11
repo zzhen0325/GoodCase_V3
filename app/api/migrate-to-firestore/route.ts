@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminStorage, getAdminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getStorageInstance } from '@/lib/firebase';
+import { ref as storageRef, listAll, getDownloadURL } from 'firebase/storage';
+import { Database } from '@/lib/database';
 import { ImageData } from '@/types';
 
 /**
@@ -20,37 +21,32 @@ export async function POST(request: NextRequest) {
     };
     
     // 获取Storage中的所有JSON文件
-    const storageInstance = getAdminStorage();
+    const storageInstance = getStorageInstance();
     if (!storageInstance) {
       throw new Error('Storage 未初始化');
     }
-    const bucket = getAdminStorage().bucket();
-    const [files] = await bucket.getFiles({ prefix: 'images/' });
+    const listRef = storageRef(storageInstance, 'images/');
+    const res = await listAll(listRef);
     
-    const jsonFiles = files.filter(file => file.name.endsWith('.json'));
+    const jsonFiles = res.items.filter(itemRef => itemRef.name.endsWith('.json'));
     migrationStats.total = jsonFiles.length;
     
     console.log(`发现 ${jsonFiles.length} 个JSON文件需要迁移`);
-
-    const db = getAdminDb();
-    for (const file of jsonFiles) {
-      const imageId = file.name.substring(file.name.lastIndexOf('/') + 1).replace('.json', '');
+    
+    for (const itemRef of jsonFiles) {
+      const imageId = itemRef.name.replace('.json', '');
       
       try {
         // 检查Firestore中是否已存在该图片
-        const imageRef = db.collection('images').doc(imageId);
-        const imageDoc = await imageRef.get();
-        if (imageDoc.exists && !dryRun) {
+        const existingImageResult = await Database.getImageById(imageId);
+        if (existingImageResult.success && !dryRun) {
           migrationStats.skipped++;
           console.log(`跳过已存在的图片: ${imageId}`);
           continue;
         }
         
         // 从Storage读取JSON数据
-        const [url] = await file.getSignedUrl({
-          action: 'read',
-          expires: '03-09-2491' // A long, long time in the future
-        });
+        const url = await getDownloadURL(itemRef);
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -62,17 +58,21 @@ export async function POST(request: NextRequest) {
         
         if (!dryRun) {
           // 迁移到Firestore
-          // 使用 set 和 imageId 来保持 ID 一致
-          await db.collection('images').doc(imageId).set({
-              url: imageData.url,
-              title: imageData.title,
-              prompts: imageData.prompts || [],
-              tags: imageData.tags || [],
-              createdAt: FieldValue.serverTimestamp(),
-              updatedAt: FieldValue.serverTimestamp(),
+          const result = await Database.addImage({
+            url: imageData.url,
+            title: imageData.title,
+            prompts: imageData.prompts || [],
+            tags: imageData.tags || [],
+            usageCount: imageData.usageCount || 0
           });
-          migrationStats.migrated++;
-          console.log(`成功迁移图片: ${imageId}`);
+          
+          if (result.success) {
+            migrationStats.migrated++;
+            console.log(`成功迁移图片: ${imageId}`);
+          } else {
+            migrationStats.failed++;
+            migrationStats.errors.push(`图片 ${imageId} 迁移失败: ${result.error}`);
+          }
         } else {
           // 干运行模式，只统计
           migrationStats.migrated++;
@@ -115,18 +115,17 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     // 获取Storage中的JSON文件数量
-    const storageInstance = getAdminStorage();
+    const storageInstance = getStorageInstance();
     if (!storageInstance) {
       throw new Error('Firebase Storage not initialized');
     }
-    const bucket = getAdminStorage().bucket();
-    const [files] = await bucket.getFiles({ prefix: 'images/' });
-    const jsonFiles = files.filter(file => file.name.endsWith('.json'));
+    const listRef = storageRef(storageInstance, 'images/');
+    const res = await listAll(listRef);
+    const jsonFiles = res.items.filter(itemRef => itemRef.name.endsWith('.json'));
     
     // 获取Firestore中的图片数量
-    const db = getAdminDb();
-    const imagesSnapshot = await db.collection('images').get();
-    const firestoreCount = imagesSnapshot.size;
+    const firestoreResult = await Database.getAllImages();
+    const firestoreCount = firestoreResult.success ? firestoreResult.data!.length : 0;
     
     return NextResponse.json({
       success: true,
