@@ -367,7 +367,7 @@ export class Database {
       if (imageData.url) {
         try {
           const imageStorageModule = await import('./image-storage');
-          await imageStorageModule.ImageStorage.deleteImage(imageData.url);
+          await imageStorageModule.ImageStorageService.deleteImage(imageData.url);
         } catch (storageError) {
           console.warn('删除存储中的图片失败，但继续删除数据库记录:', storageError);
           // 不阻止删除流程，即使存储删除失败也要删除数据库记录
