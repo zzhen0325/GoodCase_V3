@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, initializeFirestore, enableNetwork, disableNetwork, Firestore } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator, Storage } from 'firebase/storage';
+import { getStorage, connectStorageEmulator, FirebaseStorage } from 'firebase/storage';
 import { getAuth, connectAuthEmulator, Auth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -16,7 +16,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
-let storage: Storage;
+let storage: FirebaseStorage;
 
 if (typeof window !== 'undefined' && !getApps().length) {
   app = initializeApp(firebaseConfig);
