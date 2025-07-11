@@ -14,8 +14,9 @@ export class AdminImageStorageService {
 
       // 检查文件类型
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      console.log('文件类型检查:', { fileName: file.name, fileType: file.type, allowedTypes });
       if (!allowedTypes.includes(file.type)) {
-        throw new Error('不支持的文件类型');
+        throw new Error(`不支持的文件类型: ${file.type}。支持的类型: ${allowedTypes.join(', ')}`);
       }
 
       // 生成唯一文件名

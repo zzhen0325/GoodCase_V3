@@ -4,6 +4,15 @@ const nextConfig = {
     domains: ['localhost'],
     unoptimized: true
   },
+  experimental: {
+    serverComponentsExternalPackages: ['firebase-admin']
+  },
+  // 增加请求体大小限制
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb'
+    }
+  },
   webpack: (config, { isServer }) => {
     // 在客户端构建中排除服务端模块
     if (!isServer) {
