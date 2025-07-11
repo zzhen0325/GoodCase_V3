@@ -3,10 +3,10 @@
 
 steps:
   # 构建步骤
-  - name: 'gcr.io/cloud-builders/npm'
+  - name: 'gcr.io/cloud-builders/npm:20'
     args: ['install']
     
-  - name: 'gcr.io/cloud-builders/npm'
+  - name: 'gcr.io/cloud-builders/npm:20'
     args: ['run', 'build']
     env:
       # Firebase配置
@@ -16,12 +16,13 @@ steps:
       - 'FIREBASE_PRIVATE_KEY=${_FIREBASE_PRIVATE_KEY}'
     
   # 部署步骤
-  - name: 'gcr.io/cloud-builders/npm'
+  - name: 'gcr.io/cloud-builders/npm:20'
     args: ['run', 'deploy']
     env:
       - 'FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
       - 'FIREBASE_CLIENT_EMAIL=${_FIREBASE_CLIENT_EMAIL}'
       - 'FIREBASE_PRIVATE_KEY=${_FIREBASE_PRIVATE_KEY}'
+      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
 
 # 替换变量（在触发器中配置）
 substitutions:
