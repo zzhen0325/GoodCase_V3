@@ -2,6 +2,30 @@ import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { ImageData, SearchFilters } from '@/types';
 
+// 图片网格配置参数
+ export const gridConfig = {
+  columns: {
+    base: 1,
+    sm: 2,
+    md: 2,
+    lg: 3,
+    xl: 4,
+    '2xl': 4,
+    '3xl': 5,
+  },
+  gap: '20', // 网格间距
+};
+
+// 生成网格列数的Tailwind类名
+ export function getGridColumnsClass(): string {
+  const columns = gridConfig.columns;
+  return Object.entries(columns)
+    .map(([breakpoint, value]) => 
+      breakpoint === 'base' ? `grid-cols-${value}` : `${breakpoint}:grid-cols-${value}`
+    )
+    .join(' ');
+}
+
 // 合并CSS类名
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -38,7 +62,7 @@ export function filterImages(images: ImageData[], filters: SearchFilters): Image
     // 标签筛选匹配
     const tagMatch = filters.tags.length === 0 || 
       filters.tags.every(filterTag => 
-        image.tags.some(imageTag => imageTag.id === filterTag.id)
+        image.tags.some(imageTag => imageTag.id === filterTag)
       );
 
     return queryMatch && tagMatch;

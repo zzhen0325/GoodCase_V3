@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Download, Upload, Settings, Heart, FileText, Edit3, Check, Search, Tag as TagIcon, X, Bot, Wrench } from 'lucide-react';
+import { Edit3, Check, Search, Tag as TagIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tag, SearchFilters } from '@/types';
@@ -39,13 +39,6 @@ interface DockItem {
 
 // Dock组件属性
 interface DockProps {
-  onUpload?: () => void;
-  onImport?: () => void;
-  onExport?: () => void;
-  onFavorites?: () => void;
-  onSettings?: () => void;
-  onLarkDoc?: () => void;
-  onLemoTagger?: () => void;
   onEdit?: () => void;
   isEditMode?: boolean;
   onSearch?: (filters: SearchFilters) => void;
@@ -54,17 +47,11 @@ interface DockProps {
   availableTags?: Tag[];
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
+  selectedCount?: number;
 }
 
 // Dock导航组件
 export function Dock({ 
-  onUpload, 
-  onImport, 
-  onExport, 
-  onFavorites, 
-  onSettings, 
-  onLarkDoc, 
-  onLemoTagger,
   onEdit, 
   isEditMode,
   onSearch,
@@ -72,7 +59,8 @@ export function Dock({
   onTagsChange,
   availableTags = [],
   searchQuery = '',
-  onSearchQueryChange
+  onSearchQueryChange,
+  selectedCount = 0
 }: DockProps) {
   // 状态管理
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -131,9 +119,9 @@ export function Dock({
     () => debounce((searchQuery: string) => {
       if (onSearch) {
         onSearch({
-          query: searchQuery,
-          tags: selectedTags
-        });
+        query: searchQuery,
+        tags: selectedTags.map(tag => tag.id)
+      });
       }
       if (onSearchQueryChange) {
         onSearchQueryChange(searchQuery);
@@ -182,8 +170,8 @@ export function Dock({
       onSearch({
         query,
         tags: isSelected 
-          ? selectedTags.filter(t => t.id !== tag.id)
-          : [...selectedTags, tag]
+          ? selectedTags.filter(t => t.id !== tag.id).map(t => t.id)
+          : [...selectedTags, tag].map(t => t.id)
       });
     }
   };
@@ -265,32 +253,12 @@ export function Dock({
   ];
 
   const secondaryDockItems: DockItem[] = [
-   
     {
       id: 'edit',
       icon: isEditMode ? <Check className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />,
       label: isEditMode ? '完成编辑' : '编辑图片',
       onClick: onEdit || (() => {}),
       isActive: isEditMode,
-    },
-     {      id: 'upload',      icon: <Upload className="w-5 h-5" />,      label: '上传图片',      onClick: onUpload || (() => {}),    },
-    {
-      id: 'robot',
-      icon: <Bot className="w-5 h-5" />,
-      label: 'lemo-prompt',
-      onClick: () => window.open('https://www.coze.cn/store/agent/7517149263135670299?bot_id=true&bid=6grtojeg03g13', '_blank'),
-    },
-    {
-      id: 'tools',
-      icon: <Wrench className="w-5 h-5" />,
-      label: 'Tagger tool',
-      onClick: onLemoTagger || (() => {}),
-    },
-    {
-      id: 'lark-doc',
-      icon: <FileText className="w-5 h-5" />,
-      label: 'Lemon8 AI WIKI',
-      onClick: onLarkDoc || (() => {}),
     },
   ];
 
@@ -301,27 +269,27 @@ export function Dock({
   return (
     <>
       {/* 选中标签固定显示 */}
-      <div className="fixed bottom-40 left-0 right-0 flex justify-center z-50">
+      <div className="fixed bottom-32 left-0 right-0 flex justify-center z-40 px-4">
         <AnimatePresence>
           {selectedTags.length > 0 && (
             <motion.div 
-              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className="w-auto max-w-3xl bg-gray-100 border rounded-2xl p-4"
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="w-auto max-w-5xl bg-white/95 backdrop-blur-xl border border-gray-100 rounded-3xl p-4 shadow-2xl shadow-blue-500/10"
             >
-              <div className="flex flex-wrap gap-2 justify-center">
+              <div className="flex flex-wrap gap-3 justify-center">
                 {selectedTags.map((tag) => (
                   <Button
                     key={tag.id}
                     variant="default"
                     size="sm"
                     onClick={() => handleTagToggle(tag)}
-                    className="h-7 px-3 text-xs rounded-md bg-white text-black shadow-sm hover:bg-gray-300 transition-all duration-200"
+                    className="h-8 px-4 text-sm rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/25 hover:bg-blue-600 hover:scale-105 transition-all duration-300"
                   >
                     {tag.name}
-                    <X className="ml-1 h-3 w-3" />
+                    <X className="ml-2 h-4 w-4" />
                   </Button>
                 ))}
               </div>
@@ -330,23 +298,17 @@ export function Dock({
         </AnimatePresence>
       </div>
       
-      <div className="fixed bottom-20 left-0 right-0 flex justify-center z-50" ref={dockRef}>
+      <div className="fixed bottom-6 right-6 z-50" ref={dockRef}>
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           whileHover={{ 
-            y: isSearchActive || isTagsActive ? 0 : -8,
+            scale: isSearchActive || isTagsActive ? 1 : 1.05,
             transition: ANIMATION_CONFIG.hover.transition
           }}
           transition={{ duration: ANIMATION_CONFIG.duration, ease: ANIMATION_CONFIG.ease }}
           className="relative"
         >
-{/* 选中标签固定显示在视图中间 */}
-    
-      
-        
-
-        
         <motion.div 
           layout
           transition={{ 
@@ -355,9 +317,12 @@ export function Dock({
               ease: ANIMATION_CONFIG.ease
             }
           }}
-          style={{ width: isTagsActive ? '90rem' : (isSearchActive ? '40rem' : 'auto') }}
-          className={`bg-black border border-gray-700 rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 flex items-center justify-center ${
-            isTagsActive ? 'p-6' : 'p-2'
+          style={{ 
+            width: isTagsActive ? '80vw' : (isSearchActive ? '60vw' : 'auto'),
+            maxWidth: isTagsActive ? '1200px' : (isSearchActive ? '600px' : 'none')
+          }}
+          className={`bg-white/98 backdrop-blur-xl border border-gray-100 rounded-3xl shadow-2xl hover:shadow-3xl shadow-blue-500/5 transition-all duration-500 flex items-center justify-center ${
+            isTagsActive ? 'p-5' : 'p-4'
           }`}>
           <div className={`flex items-center ${isTagsActive ? 'justify-center gap-2' : (isSearchActive ? 'justify-center gap-2' : 'justify-between px-4')}`}>
 
@@ -399,17 +364,18 @@ export function Dock({
                 disabled={isAnimating && (item.id === 'search' || item.id === 'tags')}
                 className={`
                   relative h-12 w-12 rounded-xl transition-all duration-200
-                  group text-gray-100 hover:text-white
-                  ${item.isActive ? 'bg-white text-black shadow-md' : ''}
+                  group text-gray-600 hover:text-gray-900
+                  ${item.isActive ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-gray-100'}
                   ${isAnimating && (item.id === 'search' || item.id === 'tags') ? 'opacity-70 cursor-not-allowed' : ''}
                 `}
               >
                 {item.icon}
                 
                 {/* 悬浮文字提示 */}
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                  <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded-md shadow-lg whitespace-nowrap border border-gray-600">
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                  <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
                     {item.label}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                   </div>
                 </div>
                 
@@ -417,7 +383,7 @@ export function Dock({
                 {item.isActive && (
                   <motion.div
                     layoutId="activeIndicator"
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-black rounded-full"
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rounded-full"
                     transition={{ duration: ANIMATION_CONFIG.duration, ease: ANIMATION_CONFIG.ease }}
                   />
                 )}
@@ -445,14 +411,14 @@ export function Dock({
                   ease: ANIMATION_CONFIG.ease
                 }}
                 className="flex-grow pl-2">
-               <div className="relative w-full text-white">
+               <div className="relative w-full">
                  <Input
                     ref={searchInputRef}
                     type="text"
-                    placeholder="搜索..."
+                    placeholder="搜索图片..."
                     value={query}
                     onChange={handleSearchChange}
-                    className="w-full bg-transparent border-0 pl-2 pr-8 text-white placeholder-gray-400 focus:ring-0 focus:outline-none focus:bg-transparent focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-4 pr-10 text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
                   />
                  {query && (
                    <motion.div
@@ -464,7 +430,7 @@ export function Dock({
                      <Button
                        variant="ghost"
                        size="icon"
-                       className="absolute right-0 top-1/2 h-8 w-8 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                       className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
                        onClick={clearSearch}
                      >
                        <X className="h-4 w-4" />
@@ -495,7 +461,7 @@ export function Dock({
                 }}
                 className="flex-grow pl-2"
               >
-                <div className="flex flex-wrap gap-2 h-auto ml-4 overflow-y-auto">
+                <div className="flex flex-wrap gap-2 h-auto ml-2 overflow-y-auto max-h-32">
                   {availableTags.map((tag) => {
                     const isSelected = selectedTags.some(t => t.id === tag.id);
                     return (
@@ -510,8 +476,8 @@ export function Dock({
                           onClick={() => handleTagToggle(tag)}
                           className={`h-8 px-3 text-sm rounded-full transition-all duration-200 flex-shrink-0 ${
                             isSelected 
-                              ? 'bg-white text-black hover:bg-gray-200' 
-                              : 'bg-transparent text-gray-100 border-gray-500 hover:bg-white hover:text-black'
+                              ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm' 
+                              : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
                           }`}
                         >
                           {tag.name}
@@ -521,7 +487,7 @@ export function Dock({
                     );
                   })}
                   {availableTags.length === 0 && (
-                    <span className="text-xs text-gray-400 self-center">暂无可用标签...</span>
+                    <span className="text-xs text-gray-500 self-center">暂无可用标签...</span>
                   )}
                 </div>
               </motion.div>

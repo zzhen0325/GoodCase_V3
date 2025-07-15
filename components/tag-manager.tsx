@@ -77,7 +77,7 @@ export function TagManager({
   };
 
   // 获取可选择的标签（排除已选择的）
-  const selectableTags = availableTags.filter(
+  const selectableTags = (availableTags || []).filter(
     tag => !selectedTags.find(selected => selected.id === tag.id)
   );
 
@@ -99,12 +99,14 @@ export function TagManager({
             >
               <span>{tag.name}</span>
               {isEditing && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => removeTag(tag.id)}
-                  className="ml-1 hover:bg-black/10 rounded-xl p-0.5 transition-colors"
+                  className="ml-1 h-auto p-0.5 hover:bg-black/10"
                 >
                   <X className="h-3 w-3" />
-                </button>
+                </Button>
               )}
             </div>
           );
@@ -171,10 +173,11 @@ export function TagManager({
                       {selectableTags.map((tag) => {
                         const tagTheme = getColorTheme(tag.color);
                         return (
-                          <button
+                          <Button
                             key={tag.id}
+                            variant="ghost"
                             onClick={() => addExistingTag(tag)}
-                            className="w-full text-left px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2"
+                            className="w-full justify-start px-3 py-2 h-auto font-normal"
                           >
                             <div
                               className="w-3 h-3 rounded-full border"
@@ -184,7 +187,7 @@ export function TagManager({
                               }}
                             />
                             <span className="text-sm">{tag.name}</span>
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { X, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -303,7 +304,7 @@ export function LemoTagger({ isOpen, onClose }: LemoTaggerProps) {
 
                     {/* 文本编辑区域 */}
                     <div className="p-0">
-                      <textarea
+                      <Textarea
                         value={pair.textContent}
                         onChange={(e) => updateTextContent(pair.id, e.target.value)}
                         placeholder="在此输入或编辑提示词..."

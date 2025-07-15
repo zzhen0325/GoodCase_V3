@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 // 进度状态类型
 export type ProgressStatus = 'idle' | 'reading' | 'parsing' | 'uploading' | 'processing' | 'downloading' | 'preparing' | 'success' | 'error' | 'cancelled';
@@ -77,14 +78,7 @@ export function ProgressModal({
               <span className="text-muted-foreground">{Math.round(progress)}%</span>
             </div>
             
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <motion.div
-                className={`h-full ${config.bgColor} ${config.color.replace('text-', 'bg-').replace('-500', '-500')}`}
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-              />
-            </div>
+            <Progress value={progress} className="w-full" />
           </div>
           
           {/* 详细信息 */}

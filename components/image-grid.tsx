@@ -2,16 +2,9 @@
 
 import React, { useState, useCallback } from 'react';
 import { ImageData } from '@/types';
+import { gridConfig, getGridColumnsClass } from '@/lib/utils';
 import { ImageCard } from './image-card';
 
-// 磁力状态接口
-interface MagnetState {
-  index: number;
-  position: { x: number; y: number };
-  isActive: boolean;
-}
-
-// 图片网格组件属性
 interface ImageGridProps {
   images: ImageData[];
   onImageClick: (image: ImageData) => void;
@@ -19,61 +12,22 @@ interface ImageGridProps {
   isEditMode?: boolean;
   selectedImageIds?: Set<string>;
   onSelectImage?: (imageId: string, selected: boolean) => void;
+  isCompact?: boolean;
 }
 
-// 图片网格组件
 export const ImageGrid = React.memo(function ImageGrid({ 
   images, 
   onImageClick, 
   loading = false, 
   isEditMode = false, 
   selectedImageIds = new Set(), 
-  onSelectImage 
+  onSelectImage,
+  isCompact = false 
 }: ImageGridProps) {
-  // 全局磁力状态管理
-  const [magnetStates, setMagnetStates] = useState<Map<number, MagnetState>>(new Map());
-
-  // 更新磁力状态的回调函数
-  const updateMagnetState = useCallback((index: number, state: Partial<MagnetState>) => {
-    setMagnetStates(prev => {
-      const newStates = new Map(prev);
-      const currentState = newStates.get(index) || { index, position: { x: 0, y: 0 }, isActive: false };
-      newStates.set(index, { ...currentState, ...state });
-      return newStates;
-    });
-  }, []);
-
-  // 计算周围图片的偏移量
-  const calculateNearbyOffset = useCallback((currentIndex: number) => {
-    const activeMagnet = Array.from(magnetStates.values()).find(state => state.isActive && state.index !== currentIndex);
-    if (!activeMagnet) return { x: 0, y: 0 };
-
-    // 计算网格位置 - 使用最大列数进行计算
-    const cols = 5; // 3xl:grid-cols-5
-    const currentRow = Math.floor(currentIndex / cols);
-    const currentCol = currentIndex % cols;
-    const activeRow = Math.floor(activeMagnet.index / cols);
-    const activeCol = activeMagnet.index % cols;
-
-    // 计算距离和方向
-    const rowDiff = currentRow - activeRow;
-    const colDiff = currentCol - activeCol;
-    const distance = Math.sqrt(rowDiff * rowDiff + colDiff * colDiff);
-
-    // 只影响相邻的图片（距离小于等于2）
-    if (distance > 2) return { x: 0, y: 0 };
-
-    // 计算推斥力（距离越近，推斥力越强）
-    const force = Math.max(0, (2 - distance) / 2) * 15;
-    const offsetX = colDiff !== 0 ? (colDiff / Math.abs(colDiff)) * force : 0;
-    const offsetY = rowDiff !== 0 ? (rowDiff / Math.abs(rowDiff)) * force : 0;
-
-    return { x: offsetX, y: offsetY };
-  }, [magnetStates]);
   // 加载状态
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 3xl:grid-cols-5 gap-20">
+      <div className="grid ${getGridColumnsClass()} gap-${gridConfig.gap}">
         {Array.from({ length: 10 }).map((_, index) => (
           <div
             key={index}
@@ -114,29 +68,22 @@ export const ImageGrid = React.memo(function ImageGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 3xl:grid-cols-5 gap-20">
-      {images.map((image, index) => {
-        const nearbyOffset = calculateNearbyOffset(index);
-        return (
-          <div
-            key={image.id}
-            style={{
-              transform: `translate3d(${nearbyOffset.x}px, ${nearbyOffset.y}px, 0)`,
-              transition: 'transform 0.3s ease-out'
-            }}
-          >
-            <ImageCard
-              image={image}
-              onClick={onImageClick}
-              index={index}
-              onMagnetStateChange={updateMagnetState}
-              isEditMode={isEditMode}
-              isSelected={selectedImageIds.has(image.id)}
-              onSelect={onSelectImage}
-            />
-          </div>
-        );
-      })}
+    <div className={`grid gap-8 ${
+      isCompact 
+        ? 'grid-cols-1' 
+        : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
+    }`}>
+      {images.map((image, index) => (
+        <ImageCard
+          key={image.id}
+          image={image}
+          onClick={onImageClick}
+          index={index}
+          isEditMode={isEditMode}
+          isSelected={selectedImageIds.has(image.id)}
+          onSelect={onSelectImage}
+        />
+      ))}
     </div>
   );
 });

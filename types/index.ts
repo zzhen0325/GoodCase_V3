@@ -43,7 +43,7 @@ export interface Tag {
 // 搜索筛选参数
 export interface SearchFilters {
   query: string;
-  tags: Tag[];
+  tags: string[];
   sortBy?: string;
   sortOrder?: string;
   isFavorite?: boolean;
@@ -55,6 +55,15 @@ export interface DBResult<T> {
   data?: T;
   error?: string;
 }
+
+// 搜索结果类型
+export interface SearchResult {
+  filteredImages: ImageData[];
+  tagStats: TagStats;
+}
+
+// 标签统计类型
+export type TagStats = Record<string, number>;
 
 // 提示词和标签颜色主题
 export const COLOR_THEMES: ColorTheme[] = [

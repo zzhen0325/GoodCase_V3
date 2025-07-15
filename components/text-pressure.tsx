@@ -160,7 +160,9 @@ const TextPressure: React.FC<TextPressureProps> = ({
             ref={containerRef}
             className="relative w-full h-full overflow-hidden bg-transparent"
         >
-            <style>{`
+            <style
+                dangerouslySetInnerHTML={{
+                    __html: `
         @font-face {
           font-family: '${fontFamily}';
           src: url('${fontUrl}');
@@ -180,12 +182,13 @@ const TextPressure: React.FC<TextPressureProps> = ({
           -webkit-text-stroke-width: ${strokeWidth}px;
           -webkit-text-stroke-color: ${strokeColor};
         }
-      `}</style>
+      `,
+                }}
+            />
 
             <h1
                 ref={titleRef}
-                className={`text-pressure-title ${className} ${flex ? 'flex justify-between' : ''
-                    } ${stroke ? 'stroke' : ''} uppercase text-center`}
+                className={`text-pressure-title ${className} ${flex ? 'flex justify-between' : ''} ${stroke ? 'stroke' : ''} uppercase text-center`}
                 style={{
                     fontFamily,
                     fontSize: fontSize,

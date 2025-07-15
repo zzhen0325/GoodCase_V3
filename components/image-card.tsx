@@ -5,21 +5,10 @@ import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { ImageData } from '@/types';
 import { Card } from '@/components/ui/card';
-import Magnet from '@/components/magnet';
-
-// 磁力状态接口
-interface MagnetState {
-  index: number;
-  position: { x: number; y: number };
-  isActive: boolean;
-}
-
-// 图片卡片组件属性
 interface ImageCardProps {
   image: ImageData;
   onClick: (image: ImageData) => void;
   index: number;
-  onMagnetStateChange?: (index: number, state: Partial<MagnetState>) => void;
   isEditMode?: boolean;
   isSelected?: boolean;
   onSelect?: (imageId: string, selected: boolean) => void;
@@ -56,7 +45,6 @@ export const ImageCard = React.memo(function ImageCard({
   image, 
   onClick, 
   index, 
-  onMagnetStateChange, 
   isEditMode = false, 
   isSelected = false, 
   onSelect 
@@ -84,16 +72,7 @@ export const ImageCard = React.memo(function ImageCard({
     ...hoverVariants
   }), []);
 
-  // 处理磁力状态变化
-  const handleMagnetChange = useCallback((isActive: boolean, position: { x: number; y: number }) => {
-    if (onMagnetStateChange) {
-      onMagnetStateChange(index, {
-        index,
-        position,
-        isActive
-      });
-    }
-  }, [index, onMagnetStateChange]);
+
 
   return (
     <motion.div
@@ -102,92 +81,71 @@ export const ImageCard = React.memo(function ImageCard({
       initial="hidden"
       animate={inView ? "visible" : "hidden"}
       whileHover="hover"
-      className="cursor-pointer"
-      onClick={handleClick}
+      className="group relative aspect-w-1 aspect-h-1"
     >
-      <Magnet
-        padding={40}
-        magnetStrength={3}
-        activeTransition="transform 0.2s ease-out"
-        onStateChange={handleMagnetChange}
+      <Card 
+        className={`w-full h-full overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer bg-white  hover:shadow-xl ${
+          isEditMode ? (isSelected ? 'ring-2 ring-blue-500 shadow-2xl scale-95' : 'ring-1 ring-gray-300') : ''
+        }`}
+        onClick={handleClick}
       >
-        <Card className={`aspect-square overflow-hidden rounded-3xl hover:shadow-xl transition-all duration-300 ${
-          isEditMode ? (isSelected ? 'border-8 border-white shadow-2xl' : 'border-6 border-gray-300') : ''
-        }`}>
           <div className="relative w-full h-full">
-            {/* 选择指示器 */}
             {isEditMode && (
-              <div className="absolute top-2 right-2 z-10">
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  isSelected 
-                    ? 'bg-black border-black' 
-                    : 'bg-white border-gray-300'
-                }`}>
+              <div className="absolute top-3 right-3 z-10">
+                <motion.div 
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center backdrop-blur-sm transition-all duration-300 shadow-md ${
+                    isSelected 
+                      ? 'bg-blue-500 border-blue-500' 
+                      : 'bg-white/80 border-gray-300'
+                  }`}
+                >
                   {isSelected && (
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <motion.svg 
+                      className="w-4 h-4 text-white" 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    >
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                    </motion.svg>
                   )}
-                </div>
+                </motion.div>
               </div>
             )}
             
             {/* 图片容器 */}
-            <div className="w-full h-full bg-muted rounded-3xl flex items-center justify-center relative">
+            <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center relative overflow-hidden">
               {image.url ? (
                 <>
-                  <img
+                  <motion.img
                     src={image.url}
                     alt={image.title}
-                    className={`w-full h-full object-cover transition-all duration-300 hover:scale-105 ${
-                      image.isUploading ? 'opacity-70' : ''
+                    className={`w-full h-full object-cover transition-transform duration-300 ${
+                      image.isUploading ? 'opacity-50' : ''
                     }`}
                     loading="lazy"
+                    whileHover={{ scale: 1.05 }}
                   />
-                  {/* 上传中的蒙层和加载动画 */}
                   {image.isUploading && (
-                    <div className="absolute inset-0 bg-black/30 rounded-3xl flex items-center justify-center">
+                    <div className="absolute inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center">
                       <div className="flex flex-col items-center space-y-2">
-                        {/* 旋转加载动画 */}
-                        <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-white text-xs font-medium">上传中...</span>
+                        <div className="w-8 h-8 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-gray-600 text-xs font-medium">上传中</span>
                       </div>
                     </div>
                   )}
+                
                 </>
               ) : (
-                <div className="text-muted-foreground text-sm text-center p-4 rounded-2xl">
-                  暂无图片
+                <div className="text-gray-400 text-xs text-center p-2">
+                  No Image
                 </div>
               )}
             </div>
-            
-            {/* 图片信息覆盖层
-            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300">
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h3 className="text-white font-medium text-sm truncate mb-1">
-                  {image.title || '未命名图片'}
-                </h3>
-                <div className="flex flex-wrap gap-1">
-                  {image.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="inline-block px-2 py-1 text-xs bg-white/20 text-white rounded-full backdrop-blur-sm"
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
-                  {image.tags.length > 3 && (
-                    <span className="inline-block px-2 py-1 text-xs bg-white/20 text-white rounded-full backdrop-blur-sm">
-                      +{image.tags.length - 3}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div> */}
           </div>
         </Card>
-      </Magnet>
     </motion.div>
   );
 });

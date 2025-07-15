@@ -3,26 +3,24 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Search, X, Tag as TagIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+
 import { Button } from '@/components/ui/button';
 import { SearchFilters, Tag } from '@/types';
 import { debounce } from '@/lib/utils';
 
 // 搜索框组件属性
 interface SearchBarProps {
-  onSearch: (filters: SearchFilters) => void;
-  selectedTags: Tag[];
-  onTagsChange: (tags: Tag[]) => void;
   availableTags: Tag[];
-  placeholder?: string;
+  selectedTags: Tag[];
+  onSearch: (filters: { query: string; tags: Tag[] }) => void;
+  onTagsChange: (tags: Tag[]) => void;
 }
 
-// 搜索框组件
-export const SearchBar = React.memo(function SearchBar({ 
-  onSearch, 
-  selectedTags, 
-  onTagsChange,
+export function SearchBar({
   availableTags,
-  placeholder = "搜索图片、提示词或标签..." 
+  selectedTags,
+  onSearch,
+  onTagsChange,
 }: SearchBarProps) {
   const [query, setQuery] = useState('');
 
@@ -77,73 +75,29 @@ export const SearchBar = React.memo(function SearchBar({
   }, [onTagsChange]);
 
   return (
-    <div className="relative w-full rounded-2xl mb-10">
-      {/* 搜索输入框 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="">
+      <div className="relative ">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 transition-colors duration-200" />
         <Input
           type="text"
-          placeholder={placeholder}
+          placeholder="Search images..."
           value={query}
           onChange={handleInputChange}
-          className="pl-10 pr-10 rounded-2xl mt-6 "
+          className="w-full h-12 pl-11 pr-10 rounded-xl bg-gray-100  text-base placeholder:text-gray-400 focus:ring-2  focus:bg-white transition-all duration-300"
         />
         {query && (
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg hover:bg-white"
             onClick={clearSearch}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4 text-gray-500" />
           </Button>
         )}
       </div>
 
-      {/* 标签筛选区域 */}
-      {availableTags.length > 0 && (
-        <div className="mt-1">
-          <div className="flex items-center gap-2 mb-3">
-            {/* <TagIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">标签筛选</span> */}
-           
-          </div>
-          <div className="flex flex-wrap  gap-2">
-            {availableTags.map((tag) => {
-              const isSelected = selectedTags.some(t => t.id === tag.id);
-              return (
-                <Button
-                  key={tag.id}
-                  variant={isSelected ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleTagToggle(tag)}
-                  className={`h-8 px-3 text-xs rounded-full transition-all duration-200 ${
-                    isSelected 
-                      ? 'bg-primary text-primary-foreground shadow-sm' 
-                      : 'bg-background hover:bg-muted border-muted-foreground/20'
-                  }`}
-                >
-                  {tag.name}
-                  {isSelected && (
-                    <X className="ml-1 h-3 w-3" />
-                  )}
-                </Button>
-                
-              );
-            })}
-             {selectedTags.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllTags}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                清空 ({selectedTags.length})
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+
     </div>
   );
-});
+}

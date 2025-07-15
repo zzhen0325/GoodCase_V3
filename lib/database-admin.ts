@@ -108,6 +108,32 @@ export class DatabaseAdmin {
     }
   }
 
+  // 删除标签（从所有图片中移除）
+  static async deleteTag(tagId: string): Promise<void> {
+    try {
+      const { db } = await getServerFirebase();
+      const batch = db.batch();
+      const allImagesSnapshot = await db.collection(COLLECTIONS.IMAGES).get();
+
+      allImagesSnapshot.forEach(doc => {
+        const image = doc.data() as ImageDocument;
+        const initialTagsLength = image.tags?.length || 0;
+        const updatedTags = image.tags?.filter(t => t.id !== tagId);
+
+        if (updatedTags && updatedTags.length < initialTagsLength) {
+          const imageRef = db.collection(COLLECTIONS.IMAGES).doc(doc.id);
+          batch.update(imageRef, { tags: updatedTags });
+        }
+      });
+
+      await batch.commit();
+      console.log(`标签 ${tagId} 已从所有图片中移除`);
+    } catch (error) {
+      console.error(`删除标签 ${tagId} 失败:`, error);
+      throw new Error(`删除标签失败`);
+    }
+  }
+
   // 获取所有提示词
   static async getAllPrompts(): Promise<Prompt[]> {
     try {

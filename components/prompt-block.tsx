@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -8,6 +8,7 @@ import { Copy, Trash2, Palette, Check, X, GripVertical } from 'lucide-react';
 import { Prompt, COLOR_THEMES, getColorTheme } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { copyToClipboard } from '@/lib/utils';
 
 // 提示词块组件属性
@@ -35,6 +36,16 @@ export function PromptBlock({
   const [tempTitle, setTempTitle] = useState(prompt.title);
   const [tempContent, setTempContent] = useState(prompt.content);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditingContent && textAreaRef.current) {
+      // 自动调整高度
+      textAreaRef.current.style.height = 'auto';
+      const scrollHeight = textAreaRef.current.scrollHeight;
+      textAreaRef.current.style.height = `${scrollHeight}px`;
+    }
+  }, [isEditingContent, tempContent]);
 
   // 拖拽排序功能
   const {
@@ -220,9 +231,11 @@ export function PromptBlock({
                       <div className="absolute top-full right-0 mt-1 p-3 bg-background border rounded-lg shadow-lg z-10 min-w-[200px]">
                         <div className="grid grid-cols-4 gap-2">
                           {COLOR_THEMES.map((theme) => (
-                            <button
+                            <Button
                               key={theme.name}
-                              className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform flex items-center justify-center text-xs font-bold"
+                              variant="ghost"
+                              size="sm"
+                              className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform flex items-center justify-center text-xs font-bold p-0"
                               style={{ 
                                 backgroundColor: theme.bg,
                                 color: theme.text,
@@ -232,7 +245,7 @@ export function PromptBlock({
                               title={theme.name}
                             >
                               {theme.name.charAt(0).toUpperCase()}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
@@ -256,7 +269,9 @@ export function PromptBlock({
           {/* 内容 */}
           <div className="mb-3">
             {isEditingContent ? (
-              <textarea
+              <Textarea
+                ref={textAreaRef}
+                rows={1}
                 value={tempContent}
                 onChange={(e) => setTempContent(e.target.value)}
                 onBlur={saveContent}
@@ -264,13 +279,13 @@ export function PromptBlock({
                   if (e.key === 'Enter' && e.ctrlKey) saveContent();
                   if (e.key === 'Escape') cancelContentEdit();
                 }}
-                className="w-full p-2 text-sm border rounded-2xl resize-none min-h-[80px] max-h-[200px] overflow-y-auto focus:outline-none focus:ring-0 focus:ring-ring break-words"
+                className="w-full p-2 text-sm border rounded-2xl resize-none overflow-hidden focus:outline-none focus:ring-0 focus:ring-ring break-words"
                 autoFocus
                 style={{ color: currentTheme.text }}
               />
             ) : (
               <p
-                className="text-md text-bold whitespace-pre-wrap cursor-pointer break-words overflow-hidden"
+                className="text-md text-bold whitespace-pre-wrap h-auto cursor-pointer break-words overflow-hidden"
                 style={{ 
                   color: prompt.content ? currentTheme.text : `${currentTheme.text}80`,
                   wordBreak: 'break-word',

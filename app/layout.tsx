@@ -1,13 +1,19 @@
 import React from 'react'
 import type { Metadata, Viewport } from 'next'
-import { DM_Mono } from 'next/font/google'
-import { ToastProvider } from '@/components/toast-provider'
+import { Poppins, Roboto_Mono } from 'next/font/google'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
-const dmMono = DM_Mono({ 
+const poppins = Poppins({ 
   subsets: ['latin'],
-  weight: ['300', '400', '500'],
-  style: ['normal', 'italic']
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-sans'
+})
+
+const robotoMono = Roboto_Mono({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-mono'
 })
 
 export const metadata: Metadata = {
@@ -42,12 +48,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body className={`${dmMono.className} antialiased`}>
-        <ToastProvider>
-          <div className="min-h-screen bg-background text-foreground">
-            {children}
-          </div>
-        </ToastProvider>
+      <body className={`${poppins.variable} ${robotoMono.variable} font-sans antialiased`}>
+        <div className="min-h-screen bg-background text-foreground">
+          {children}
+        </div>
+        <Toaster />
       </body>
     </html>
   )

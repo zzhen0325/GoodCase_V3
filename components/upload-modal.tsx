@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ImageData, Prompt, Tag } from '@/types';
 import { TagManager } from './tag-manager';
 import { PromptBlock } from './prompt-block';
-import { useToastContext } from '@/components/toast-provider';
+import { toast } from 'sonner';
 import { generateId } from '@/lib/utils';
 import { ImageStorageService } from '@/lib/image-storage';
 
@@ -30,7 +30,7 @@ export function UploadModal({
   availableTags,
   onCreateTag
 }: UploadModalProps) {
-  const { toast } = useToastContext();
+
   const [imageName, setImageName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -102,16 +102,36 @@ export function UploadModal({
       
       // 创建默认的提示词块
       if (prompts.length === 0) {
-        const defaultPrompt: Prompt = {
-          id: generateId(),
-          title: '默认提示词',
-          content: fileName,
-          color: 'slate',
-          order: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setPrompts([defaultPrompt]);
+        const defaultPrompts: Prompt[] = [
+          {
+            id: generateId(),
+            title: '风格',
+            content: '',
+            color: 'slate',
+            order: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: generateId(),
+            title: '主体',
+            content: '',
+            color: 'slate',
+            order: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: generateId(),
+            title: '场景',
+            content: '',
+            color: 'slate',
+            order: 2,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        setPrompts(defaultPrompts);
       }
     } catch (error) {
       console.error('文件处理失败:', error);
