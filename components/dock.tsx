@@ -143,7 +143,7 @@ export function Dock({
     if (onSearch) {
       onSearch({
         query: '',
-        tags: selectedTags
+        tags: selectedTags.map(tag => tag.id)
       });
     }
     if (onSearchQueryChange) {

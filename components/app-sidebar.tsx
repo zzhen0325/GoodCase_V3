@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { GalleryVerticalEnd, Tag as TagIcon, Upload, MoreHorizontal } from "lucide-react"
-import { Tag } from "@/types"
+import { Tag, SearchFilters } from "@/types"
 
 import { SearchBar } from "@/components/search-bar"
 import { Button } from "@/components/ui/button"
@@ -37,7 +37,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   tags: Tag[]
   selectedTags: Tag[]
   onTagToggle?: (tag: Tag) => void
-  onSearch?: (filters: { query: string; tags: Tag[] }) => void
+  onSearch?: (filters: SearchFilters) => void
   onTagsChange?: (tags: Tag[]) => void
   onUpload?: () => void
   onGroupNameChange?: (colorName: string, newName: string) => void

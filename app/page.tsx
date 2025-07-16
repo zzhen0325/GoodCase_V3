@@ -151,7 +151,7 @@ const handleScroll = _.throttle(() => {
           handleSearchChange({
             ...searchFilters,
             query: filters.query,
-            tags: filters.tags.map(tag => tag.id)
+            tags: filters.tags
           })
         }}
         onTagsChange={(newTags) => {

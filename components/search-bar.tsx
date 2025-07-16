@@ -12,7 +12,7 @@ import { debounce } from '@/lib/utils';
 interface SearchBarProps {
   availableTags: Tag[];
   selectedTags: Tag[];
-  onSearch: (filters: { query: string; tags: Tag[] }) => void;
+  onSearch: (filters: SearchFilters) => void;
   onTagsChange: (tags: Tag[]) => void;
 }
 
@@ -29,7 +29,7 @@ export function SearchBar({
     () => debounce((searchQuery: string) => {
       onSearch({
         query: searchQuery,
-        tags: selectedTags
+        tags: selectedTags.map(tag => tag.id)
       });
     }, 300),
     [onSearch, selectedTags]
@@ -46,7 +46,7 @@ export function SearchBar({
     setQuery('');
     onSearch({
       query: '',
-      tags: selectedTags
+      tags: selectedTags.map(tag => tag.id)
     });
   }, [onSearch, selectedTags]);
 
