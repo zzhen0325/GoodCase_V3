@@ -108,6 +108,50 @@ export class DatabaseAdmin {
     }
   }
 
+  // 更新标签（在所有图片中更新）
+  static async updateTag(tagId: string, updates: Partial<Tag>): Promise<Tag> {
+    try {
+      const { db } = await getServerFirebase();
+      const batch = db.batch();
+      const allImagesSnapshot = await db.collection(COLLECTIONS.IMAGES).get();
+      
+      let updatedTag: Tag | null = null;
+
+      allImagesSnapshot.forEach(doc => {
+        const image = doc.data() as ImageDocument;
+        const tags = image.tags || [];
+        let hasUpdates = false;
+        
+        const updatedTags = tags.map(tag => {
+          if (tag.id === tagId) {
+            const newTag = { ...tag, ...updates, updatedAt: new Date().toISOString() };
+            updatedTag = newTag;
+            hasUpdates = true;
+            return newTag;
+          }
+          return tag;
+        });
+
+        if (hasUpdates) {
+          const imageRef = db.collection(COLLECTIONS.IMAGES).doc(doc.id);
+          batch.update(imageRef, { tags: updatedTags });
+        }
+      });
+
+      await batch.commit();
+      
+      if (!updatedTag) {
+        throw new Error(`标签 ${tagId} 未找到`);
+      }
+      
+      console.log(`标签 ${tagId} 已在所有图片中更新`);
+      return updatedTag;
+    } catch (error) {
+      console.error(`更新标签 ${tagId} 失败:`, error);
+      throw new Error(`更新标签失败`);
+    }
+  }
+
   // 删除标签（从所有图片中移除）
   static async deleteTag(tagId: string): Promise<void> {
     try {

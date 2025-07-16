@@ -81,15 +81,15 @@ export const ImageCard = React.memo(function ImageCard({
       initial="hidden"
       animate={inView ? "visible" : "hidden"}
       whileHover="hover"
-      className="group relative aspect-w-1 aspect-h-1"
+      className="group relative w-full"
     >
       <Card 
-        className={`w-full h-full overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer bg-white  hover:shadow-xl ${
+        className={`w-full overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer bg-white hover:shadow-xl ${
           isEditMode ? (isSelected ? 'ring-2 ring-blue-500 shadow-2xl scale-95' : 'ring-1 ring-gray-300') : ''
         }`}
         onClick={handleClick}
       >
-          <div className="relative w-full h-full">
+          <div className="relative w-full">
             {isEditMode && (
               <div className="absolute top-3 right-3 z-10">
                 <motion.div 
@@ -116,13 +116,13 @@ export const ImageCard = React.memo(function ImageCard({
             )}
             
             {/* 图片容器 */}
-            <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center relative overflow-hidden">
+            <div className="w-full bg-gray-100 rounded-2xl relative overflow-hidden">
               {image.url ? (
                 <>
                   <motion.img
                     src={image.url}
                     alt={image.title}
-                    className={`w-full h-full object-cover transition-transform duration-300 ${
+                    className={`w-full h-auto object-cover transition-transform duration-300 ${
                       image.isUploading ? 'opacity-50' : ''
                     }`}
                     loading="lazy"
@@ -139,7 +139,7 @@ export const ImageCard = React.memo(function ImageCard({
                 
                 </>
               ) : (
-                <div className="text-gray-400 text-xs text-center p-2">
+                <div className="text-gray-400 text-xs text-center p-8">
                   No Image
                 </div>
               )}

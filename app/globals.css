@@ -2,9 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 自定义滚动条样式 */
+@layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(209 213 219) rgb(243 244 246);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgb(243 244 246);
+    border-radius: 9999px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(209 213 219);
+    border-radius: 9999px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(156 163 175);
+  }
+}
+
 @layer base {
   :root {
-    --background: 253.3333 29.0323% 93.9216%;
+    --background: 0 0% 100%;
     --foreground: 0 0% 20%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 20%;
@@ -28,16 +55,16 @@
     --chart-3: 253.3333 29.0323% 93.9216%;
     --chart-4: 27.3333 100.0000% 82.3529%;
     --chart-5: 176.7785 60.3239% 51.5686%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 61.1215 100.0000% 79.0196%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 311.5385 100.0000% 94.9020%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 83.1373%;
-    --sidebar-ring: 46.7717 100% 75.0980%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
     --grid-background: 0 0% 100%;
-    --sidebar-height: 88vh;
+    --sidebar-height: 100vh;
     --font-sans: Poppins, sans-serif;
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: Roboto Mono, monospace;
@@ -79,14 +106,14 @@
     --chart-3: 254.3478 71.8750% 74.9020%;
     --chart-4: 117.0850 100.0000% 51.5686%;
     --chart-5: 105.1822 100.0000% 51.5686%;
-    --sidebar: 0 0% 98%;
-    --sidebar-foreground: 0 0% 89.8039%;
-    --sidebar-primary: 27.3333 100.0000% 82.3529%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 254.3478 71.8750% 74.9020%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 26.6667%;
-    --sidebar-ring: 27.3333 100.0000% 82.3529%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
     --font-sans: Poppins, sans-serif;
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: Roboto Mono, monospace;
@@ -99,6 +126,7 @@
     --shadow-lg: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 4px 6px -1px hsl(0 0% 0% / 0.00);
     --shadow-xl: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 8px 10px -1px hsl(0 0% 0% / 0.00);
     --shadow-2xl: 0 1px 25px 0px hsl(0 0% 0% / 0.00);
+    --sidebar-background: 240 5.9% 10%;
   }
   .theme {
     --font-sans: Poppins, sans-serif;

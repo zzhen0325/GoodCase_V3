@@ -35,6 +35,8 @@ export interface Tag {
   id: string;
   name: string;
   color: string;
+  group?: string; // 分组名称，可以为空
+  order?: number; // 在分组内的排序位置
   usageCount?: number;
   createdAt?: string;
   updatedAt?: string;

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { X, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DndContext, useDroppable, DragEndEvent } from '@dnd-kit/core';
 
 // 文件对接口
 interface FilePair {
@@ -76,25 +77,26 @@ export function LemoTagger({ isOpen, onClose }: LemoTaggerProps) {
     setFilePairs(prev => [...prev, ...newPairs]);
   };
 
-  // 拖拽处理
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!dropZoneRef.current?.contains(e.relatedTarget as Node)) {
-      setIsDragging(false);
+  // 使用 dnd-kit 的 droppable 区域
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'lemo-file-drop-zone',
+    data: {
+      accepts: ['file']
     }
-  };
+  });
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFiles(files);
+  // 监听拖拽状态
+  React.useEffect(() => {
+    setIsDragging(isOver);
+  }, [isOver]);
+
+  // 处理拖拽结束事件
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && over.id === 'lemo-file-drop-zone') {
+      // 这里可以处理文件拖拽到上传区域的逻辑
+      console.log('Files dragged to lemo drop zone');
     }
   };
 
@@ -193,6 +195,7 @@ export function LemoTagger({ isOpen, onClose }: LemoTaggerProps) {
           className="bg-[#fffdf5] rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
+          <DndContext onDragEnd={handleDragEnd}>
           {/* 头部 */}
           <div className="flex items-center justify-between p-6 border-b border-[#f0e6cc]">
             <div className="flex items-center gap-3">
@@ -215,15 +218,12 @@ export function LemoTagger({ isOpen, onClose }: LemoTaggerProps) {
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
             {/* 上传区域 */}
             <div
-              ref={dropZoneRef}
+              ref={setNodeRef}
               className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 mb-6 ${
                 isDragging 
                   ? 'border-black bg-[#fffff7]' 
                   : 'border-[#f0e6cc] bg-white hover:border-black hover:bg-[#fffff7]'
               }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
             >
               <p className="text-[#bababa] mb-4">
                 拖拽图片和TXT文件到此处，或点击下方按钮选择文件
@@ -328,6 +328,7 @@ export function LemoTagger({ isOpen, onClose }: LemoTaggerProps) {
               </div>
             )}
           </div>
+          </DndContext>
         </motion.div>
       </motion.div>
     </AnimatePresence>

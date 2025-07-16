@@ -7,7 +7,9 @@ import { useBatchOperations } from './use-batch-operations';
 import { useNavigation } from './use-navigation';
 import { useDataSync } from './use-data-sync';
 import { useDownloadProgress } from '@/components/download-progress-toast';
+import { useInfiniteScroll } from './use-infinite-scroll';
 import { ListenerManager } from '@/lib/listeners';
+import { useEffect } from 'react';
 
 /**
  * 主页面状态管理 Hook
@@ -59,6 +61,14 @@ export function useHomePage() {
     setActiveView: modalState.setActiveView,
   });
   
+  // 无限滚动
+  const infiniteScroll = useInfiniteScroll(imageState.filteredImages, 20);
+  
+  // 当搜索条件改变时重置分页
+  useEffect(() => {
+    infiniteScroll.resetPagination();
+  }, [imageState.searchFilters, infiniteScroll.resetPagination]);
+  
   // 获取监听器状态
   const getConnectionInfo = () => {
     const status = ListenerManager.getListenerStatus();
@@ -79,6 +89,12 @@ export function useHomePage() {
     ...batchOperations,
     ...navigation,
     ...dataSync,
+    
+    // 无限滚动
+    displayedImages: infiniteScroll.displayedImages,
+    hasMore: infiniteScroll.hasMore,
+    loadingMore: infiniteScroll.loadingMore,
+    loadMore: infiniteScroll.loadMore,
     
     // 工具函数
     getConnectionInfo,

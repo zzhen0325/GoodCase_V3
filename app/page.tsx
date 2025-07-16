@@ -1,7 +1,8 @@
 "use client"
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import _ from 'lodash';
+import { useRef, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ImageGrid } from '@/components/image-grid';
 import { ImageModal } from '@/components/image-modal';
 import { UploadModal } from '@/components/upload-modal';
@@ -10,11 +11,12 @@ import { ConnectionStatus } from '@/components/connection-status';
 import CircularText from '@/components/circular-text';
 import { DownloadProgressToast } from '@/components/download-progress-toast';
 import { LemoTagger } from '@/components/lemo-tagger';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
 import { AppSidebar } from '@/components/app-sidebar';
 import { useHomePage } from '@/hooks/use-home-page';
 import { Button } from '@/components/ui/button';
-import { Bot, Wrench, FileText } from 'lucide-react';
+import { Bot, Wrench, FileText, ArrowUp } from 'lucide-react';
 
 // 主页面组件
 export default function HomePage() {
@@ -23,6 +25,7 @@ export default function HomePage() {
     // 状态
     images,
     filteredImages,
+    displayedImages,
     tags,
     isLoading,
     searchFilters,
@@ -33,10 +36,14 @@ export default function HomePage() {
     isLemoTaggerOpen,
     activeView,
     isEditMode,
+    isSidebarEditMode,
     selectedImageIds,
     downloadProgress,
+    hasMore,
+    loadingMore,
     
     // 操作函数
+    loadMore,
     handleSearchChange,
     handleImageClick,
     handleImageUpdate,
@@ -47,8 +54,11 @@ export default function HomePage() {
     handleTagCreate,
     handleCreateTag,
     handleTagDelete,
+    handleTagUpdate,
+    handleGroupNameChange,
     handleSelectImage,
     handleSelectAll,
+    handleSidebarEditModeToggle,
     handleBatchDelete,
     handleBatchExport,
     handleImport,
@@ -64,6 +74,39 @@ export default function HomePage() {
     refreshData,
     getConnectionInfo,
   } = useHomePage();
+
+  // 滚动状态管理
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // 监听滚动事件
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // 添加滚动节流
+const handleScroll = _.throttle(() => {
+  const scrollTop = container.scrollTop;
+  const { scrollHeight, clientHeight } = container;
+  setShowScrollTop(scrollTop > 200);
+  
+  // 自动加载更多（保留原有逻辑）
+  if (scrollHeight - scrollTop - clientHeight < 100 && !loadingMore && hasMore) {
+    loadMore();
+  }
+}, 200);
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // 滚动到顶部
+  const scrollToTop = () => {
+    scrollContainerRef.current?.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
 
 
@@ -90,145 +133,133 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header栏 */}
-      <header className="h-16 flex items-center justify-between px-6 sticky top-0 z-10 bg-white border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-gray-900">Gooodcase</h1>
-        </div>
-        
-        {/* 右上角工具按钮 */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.open('https://www.coze.cn/store/agent/7517149263135670299?bot_id=true&bid=6grtojeg03g13', '_blank')}
-            className="h-9 px-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Bot className="w-4 h-4 mr-2" />
-            lemo-prompt
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLemoTagger}
-            className="h-9 px-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Wrench className="w-4 h-4 mr-2" />
-            Tagger tool
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLarkDoc}
-            className="h-9 px-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Lemon8 AI WIKI
-          </Button>
-        </div>
-      </header>
-      
-      {/* 主要内容区域 */}
-      <div className="flex-1 flex ">
-        <SidebarProvider>
-          <AppSidebar 
-            tags={tags}
-            selectedTags={tags.filter(tag => searchFilters.tags.includes(tag.id))}
-            onTagToggle={(tag) => {
-              const isSelected = searchFilters.tags.includes(tag.id)
-              const newTags = isSelected
-                ? searchFilters.tags.filter(id => id !== tag.id)
-                : [...searchFilters.tags, tag.id]
-              handleSearchChange({
-                ...searchFilters,
-                tags: newTags
-              })
-            }}
-            onSearch={(filters) => {
-              handleSearchChange({
-                ...searchFilters,
-                query: filters.query,
-                tags: filters.tags.map(tag => tag.id)
-              })
-            }}
-            onTagsChange={(newTags) => {
-              handleSearchChange({
-                ...searchFilters,
-                tags: newTags.map(tag => tag.id)
-              })
-            }}
-            onUpload={handleUpload}
-          />
-        
-        {/* 主容器 - 图片网格区域 */}
-          <div className="flex-1 flex px-6">
-            {/* 固定尺寸的网格容器 */}
-            <div 
-              className="flex rounded-3xl overflow-hidden" 
-              style={{
-                backgroundColor: 'hsl(var(--grid-background))',
-                height: 'var(--sidebar-height)', // 使用统一的侧边栏高度变量
-                width: 'calc(100vw - 20rem)', // 90vw减去侧边栏宽度(16rem)
-                maxHeight: '90vh', // 限制在屏幕可视区域内
-              }}
-            >
-              {/* ImageModal 区域 - 面板形式，居中显示 */}
-              {selectedImage && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="w-full"
-                >
-                  <div className="h-full rounded-3xl overflow-hidden">
-                    <ImageModal
-                      isOpen={isImageModalOpen}
-                      image={selectedImage}
-                      onClose={closeImageModal}
-                      onUpdate={handleImageUpdate}
-                      onDelete={handleImageDelete}
-                      onCreateTag={handleCreateTag}
-                      availableTags={tags}
-                      onCopyPrompt={handleCopyPrompt}
-                      onDuplicate={handleImageDuplicate}
-                      isPanel={true}
-                      images={filteredImages}
-                      currentIndex={filteredImages.findIndex(img => img.id === selectedImage.id)}
-                      onNavigate={(direction) => {
-                        const currentIndex = filteredImages.findIndex(img => img.id === selectedImage.id)
-                        const newIndex = direction === 'prev' 
-                          ? (currentIndex - 1 + filteredImages.length) % filteredImages.length
-                          : (currentIndex + 1) % filteredImages.length
-                        handleImageClick(filteredImages[newIndex])
-                      }}
-                    />
-                  </div>
-                </motion.div>
-              )}
-
-              {/* 图片网格区域 */}
-              {!selectedImage && (
-                <div className="flex-1 h-full overflow-y-auto">
-                  <div className="p-6">
-                    <ImageGrid
-                      images={filteredImages}
-                      onImageClick={handleImageClick}
-                      isEditMode={isEditMode}
-                      selectedImageIds={selectedImageIds}
-                      onSelectImage={handleSelectImage}
-                      isCompact={false}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+    <SidebarProvider>
+      <AppSidebar 
+        tags={tags}
+        selectedTags={tags.filter(tag => searchFilters.tags.includes(tag.id))}
+        onTagToggle={(tag) => {
+          const isSelected = searchFilters.tags.includes(tag.id)
+          const newTags = isSelected
+            ? searchFilters.tags.filter(id => id !== tag.id)
+            : [...searchFilters.tags, tag.id]
+          handleSearchChange({
+            ...searchFilters,
+            tags: newTags
+          })
+        }}
+        onSearch={(filters) => {
+          handleSearchChange({
+            ...searchFilters,
+            query: filters.query,
+            tags: filters.tags.map(tag => tag.id)
+          })
+        }}
+        onTagsChange={(newTags) => {
+          handleSearchChange({
+            ...searchFilters,
+            tags: newTags.map(tag => tag.id)
+          })
+        }}
+        onUpload={handleUpload}
+        onGroupNameChange={handleGroupNameChange}
+        // 将右上角工具按钮传递给侧边栏
+        toolButtons={[
+          {
+            label: "lemo-prompt",
+            icon: Bot,
+            onClick: () => window.open('https://www.coze.cn/store/agent/7517149263135670299?bot_id=true&bid=6grtojeg03g13', '_blank')
+          },
+          {
+            label: "Tagger tool",
+            icon: Wrench,
+            onClick: handleLemoTagger
+          },
+          {
+            label: "Lemon8 AI WIKI",
+            icon: FileText,
+            onClick: handleLarkDoc
+          }
+        ]}
+      />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gray-900">Gooodcase!</h1>
           </div>
-        </SidebarProvider>
-      </div>
+        </header>
+        
+        {/* 主容器 - 图片瀑布流区域 */}
+        <div className="flex flex-1 flex-col gap-4 p-10 ">
+          {/* ImageModal 区域 - 面板形式，居中显示 */}
+          {selectedImage && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="w-full"
+            >
+              <div className="h-full rounded-3xl overflow-hidden">
+                <ImageModal
+                  isOpen={isImageModalOpen}
+                  image={selectedImage}
+                  onClose={closeImageModal}
+                  onUpdate={handleImageUpdate}
+                  onDelete={handleImageDelete}
+                  onCreateTag={handleCreateTag}
+                  availableTags={tags}
+                  onCopyPrompt={handleCopyPrompt}
+                  onDuplicate={handleImageDuplicate}
+                  isPanel={true}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* 图片网格区域 - 瀑布流布局，可滚动 */}
+          {!selectedImage && (
+            <div 
+                ref={scrollContainerRef}
+                className="h-[calc(100vh-12rem)] overflow-y-auto relative scroll-smooth custom-scrollbar"
+              >
+              <ImageGrid
+                images={displayedImages}
+                onImageClick={handleImageClick}
+                isEditMode={isEditMode}
+                selectedImageIds={selectedImageIds}
+                onSelectImage={handleSelectImage}
+                isCompact={false}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+                loadingMore={loadingMore}
+              />
+              
+              {/* 返回顶部按钮 */}
+              <AnimatePresence>
+                {showScrollTop && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed bottom-8 right-8 z-50"
+                  >
+                    <Button
+                      onClick={scrollToTop}
+                      size="lg"
+                      className="rounded-full w-12 h-12 shadow-lg hover:shadow-xl transition-shadow"
+                    >
+                      <ArrowUp className="h-5 w-5" />
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      </SidebarInset>
       
       {/* 上传弹窗 */}
       <UploadModal
@@ -254,6 +285,6 @@ export default function HomePage() {
          progress={downloadProgress.progress}
          onClose={downloadProgress.hideToast}
        />
-    </div>
+    </SidebarProvider>
   );
 }

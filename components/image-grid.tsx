@@ -1,9 +1,11 @@
 "use client"
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ImageData } from '@/types';
 import { gridConfig, getGridColumnsClass } from '@/lib/utils';
 import { ImageCard } from './image-card';
+import { Loader2 } from 'lucide-react';
 
 interface ImageGridProps {
   images: ImageData[];
@@ -13,6 +15,9 @@ interface ImageGridProps {
   selectedImageIds?: Set<string>;
   onSelectImage?: (imageId: string, selected: boolean) => void;
   isCompact?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 export const ImageGrid = React.memo(function ImageGrid({ 
@@ -22,17 +27,70 @@ export const ImageGrid = React.memo(function ImageGrid({
   isEditMode = false, 
   selectedImageIds = new Set(), 
   onSelectImage,
-  isCompact = false 
+  isCompact = false,
+  hasMore = false,
+  onLoadMore,
+  loadingMore = false
 }: ImageGridProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  
+  // 滚动加载检测
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !onLoadMore || !hasMore) return;
+    
+    const handleScroll = () => {
+      setIsScrolling(true);
+      
+      // 检测是否接近底部
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const threshold = 200; // 距离底部200px时开始加载
+      
+      if (scrollHeight - scrollTop - clientHeight < threshold && !loadingMore) {
+        onLoadMore();
+      }
+      
+      // 滚动停止检测
+      clearTimeout((window as any).scrollTimer);
+      (window as any).scrollTimer = setTimeout(() => {
+        setIsScrolling(false);
+      }, 150);
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      clearTimeout((window as any).scrollTimer);
+    };
+  }, [onLoadMore, hasMore, loadingMore]);
   // 加载状态
   if (loading) {
     return (
-      <div className="grid ${getGridColumnsClass()} gap-${gridConfig.gap}">
-        {Array.from({ length: 10 }).map((_, index) => (
-          <div
+      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10">
+        {Array.from({ length: 12 }).map((_, index) => (
+          <motion.div
             key={index}
-            className="aspect-square bg-muted animate-pulse rounded-2xl"
-          />
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1, duration: 0.5 }}
+            className="break-inside-avoid mb-6"
+          >
+            <div className="bg-muted animate-pulse rounded-2xl overflow-hidden">
+              <div 
+                className="w-full bg-gradient-to-br from-muted to-muted/50"
+                style={{ height: `${Math.random() * 200 + 200}px` }}
+              />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-muted-foreground/20 rounded animate-pulse" />
+                <div className="h-3 bg-muted-foreground/10 rounded w-3/4 animate-pulse" />
+                <div className="flex gap-2">
+                  <div className="h-6 w-12 bg-muted-foreground/10 rounded-full animate-pulse" />
+                  <div className="h-6 w-16 bg-muted-foreground/10 rounded-full animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
         ))}
       </div>
     );
@@ -68,22 +126,86 @@ export const ImageGrid = React.memo(function ImageGrid({
   }
 
   return (
-    <div className={`grid gap-8 ${
-      isCompact 
-        ? 'grid-cols-1' 
-        : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
-    }`}>
-      {images.map((image, index) => (
-        <ImageCard
-          key={image.id}
-          image={image}
-          onClick={onImageClick}
-          index={index}
-          isEditMode={isEditMode}
-          isSelected={selectedImageIds.has(image.id)}
-          onSelect={onSelectImage}
-        />
-      ))}
+    <div ref={containerRef} className="relative">
+      {/* 滚动指示器 */}
+      <AnimatePresence>
+        {isScrolling && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="fixed top-20 right-6 z-50 bg-background/80 backdrop-blur-sm border rounded-full p-2 shadow-lg"
+          >
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* 图片网格 */}
+      <div className={`columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10 ${
+        isCompact ? 'columns-1' : ''
+      }`}>
+        <AnimatePresence>
+          {images.map((image, index) => (
+            <motion.div 
+              key={image.id} 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: index * 0.05, duration: 0.4 }}
+              className="break-inside-avoid mb-6"
+            >
+              <ImageCard
+                image={image}
+                onClick={onImageClick}
+                index={index}
+                isEditMode={isEditMode}
+                isSelected={selectedImageIds.has(image.id)}
+                onSelect={onSelectImage}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      
+      {/* 加载更多指示器 */}
+      <AnimatePresence>
+        {loadingMore && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex items-center justify-center py-8"
+          >
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm font-medium">加载更多图片...</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* 到达底部提示 */}
+      <AnimatePresence>
+        {!hasMore && images.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex items-center justify-center py-8"
+          >
+            <div className="text-center text-muted-foreground">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-muted flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium">已显示全部图片</p>
+              <p className="text-xs mt-1">共 {images.length} 张图片</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });

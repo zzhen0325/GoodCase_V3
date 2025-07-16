@@ -7,6 +7,7 @@ import { ImageData } from '@/types';
  */
 export function useEditMode() {
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isSidebarEditMode, setIsSidebarEditMode] = useState(false);
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
 
   // ESC键退出编辑模式
@@ -57,16 +58,24 @@ export function useEditMode() {
     }
   }, [selectedImageIds.size]);
 
+  // 切换边栏编辑模式
+  const handleSidebarEditModeToggle = useCallback(() => {
+    setIsSidebarEditMode(!isSidebarEditMode);
+  }, [isSidebarEditMode]);
+
   return {
     // 状态
     isEditMode,
+    isSidebarEditMode,
     selectedImageIds,
     
     // 状态更新函数
     setIsEditMode,
+    setIsSidebarEditMode,
     setSelectedImageIds,
     handleImport,
     handleSelectImage,
     handleSelectAll,
+    handleSidebarEditModeToggle,
   };
 }

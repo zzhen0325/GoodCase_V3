@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Copy, Trash2, Palette, Check, X, GripVertical } from 'lucide-react';
+import { Copy, Trash2, Palette, Check, X } from 'lucide-react';
 import { Prompt, COLOR_THEMES, getColorTheme } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,35 +113,24 @@ export function PromptBlock({
     <motion.div
       ref={setNodeRef}
       style={style}
-      className={`relative group ${isDragging ? 'z-50' : ''}`}
+      className={`relative group ${isDragging ? 'z-50 opacity-50' : ''}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.2 }}
+      {...(isEditing ? attributes : {})}
+      {...(isEditing ? listeners : {})}
     >
       <div
-        className="p-4 rounded-2xl transition-all duration-200 relative flex "
+        className={`p-4 rounded-2xl transition-all duration-200 relative flex ${
+          isEditing ? 'cursor-grab active:cursor-grabbing hover:shadow-md' : ''
+        }`}
         style={{ 
           borderColor: currentTheme.text,
           backgroundColor: currentTheme.bg
         }}
       >
-        {/* 拖拽按钮 */}
-        {isEditing && (
-          <div className="flex items-center mr-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 cursor-grab active:cursor-grabbing hover:bg-gray-100"
-              style={{ color: currentTheme.text }}
-              {...attributes}
-              {...listeners}
-              title="拖拽排序"
-            >
-              <GripVertical className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+
         
         {/* 主要内容区域 */}
         <div className="flex-1">

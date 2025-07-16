@@ -163,6 +163,28 @@ export class ApiClient {
     }
   }
 
+  // 更新标签
+  static async updateTag(id: string, tagData: Partial<Tag>): Promise<{ success: boolean; data?: Tag; error?: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/tags/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tagData),
+      });
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('更新标签失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '更新标签失败'
+      };
+    }
+  }
+
   // 删除标签
   static async deleteTag(id: string): Promise<{ success: boolean; error?: string }> {
     try {

@@ -63,10 +63,36 @@ export function useTagOperations({ searchFilters, handleSearchChange }: UseTagOp
     }
   }, []);
 
+  // 处理标签更新
+  const handleTagUpdate = useCallback(async (tagId: string, updates: Partial<Tag>) => {
+    try {
+      const result = await ApiClient.updateTag(tagId, updates);
+      if (result.success) {
+        console.log('✅ 标签更新成功，实时监听器将自动更新UI');
+        // 实时监听器会自动更新tags状态，无需手动更新
+        return result.data;
+      } else {
+        console.error('❌ 标签更新失败:', result.error);
+        throw new Error(result.error || '更新失败');
+      }
+    } catch (error) {
+      console.error('❌ 更新标签时出错:', error);
+      throw error;
+    }
+  }, []);
+
+  // 处理分组名称修改
+  const handleGroupNameChange = useCallback((colorName: string, newName: string) => {
+    // 这里可以添加持久化逻辑，目前只是本地状态管理
+    console.log('🏷️ 修改分组名称:', colorName, '->', newName);
+  }, []);
+
   return {
     handleTagClick,
     handleTagCreate,
     handleCreateTag,
     handleTagDelete,
+    handleTagUpdate,
+    handleGroupNameChange,
   };
 }
