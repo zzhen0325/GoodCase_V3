@@ -1,21 +1,25 @@
-"use client"
+"use client";
 
 import { useEffect } from "react";
 import { motion, useAnimation, useMotionValue } from "framer-motion";
 
-const getRotationTransition = (duration: number, from: number, loop = true) => ({
+const getRotationTransition = (
+  duration: number,
+  from: number,
+  loop = true,
+) => ({
   from,
   to: from + 360,
-  ease: "linear",
+  ease: "linear" as const,
   duration,
-  type: "tween",
+  type: "tween" as const,
   repeat: loop ? Infinity : 0,
 });
 
 const getTransition = (duration: number, from: number) => ({
   rotate: getRotationTransition(duration, from),
   scale: {
-    type: "spring",
+    type: "spring" as const,
     damping: 20,
     stiffness: 300,
   },
@@ -63,8 +67,8 @@ const CircularText = ({
         break;
       case "pause":
         transitionConfig = {
-          rotate: { type: "spring", damping: 20, stiffness: 300 },
-          scale: { type: "spring", damping: 20, stiffness: 300 },
+          rotate: { type: "spring" as const, damping: 20, stiffness: 300 },
+          scale: { type: "spring" as const, damping: 20, stiffness: 300 },
         };
         scaleVal = 1;
         break;
@@ -94,30 +98,33 @@ const CircularText = ({
 
   return (
     <motion.div
-      className={`m-0 mx-auto rounded-full w-[100px] h-[100px] relative text-black font-black text-center cursor-pointer origin-center ${className}`}
       style={{ rotate: rotation }}
       initial={{ rotate: 0 }}
       animate={controls}
-      onMouseEnter={handleHoverStart}
-      onMouseLeave={handleHoverEnd}
     >
-      {letters.map((letter, i) => {
-        const rotationDeg = (360 / letters.length) * i;
-        const factor = Math.PI / letters.length;
-        const x = factor * i;
-        const y = factor * i;
-        const transform = `rotateZ(${rotationDeg}deg) translate3d(${x}px, ${y}px, 0)`;
+      <div
+        className={`m-0 mx-auto rounded-full w-[100px] h-[100px] relative text-black font-black text-center cursor-pointer origin-center ${className}`}
+        onMouseEnter={handleHoverStart}
+        onMouseLeave={handleHoverEnd}
+      >
+        {letters.map((letter, i) => {
+          const rotationDeg = (360 / letters.length) * i;
+          const factor = Math.PI / letters.length;
+          const x = factor * i;
+          const y = factor * i;
+          const transform = `rotateZ(${rotationDeg}deg) translate3d(${x}px, ${y}px, 0)`;
 
-        return (
-          <span
-            key={i}
-            className="absolute inline-block inset-0 text-sm transition-all duration-500 ease-linear"
-            style={{ transform, WebkitTransform: transform }}
-          >
-            {letter}
-          </span>
-        );
-      })}
+          return (
+            <span
+              key={i}
+              className="absolute inline-block inset-0 text-sm transition-all duration-500 ease-linear"
+              style={{ transform, WebkitTransform: transform }}
+            >
+              {letter}
+            </span>
+          );
+        })}
+      </div>
     </motion.div>
   );
 };

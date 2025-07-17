@@ -1,98 +1,200 @@
-import { useCallback } from 'react';
-import { Tag, SearchFilters } from '@/types';
-import { ApiClient } from '@/lib/api';
+import { useState } from "react";
+import { TagGroup, Tag } from "@/types";
+import { useTagGroups } from "./use-tag-groups";
+import { useTags } from "./use-tags";
 
-interface UseTagOperationsProps {
-  searchFilters: SearchFilters;
-  handleSearchChange: (filters: SearchFilters) => void;
-}
+export function useTagOperations() {
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
-/**
- * 标签操作 Hook
- * 负责处理标签的增删改查操作
- */
-export function useTagOperations({ searchFilters, handleSearchChange }: UseTagOperationsProps) {
+  const {
+    tagGroups,
+    loading: groupsLoading,
+    error: groupsError,
+    createTagGroup,
+    updateTagGroup,
+    deleteTagGroup,
+    refresh: refreshGroups,
+  } = useTagGroups();
 
-  // 处理标签点击
-  const handleTagClick = (tag: Tag) => {
-    handleSearchChange({
-      ...searchFilters,
-      tags: searchFilters.tags.includes(tag.id)
-        ? searchFilters.tags.filter(t => t !== tag.id)
-        : [...searchFilters.tags, tag.id]
+  const {
+    tags,
+    loading: tagsLoading,
+    error: tagsError,
+    createTag,
+    updateTag,
+    deleteTag,
+    refresh: refreshTags,
+  } = useTags();
+
+  // 根据分组组织标签
+  const getTagsByGroup = () => {
+    const groupedTags: Record<string, { group: TagGroup; tags: Tag[] }> = {};
+
+    tagGroups.forEach((group) => {
+      groupedTags[group.id] = {
+        group,
+        tags: tags.filter((tag) => tag.groupId === group.id),
+      };
     });
+
+    return groupedTags;
   };
 
-  // 处理标签创建
-  const handleTagCreate = useCallback(async (tagData: Omit<Tag, 'id'>) => {
-    console.log('🏷️ 创建标签:', tagData.name);
-    const result = await ApiClient.addTag(tagData);
-    
-    if (result.success && result.data) {
-      console.log('✅ 标签创建成功，实时监听器将自动更新UI');
-      // 实时监听器会自动更新tags状态，无需手动更新
-      return result.data;
+  // 过滤标签（根据搜索查询）
+  const getFilteredTags = () => {
+    if (!searchQuery) return tags;
+
+    return tags.filter((tag) =>
+      tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  };
+
+  // 过滤标签分组（根据搜索查询）
+  const getFilteredTagGroups = () => {
+    if (!searchQuery) return tagGroups;
+
+    return tagGroups.filter(
+      (group) =>
+        group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tags.some(
+          (tag) =>
+            tag.groupId === group.id &&
+            tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        ),
+    );
+  };
+
+  // 切换标签选择状态
+  const toggleTagSelection = (tagId: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId],
+    );
+  };
+
+  // 清空标签选择
+  const clearTagSelection = () => {
+    setSelectedTags([]);
+  };
+
+  // 选择所有标签
+  const selectAllTags = () => {
+    setSelectedTags(tags.map((tag) => tag.id));
+  };
+
+  // 根据分组选择标签
+  const selectTagsByGroup = (groupId: string) => {
+    const groupTags = tags.filter((tag) => tag.groupId === groupId);
+    const groupTagIds = groupTags.map((tag) => tag.id);
+
+    // 如果该分组的所有标签都已选中，则取消选择
+    const allSelected = groupTagIds.every((id) => selectedTags.includes(id));
+
+    if (allSelected) {
+      setSelectedTags((prev) => prev.filter((id) => !groupTagIds.includes(id)));
     } else {
-      console.error('❌ 标签创建失败:', result.error);
-      throw new Error(result.error || '创建失败');
+      setSelectedTags((prev) => {
+        const newSelection = [...prev];
+        groupTagIds.forEach((id) => {
+          if (!newSelection.includes(id)) {
+            newSelection.push(id);
+          }
+        });
+        return newSelection;
+      });
     }
-  }, []);
+  };
 
-  // 处理创建标签的包装函数
-  const handleCreateTag = useCallback(async (tagData: Omit<Tag, 'id'>) => {
-    return await handleTagCreate(tagData);
-  }, [handleTagCreate]);
+  // 获取选中的标签对象
+  const getSelectedTagObjects = () => {
+    return tags.filter((tag) => selectedTags.includes(tag.id));
+  };
 
-  // 处理标签删除
-  const handleTagDelete = useCallback(async (tagId: string) => {
-    const confirmed = confirm('确定要删除这个标签吗？删除后将从所有图片中移除。');
-    if (!confirmed) return;
-
+  // 批量删除选中的标签
+  const deleteSelectedTags = async () => {
     try {
-      const result = await ApiClient.deleteTag(tagId);
-      if (result.success) {
-        console.log('✅ 标签删除成功，实时监听器将自动更新UI');
-        // 实时监听器会自动更新tags状态，无需手动更新
-      } else {
-        console.error('❌ 标签删除失败:', result.error);
-        alert('删除标签失败: ' + (result.error || '未知错误'));
-      }
+      await Promise.all(selectedTags.map((tagId) => deleteTag(tagId)));
+      setSelectedTags([]);
+      refreshTags();
+      refreshGroups(); // 刷新分组以更新标签计数
     } catch (error) {
-      console.error('❌ 删除标签时出错:', error);
-      alert('删除标签失败: ' + (error as Error).message);
-    }
-  }, []);
-
-  // 处理标签更新
-  const handleTagUpdate = useCallback(async (tagId: string, updates: Partial<Tag>) => {
-    try {
-      const result = await ApiClient.updateTag(tagId, updates);
-      if (result.success) {
-        console.log('✅ 标签更新成功，实时监听器将自动更新UI');
-        // 实时监听器会自动更新tags状态，无需手动更新
-        return result.data;
-      } else {
-        console.error('❌ 标签更新失败:', result.error);
-        throw new Error(result.error || '更新失败');
-      }
-    } catch (error) {
-      console.error('❌ 更新标签时出错:', error);
+      console.error("批量删除标签失败:", error);
       throw error;
     }
-  }, []);
+  };
 
-  // 处理分组名称修改
-  const handleGroupNameChange = useCallback((colorName: string, newName: string) => {
-    // 这里可以添加持久化逻辑，目前只是本地状态管理
-    console.log('🏷️ 修改分组名称:', colorName, '->', newName);
-  }, []);
+  // 刷新所有数据
+  const refreshAll = () => {
+    refreshGroups();
+    refreshTags();
+  };
+
+  // 根据标签ID获取标签对象
+  const getTagById = (id: string) => {
+    return tags.find((tag) => tag.id === id);
+  };
+
+  // 根据分组ID获取分组对象
+  const getTagGroupById = (id: string) => {
+    return tagGroups.find((group) => group.id === id);
+  };
+
+  // 获取标签的分组信息
+  const getTagGroup = (tag: Tag) => {
+    return tagGroups.find((group) => group.id === tag.groupId);
+  };
 
   return {
-    handleTagClick,
-    handleTagCreate,
-    handleCreateTag,
-    handleTagDelete,
-    handleTagUpdate,
-    handleGroupNameChange,
+    // 数据
+    tagGroups,
+    tags,
+    selectedTags,
+    searchQuery,
+
+    // 加载状态
+    loading: groupsLoading || tagsLoading,
+    groupsLoading,
+    tagsLoading,
+
+    // 错误状态
+    error: groupsError || tagsError,
+    groupsError,
+    tagsError,
+
+    // 标签分组操作
+    createTagGroup,
+    updateTagGroup,
+    deleteTagGroup,
+
+    // 标签操作
+    createTag,
+    updateTag,
+    deleteTag,
+
+    // 选择操作
+    toggleTagSelection,
+    clearTagSelection,
+    selectAllTags,
+    selectTagsByGroup,
+    deleteSelectedTags,
+
+    // 搜索
+    setSearchQuery,
+
+    // 数据获取
+    getTagsByGroup,
+    getFilteredTags,
+    getFilteredTagGroups,
+    getSelectedTagObjects,
+    getTagById,
+    getTagGroupById,
+    getTagGroup,
+
+    // 刷新
+    refreshAll,
+    refreshGroups,
+    refreshTags,
   };
 }

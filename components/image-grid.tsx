@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ImageData } from '@/types';
-import { ImageCard } from './image-card';
-import { Loader2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ImageData } from "@/types";
+import { ImageCard } from "./image-card";
+import { Loader2 } from "lucide-react";
 
 interface ImageGridProps {
   images: ImageData[];
@@ -19,41 +19,44 @@ interface ImageGridProps {
   loadingMore?: boolean;
 }
 
-export const ImageGrid = React.memo(function ImageGrid({ 
-  images, 
-  onImageClick, 
-  loading = false, 
-  isEditMode = false, 
-  selectedImageIds = new Set(), 
+export const ImageGrid = React.memo(function ImageGrid({
+  images,
+  onImageClick,
+  loading = false,
+  isEditMode = false,
+  selectedImageIds = new Set(),
   onSelectImage,
   isCompact = false,
   hasMore = false,
   onLoadMore,
-  loadingMore = false
+  loadingMore = false,
 }: ImageGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
-  
+
   // 滚动加载检测
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !onLoadMore || !hasMore) return;
-    
+
     const handleScroll = () => {
       setIsScrolling(true);
       const { scrollTop, scrollHeight, clientHeight } = container;
-      
+
       if (scrollHeight - scrollTop - clientHeight < 200 && !loadingMore) {
         onLoadMore();
       }
-      
+
       clearTimeout((window as any).scrollTimer);
-      (window as any).scrollTimer = setTimeout(() => setIsScrolling(false), 150);
+      (window as any).scrollTimer = setTimeout(
+        () => setIsScrolling(false),
+        150,
+      );
     };
-    
-    container.addEventListener('scroll', handleScroll);
+
+    container.addEventListener("scroll", handleScroll);
     return () => {
-      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener("scroll", handleScroll);
       clearTimeout((window as any).scrollTimer);
     };
   }, [onLoadMore, hasMore, loadingMore]);
@@ -70,7 +73,7 @@ export const ImageGrid = React.memo(function ImageGrid({
             className="break-inside-avoid mb-6"
           >
             <div className="bg-muted animate-pulse rounded-2xl overflow-hidden">
-              <div 
+              <div
                 className="w-full bg-gradient-to-br from-muted to-muted/50"
                 style={{ height: `${Math.random() * 200 + 200}px` }}
               />
@@ -108,9 +111,7 @@ export const ImageGrid = React.memo(function ImageGrid({
             />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-foreground mb-2">
-          暂无图片
-        </h3>
+        <h3 className="text-lg font-medium text-foreground mb-2">暂无图片</h3>
         <p className="text-muted-foreground max-w-sm">
           还没有添加任何图片，点击右下角的 + 按钮开始添加您的第一张图片吧！
         </p>
@@ -133,14 +134,13 @@ export const ImageGrid = React.memo(function ImageGrid({
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* 图片网格 */}
-      <div className={`columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10${isCompact ? ' !columns-1' : ''}`}>
+      <div
+        className={`columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10${isCompact ? " !columns-1" : ""}`}
+      >
         {images.map((image, index) => (
-          <div 
-            key={image.id} 
-            className="break-inside-avoid mb-6"
-          >
+          <div key={image.id} className="break-inside-avoid mb-6">
             <ImageCard
               image={image}
               onClick={onImageClick}
@@ -152,7 +152,7 @@ export const ImageGrid = React.memo(function ImageGrid({
           </div>
         ))}
       </div>
-      
+
       {/* 加载更多指示器 */}
       <AnimatePresence>
         {loadingMore && (
@@ -169,7 +169,7 @@ export const ImageGrid = React.memo(function ImageGrid({
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* 到达底部提示 */}
       <AnimatePresence>
         {!hasMore && images.length > 0 && (
@@ -181,8 +181,18 @@ export const ImageGrid = React.memo(function ImageGrid({
           >
             <div className="text-center text-muted-foreground">
               <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-muted flex items-center justify-center">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <p className="text-sm font-medium">已显示全部图片</p>

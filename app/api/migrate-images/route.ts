@@ -1,6 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { Database } from '@/lib/database';
-import { convertToWebp, detectImageFormat, estimateImageSize } from '@/lib/image-utils';
+import { NextRequest, NextResponse } from "next/server";
+import { Database } from "@/lib/database";
+import {
+  convertToWebp,
+  detectImageFormat,
+  estimateImageSize,
+} from "@/lib/image-utils";
 
 /**
  * 图片格式迁移API
@@ -9,17 +13,15 @@ import { convertToWebp, detectImageFormat, estimateImageSize } from '@/lib/image
 export async function POST(request: NextRequest) {
   try {
     const { dryRun = true } = await request.json();
-    
+
     // 获取所有图片
-    const result = await Database.getAllImages();
-    
+    const database = Database.getInstance();
+    const result = await database.getAllImages();
+
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
-    
+
     const images = result.data!;
     const migrationStats = {
       total: images.length,
@@ -28,38 +30,40 @@ export async function POST(request: NextRequest) {
       failed: 0,
       sizeBefore: 0,
       sizeAfter: 0,
-      errors: [] as string[]
+      errors: [] as string[],
     };
-    
+
     for (const image of images) {
-      if (!image.url || !image.url.startsWith('data:')) {
+      if (!image.url || !image.url.startsWith("data:")) {
         continue;
       }
-      
+
       const format = detectImageFormat(image.url);
       const originalSize = estimateImageSize(image.url);
       migrationStats.sizeBefore += originalSize;
-      
-      if (format !== 'webp') {
+
+      if (format !== "webp") {
         migrationStats.needsMigration++;
-        
+
         if (!dryRun) {
           try {
             // 转换为webp格式
             const webpUrl = await convertToWebp(image.url, 0.8);
             const newSize = estimateImageSize(webpUrl);
             migrationStats.sizeAfter += newSize;
-            
+
             // 更新数据库
-            const updateResult = await Database.updateImage(image.id, {
-              url: webpUrl
+            const updateResult = await database.updateImage(image.id, {
+              url: webpUrl,
             });
-            
+
             if (updateResult.success) {
               migrationStats.migrated++;
             } else {
               migrationStats.failed++;
-              migrationStats.errors.push(`图片 ${image.id} 更新失败: ${updateResult.error}`);
+              migrationStats.errors.push(
+                `图片 ${image.id} 更新失败: ${updateResult.error}`,
+              );
             }
           } catch (error) {
             migrationStats.failed++;
@@ -75,27 +79,28 @@ export async function POST(request: NextRequest) {
         migrationStats.sizeAfter += originalSize;
       }
     }
-    
-    const compressionRatio = migrationStats.sizeBefore > 0 
-      ? ((migrationStats.sizeBefore - migrationStats.sizeAfter) / migrationStats.sizeBefore * 100).toFixed(1)
-      : '0';
-    
+
+    const compressionRatio =
+      migrationStats.sizeBefore > 0
+        ? (
+            ((migrationStats.sizeBefore - migrationStats.sizeAfter) /
+              migrationStats.sizeBefore) *
+            100
+          ).toFixed(1)
+        : "0";
+
     return NextResponse.json({
       success: true,
       dryRun,
       stats: {
         ...migrationStats,
         compressionRatio: `${compressionRatio}%`,
-        sizeSaved: migrationStats.sizeBefore - migrationStats.sizeAfter
-      }
+        sizeSaved: migrationStats.sizeBefore - migrationStats.sizeAfter,
+      },
     });
-    
   } catch (error) {
-    console.error('图片迁移失败:', error);
-    return NextResponse.json(
-      { error: '图片迁移失败' },
-      { status: 500 }
-    );
+    console.error("图片迁移失败:", error);
+    return NextResponse.json({ error: "图片迁移失败" }, { status: 500 });
   }
 }
 
@@ -104,15 +109,13 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   try {
-    const result = await Database.getAllImages();
-    
+    const database = Database.getInstance();
+    const result = await database.getAllImages();
+
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
-    
+
     const images = result.data!;
     const stats = {
       total: images.length,
@@ -121,44 +124,40 @@ export async function GET() {
       png: 0,
       gif: 0,
       other: 0,
-      invalid: 0
+      invalid: 0,
     };
-    
+
     for (const image of images) {
-      if (!image.url || !image.url.startsWith('data:')) {
+      if (!image.url || !image.url.startsWith("data:")) {
         stats.invalid++;
         continue;
       }
-      
+
       const format = detectImageFormat(image.url);
       switch (format) {
-        case 'webp':
+        case "webp":
           stats.webp++;
           break;
-        case 'jpeg':
+        case "jpeg":
           stats.jpeg++;
           break;
-        case 'png':
+        case "png":
           stats.png++;
           break;
-        case 'gif':
+        case "gif":
           stats.gif++;
           break;
         default:
           stats.other++;
       }
     }
-    
+
     return NextResponse.json({
       success: true,
-      stats
+      stats,
     });
-    
   } catch (error) {
-    console.error('获取迁移状态失败:', error);
-    return NextResponse.json(
-      { error: '获取迁移状态失败' },
-      { status: 500 }
-    );
+    console.error("获取迁移状态失败:", error);
+    return NextResponse.json({ error: "获取迁移状态失败" }, { status: 500 });
   }
 }

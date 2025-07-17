@@ -1,56 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseAdmin } from '@/lib/database-admin';
-import { Tag } from '@/types';
+import { NextRequest, NextResponse } from "next/server";
+import { DatabaseAdmin } from "@/lib/database-admin";
 
+// 更新标签
 export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tagId = params.id;
-    if (!tagId) {
+    const { name, groupId } = await request.json();
+    const { id } = await params;
+
+    if (!name || !groupId) {
       return NextResponse.json(
-        { success: false, error: '缺少标签 ID' },
-        { status: 400 }
+        { success: false, error: "标签名称和分组ID不能为空" },
+        { status: 400 },
       );
     }
 
-    const updates: Partial<Tag> = await req.json();
-    const updatedTag = await DatabaseAdmin.updateTag(tagId, updates);
-    
-    return NextResponse.json({ 
-      success: true, 
-      data: updatedTag,
-      message: `标签 ${tagId} 已成功更新` 
-    });
+    // 检查分组是否存在
+    const tagGroup = await DatabaseAdmin.getTagGroupById(groupId);
+    if (!tagGroup) {
+      return NextResponse.json(
+        { success: false, error: "指定的分组不存在" },
+        { status: 400 },
+      );
+    }
+
+    const tag = await DatabaseAdmin.updateTag(id, { name, groupId });
+    return NextResponse.json({ success: true, data: tag });
   } catch (error) {
-    console.error('更新标签失败:', error);
+    console.error("更新标签失败:", error);
     return NextResponse.json(
-      { success: false, error: '更新标签失败' },
-      { status: 500 }
+      { success: false, error: "更新标签失败" },
+      { status: 500 },
     );
   }
 }
 
+// 删除标签
 export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tagId = params.id;
-    if (!tagId) {
-      return NextResponse.json(
-        { success: false, error: '缺少标签 ID' },
-        { status: 400 }
-      );
-    }
-    await DatabaseAdmin.deleteTag(tagId);
-    return NextResponse.json({ success: true, message: `标签 ${tagId} 已成功删除` });
+    const { id } = await params;
+
+    // 删除标签前，需要从所有使用该标签的图片中移除
+    await DatabaseAdmin.removeTagFromAllImages(id);
+    await DatabaseAdmin.deleteTag(id);
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('删除标签失败:', error);
+    console.error("删除标签失败:", error);
     return NextResponse.json(
-      { success: false, error: '删除标签失败' },
-      { status: 500 }
+      { success: false, error: "删除标签失败" },
+      { status: 500 },
     );
   }
 }

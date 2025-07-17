@@ -25,12 +25,14 @@
 ## 开始使用
 
 ### 1. 克隆仓库
+
 ```bash
 git clone [repository-url]
 cd good3
 ```
 
 ### 2. 安装依赖
+
 ```bash
 npm install
 ```
@@ -38,11 +40,13 @@ npm install
 ### 3. 配置Firebase
 
 复制环境变量模板：
+
 ```bash
 cp .env.example .env.local
 ```
 
 在 `.env.local` 中配置你的Firebase项目信息：
+
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
@@ -53,6 +57,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
 
 ### 4. 运行开发服务器
+
 ```bash
 npm run dev
 ```
@@ -87,19 +92,23 @@ npm start
 ## API文档
 
 ### 图片管理
+
 - `GET /api/images` - 获取图片列表
 - `POST /api/images` - 上传新图片
 - `PUT /api/images/[id]` - 更新图片信息
 - `DELETE /api/images/[id]` - 删除图片
 
 ### 标签管理
+
 - `GET /api/tags` - 获取所有标签
 - `POST /api/tags` - 创建新标签
 
 ### 提示词管理
+
 - `GET /api/prompts` - 获取所有提示词
 
 ### 数据导入导出
+
 - `GET /api/export` - 导出数据
 - `POST /api/import` - 导入数据
 - `GET /api/export-package` - 导出完整数据包
@@ -108,6 +117,7 @@ npm start
 ## 开发指南
 
 ### 添加新功能
+
 1. 在 `types/` 目录下定义相关类型
 2. 在 `lib/database.ts` 中添加数据库操作方法
 3. 在 `app/api/` 下创建API路由
@@ -115,12 +125,15 @@ npm start
 5. 更新相关的Hooks和Context
 
 ### 数据库操作
+
 项目使用Firebase Firestore作为数据库，主要集合包括：
+
 - `images` - 图片信息
 - `tags` - 标签数据
 - `prompts` - 提示词数据
 
 ### 样式指南
+
 - 使用Tailwind CSS进行样式设计
 - 遵循响应式设计原则
 - 使用Framer Motion添加动画效果

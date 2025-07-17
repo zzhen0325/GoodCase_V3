@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Copy, Trash2, Palette, Check, X } from 'lucide-react';
-import { Prompt, COLOR_THEMES, getColorTheme } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { copyToClipboard, cn } from '@/lib/utils';
+import React, { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Copy, Trash2, Palette, Check, X } from "lucide-react";
+import { Prompt, COLOR_THEMES, getColorTheme } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { copyToClipboard, cn } from "@/lib/utils";
 
 // 提示词块组件属性
 interface PromptBlockProps {
@@ -23,26 +23,28 @@ interface PromptBlockProps {
 }
 
 // 提示词块组件
-export function PromptBlock({ 
-  prompt, 
-  isEditing, 
-  onUpdate, 
-  onDelete, 
+export function PromptBlock({
+  prompt,
+  isEditing,
+  onUpdate,
+  onDelete,
   onCopy,
-  onEnterEditMode 
+  onEnterEditMode,
 }: PromptBlockProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [tempTitle, setTempTitle] = useState(prompt.title);
-  const [tempContent, setTempContent] = useState(prompt.content);
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [tempTitle, setTempTitle] = useState(prompt.text);
+  const [tempContent, setTempContent] = useState(prompt.text);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">(
+    "idle",
+  );
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isEditingContent && textAreaRef.current) {
       // 自动调整高度
-      textAreaRef.current.style.height = 'auto';
+      textAreaRef.current.style.height = "auto";
       const scrollHeight = textAreaRef.current.scrollHeight;
       textAreaRef.current.style.height = `${scrollHeight}px`;
     }
@@ -65,39 +67,39 @@ export function PromptBlock({
 
   // 保存标题
   const saveTitle = () => {
-    onUpdate(prompt.id, { title: tempTitle });
+    onUpdate(prompt.id, { text: tempTitle });
     setIsEditingTitle(false);
   };
 
   // 保存内容
   const saveContent = () => {
-    onUpdate(prompt.id, { content: tempContent });
+    onUpdate(prompt.id, { text: tempContent });
     setIsEditingContent(false);
   };
 
   // 取消编辑
   const cancelTitleEdit = () => {
-    setTempTitle(prompt.title);
+    setTempTitle(prompt.text);
     setIsEditingTitle(false);
   };
 
   const cancelContentEdit = () => {
-    setTempContent(prompt.content);
+    setTempContent(prompt.text);
     setIsEditingContent(false);
   };
 
   // 复制提示词
   const handleCopy = async () => {
-    const success = await copyToClipboard(prompt.content);
+    const success = await copyToClipboard(prompt.text);
     if (success) {
-      setCopyStatus('success');
-      onCopy(prompt.content);
+      setCopyStatus("success");
+      onCopy(prompt.text);
       // 2秒后重置状态
-      setTimeout(() => setCopyStatus('idle'), 2000);
+      setTimeout(() => setCopyStatus("idle"), 2000);
     } else {
-      setCopyStatus('error');
+      setCopyStatus("error");
       // 2秒后重置状态
-      setTimeout(() => setCopyStatus('idle'), 2000);
+      setTimeout(() => setCopyStatus("idle"), 2000);
     }
   };
 
@@ -108,31 +110,70 @@ export function PromptBlock({
   };
 
   // 获取当前颜色主题
-  const currentTheme = getColorTheme(prompt.color);
+  const currentTheme = getColorTheme(prompt.color || "default");
 
   return (
-    <motion.div
-      ref={setNodeRef}
-      style={style}
-      className={`relative group ${isDragging ? 'z-50 opacity-50' : ''}`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.2 }}
-      {...(isEditing ? attributes : {})}
-      {...(isEditing ? listeners : {})}
-    >
-      <Badge
-        variant="outline"
-        className={cn(
-          "w-full p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col gap-3 hover:shadow-md",
-          isEditing ? 'cursor-grab active:cursor-grabbing' : ''
-        )}
-        style={{ 
-          borderColor: currentTheme.text,
-          backgroundColor: currentTheme.bg,
-          color: currentTheme.text
-        }}
+    <div className="relative group">
+      {/* 非编辑模式下的复制按钮 - 放在滚动容器外面 */}
+      {!isEditing && (
+        <div className="absolute -top-6 right-2 z-[100] opacity-0 group-hover:opacity-100 transition-all duration-200 transform group-hover:scale-100 scale-95">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-8 w-8 rounded-full transition-colors bg-white hover:bg-gray-50 shadow-lg border border-gray-200",
+                copyStatus === "success"
+                  ? "text-green-600 hover:text-green-700"
+                  : copyStatus === "error"
+                    ? "text-red-600 hover:text-red-700"
+                    : "text-gray-600 hover:text-gray-700",
+              )}
+              onClick={handleCopy}
+              title={
+                copyStatus === "success"
+                  ? "复制成功"
+                  : copyStatus === "error"
+                    ? "复制失败"
+                    : "复制"
+              }
+            >
+              {copyStatus === "success" ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : copyStatus === "error" ? (
+                <X className="h-3.5 w-3.5" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </Button>
+
+            {/* 状态提示 */}
+            {copyStatus !== "idle" && (
+              <div
+                className={cn(
+                  "absolute -bottom-8 right-0 px-2 py-1 text-xs rounded shadow-lg z-20 whitespace-nowrap",
+                  copyStatus === "success"
+                    ? "bg-green-100 text-green-800 border border-green-200"
+                    : "bg-red-100 text-red-800 border border-red-200",
+                )}
+              >
+                {copyStatus === "success" ? "复制成功" : "复制失败"}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <motion.div
+        ref={setNodeRef}
+        style={style}
+        className={`relative group ${isDragging ? "z-50 opacity-50" : ""}`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.2 }}
+        {...(isEditing ? attributes : {})}
+        {...(isEditing ? listeners : {})}
       >
         {/* 标题和操作按钮区域 */}
         <div className="flex items-center justify-between w-full">
@@ -143,75 +184,28 @@ export function PromptBlock({
                 onChange={(e) => setTempTitle(e.target.value)}
                 onBlur={saveTitle}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveTitle();
-                  if (e.key === 'Escape') cancelTitleEdit();
+                  if (e.key === "Enter") saveTitle();
+                  if (e.key === "Escape") cancelTitleEdit();
                 }}
                 className="text-sm font-semibold h-7 px-2 border-0 bg-transparent"
                 style={{ color: currentTheme.text }}
                 autoFocus
               />
             ) : (
-              <Badge
-                variant="secondary"
-                className="text-sm font-semibold cursor-pointer border-0 px-3 py-1 hover:opacity-80 transition-opacity"
-                style={{ 
-                  color: currentTheme.text,
-                  backgroundColor: `${currentTheme.text}15`
-                }}
-                onDoubleClick={() => {
-                  if (isEditing) {
-                    setIsEditingTitle(true);
-                  } else if (onEnterEditMode) {
-                    onEnterEditMode();
-                    setTimeout(() => setIsEditingTitle(true), 100);
-                  }
-                }}
-                title={prompt.title || '未命名提示词'}
+              <h5
+                className="text-sm text-gray-300"
+                title={prompt.text || "未命名提示词"}
               >
-                {prompt.title || '未命名提示词'}
-              </Badge>
+                {prompt.text || "未命名提示词"}
+              </h5>
             )}
           </div>
-          
+
           {/* 操作按钮 */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "h-7 w-7 rounded-full transition-colors",
-                  copyStatus === 'success' ? 'text-green-600 hover:text-green-700' :
-                  copyStatus === 'error' ? 'text-red-600 hover:text-red-700' : ''
-                )}
-                style={{ color: currentTheme.text }}
-                onClick={handleCopy}
-                title={copyStatus === 'success' ? '复制成功' : copyStatus === 'error' ? '复制失败' : '复制'}
-              >
-                {copyStatus === 'success' ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : copyStatus === 'error' ? (
-                  <X className="h-3.5 w-3.5" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </Button>
-              
-              {/* 状态提示 */}
-              {copyStatus !== 'idle' && (
-                <div className={cn(
-                  "absolute -bottom-8 right-0 px-2 py-1 text-xs rounded shadow-lg z-20 whitespace-nowrap",
-                  copyStatus === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
-                  'bg-red-100 text-red-800 border border-red-200'
-                )}>
-                  {copyStatus === 'success' ? '复制成功' : '复制失败'}
-                </div>
-              )}
-            </div>
-            
             {isEditing && (
               <>
-                <div className="relative">
+                <div key="color-picker" className="relative">
                   <Button
                     variant="ghost"
                     style={{ color: currentTheme.text }}
@@ -222,7 +216,7 @@ export function PromptBlock({
                   >
                     <Palette className="h-3.5 w-3.5" />
                   </Button>
-                  
+
                   {/* 颜色选择器 */}
                   {showColorPicker && (
                     <div className="absolute top-full right-0 mt-1 p-3 bg-background border rounded-lg shadow-lg z-10 min-w-[200px]">
@@ -233,10 +227,13 @@ export function PromptBlock({
                             variant="ghost"
                             size="sm"
                             className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform flex items-center justify-center text-xs font-bold p-0"
-                            style={{ 
+                            style={{
                               backgroundColor: theme.bg,
                               color: theme.text,
-                              borderColor: prompt.color === theme.name ? '#000' : 'transparent'
+                              borderColor:
+                                prompt.color === theme.name
+                                  ? "#000"
+                                  : "transparent",
                             }}
                             onClick={() => changeColor(theme.name)}
                             title={theme.name}
@@ -248,8 +245,9 @@ export function PromptBlock({
                     </div>
                   )}
                 </div>
-                
+
                 <Button
+                  key="delete"
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 rounded-full text-destructive hover:text-destructive"
@@ -263,51 +261,64 @@ export function PromptBlock({
           </div>
         </div>
 
-        {/* 内容区域 */}
-        <div className="w-full">
-          {isEditingContent ? (
-            <Textarea
-              ref={textAreaRef}
-              rows={1}
-              value={tempContent}
-              onChange={(e) => setTempContent(e.target.value)}
-              onBlur={saveContent}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.ctrlKey) saveContent();
-                if (e.key === 'Escape') cancelContentEdit();
-              }}
-              className="w-full p-3 text-sm border-0 bg-transparent resize-none overflow-hidden focus:outline-none focus:ring-0 break-words min-h-[60px] rounded-lg"
-              autoFocus
-              style={{ 
-                color: currentTheme.text,
-                backgroundColor: `${currentTheme.text}05`
-              }}
-            />
-          ) : (
-            <Badge
-              variant="secondary"
-              className="w-full text-sm leading-relaxed whitespace-pre-wrap cursor-pointer break-words min-h-[60px] p-4 rounded-xl border-0 hover:opacity-90 transition-all duration-200 flex items-start justify-start text-left"
-              style={{ 
-                color: prompt.content ? currentTheme.text : `${currentTheme.text}60`,
-                backgroundColor: `${currentTheme.text}10`,
-                wordBreak: 'break-word',
-                overflowWrap: 'break-word',
-                lineHeight: '1.6'
-              }}
-              onDoubleClick={() => {
-                if (isEditing) {
-                  setIsEditingContent(true);
-                } else if (onEnterEditMode) {
-                  onEnterEditMode();
-                  setTimeout(() => setIsEditingContent(true), 100);
-                }
-              }}
-            >
-              {prompt.content || '双击以进行编辑'}
-            </Badge>
-          )}
+        <div className="w-full relative group">
+          <Badge
+            className={cn(
+              "w-full p-4 rounded-2xl  transition-all duration-200 flex flex-col gap-3 ",
+              isEditing ? "cursor-grab active:cursor-grabbing" : "",
+            )}
+            style={{
+              backgroundColor: currentTheme.bg,
+              color: currentTheme.text,
+            }}
+          >
+            {/* 内容区域 */}
+            <div className="w-full relative">
+              {isEditingContent ? (
+                <Textarea
+                  ref={textAreaRef}
+                  rows={1}
+                  value={tempContent}
+                  onChange={(e) => setTempContent(e.target.value)}
+                  onBlur={saveContent}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.ctrlKey) saveContent();
+                    if (e.key === "Escape") cancelContentEdit();
+                  }}
+                  className="w-full text-sm  resize-none overflow-hidden focus:outline-none focus:ring-0 break-words min-h-[60px] rounded-lg"
+                  autoFocus
+                  style={{
+                    color: currentTheme.text,
+                  }}
+                />
+              ) : (
+                <h2
+                  className="w-full text-sm leading-relaxed whitespace-pre-wrap cursor-pointer break-words   rounded-xl   flex items-start justify-start text-left"
+                  style={{
+                    color: prompt.text
+                      ? currentTheme.text
+                      : `${currentTheme.text}60`,
+
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                    lineHeight: "1.2",
+                  }}
+                  onDoubleClick={() => {
+                    if (isEditing) {
+                      setIsEditingContent(true);
+                    } else if (onEnterEditMode) {
+                      onEnterEditMode();
+                      setTimeout(() => setIsEditingContent(true), 100);
+                    }
+                  }}
+                >
+                  {prompt.text || "描述一下画面"}
+                </h2>
+              )}
+            </div>
+          </Badge>
         </div>
-      </Badge>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }

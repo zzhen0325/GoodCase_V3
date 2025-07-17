@@ -3,8 +3,8 @@
  * 提供多种解决方案来处理连接超时问题
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 /**
  * 创建离线优先的 Firebase 配置
@@ -250,49 +250,48 @@ export function ConnectionStatus() {
  * 主修复函数
  */
 function applyFixes() {
-  console.log('🔧 开始应用 Firebase 连接修复...');
-  
+  console.log("🔧 开始应用 Firebase 连接修复...");
+
   try {
     // 1. 更新 Firebase 配置
-    const firebaseConfigPath = path.join(process.cwd(), 'lib', 'firebase.ts');
+    const firebaseConfigPath = path.join(process.cwd(), "lib", "firebase.ts");
     const optimizedConfig = createOfflineFirstConfig();
-    fs.writeFileSync(firebaseConfigPath, optimizedConfig, 'utf8');
-    console.log('✅ 已更新 Firebase 配置（离线优先）');
-    
+    fs.writeFileSync(firebaseConfigPath, optimizedConfig, "utf8");
+    console.log("✅ 已更新 Firebase 配置（离线优先）");
+
     // 2. 更新环境变量
-    const envPath = path.join(process.cwd(), '.env.local');
+    const envPath = path.join(process.cwd(), ".env.local");
     const envConfig = createEnvConfig();
-    fs.writeFileSync(envPath, envConfig, 'utf8');
-    console.log('✅ 已更新环境变量配置');
-    
+    fs.writeFileSync(envPath, envConfig, "utf8");
+    console.log("✅ 已更新环境变量配置");
+
     // 3. 创建连接状态组件
-    const componentDir = path.join(process.cwd(), 'components');
+    const componentDir = path.join(process.cwd(), "components");
     if (!fs.existsSync(componentDir)) {
       fs.mkdirSync(componentDir, { recursive: true });
     }
-    const componentPath = path.join(componentDir, 'connection-status.tsx');
+    const componentPath = path.join(componentDir, "connection-status.tsx");
     const componentContent = createConnectionStatusComponent();
-    fs.writeFileSync(componentPath, componentContent, 'utf8');
-    console.log('✅ 已创建连接状态组件');
-    
-    console.log('');
-    console.log('🎉 修复完成！');
-    console.log('');
-    console.log('📋 应用的修复:');
-    console.log('1. ✅ 启用离线持久化缓存');
-    console.log('2. ✅ 强制使用长轮询连接');
-    console.log('3. ✅ 添加网络状态监听');
-    console.log('4. ✅ 实现连接重试机制');
-    console.log('5. ✅ 创建连接状态组件');
-    console.log('');
-    console.log('🚀 下一步操作:');
-    console.log('1. 重启开发服务器: npm run dev');
-    console.log('2. 在主布局中添加 <ConnectionStatus /> 组件');
-    console.log('3. 如果问题持续，启用模拟器: npm run firebase:emulators');
-    console.log('4. 设置 NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true 使用模拟器');
-    
+    fs.writeFileSync(componentPath, componentContent, "utf8");
+    console.log("✅ 已创建连接状态组件");
+
+    console.log("");
+    console.log("🎉 修复完成！");
+    console.log("");
+    console.log("📋 应用的修复:");
+    console.log("1. ✅ 启用离线持久化缓存");
+    console.log("2. ✅ 强制使用长轮询连接");
+    console.log("3. ✅ 添加网络状态监听");
+    console.log("4. ✅ 实现连接重试机制");
+    console.log("5. ✅ 创建连接状态组件");
+    console.log("");
+    console.log("🚀 下一步操作:");
+    console.log("1. 重启开发服务器: npm run dev");
+    console.log("2. 在主布局中添加 <ConnectionStatus /> 组件");
+    console.log("3. 如果问题持续，启用模拟器: npm run firebase:emulators");
+    console.log("4. 设置 NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true 使用模拟器");
   } catch (error) {
-    console.error('❌ 修复过程中出现错误:', error.message);
+    console.error("❌ 修复过程中出现错误:", error.message);
     process.exit(1);
   }
 }
@@ -306,5 +305,5 @@ module.exports = {
   createOfflineFirstConfig,
   createEnvConfig,
   createConnectionStatusComponent,
-  applyFixes
+  applyFixes,
 };

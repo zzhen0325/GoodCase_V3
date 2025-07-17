@@ -2,30 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 自定义滚动条样式 */
+/* 现代化滚动条样式 - shadcn风格 */
 @layer utilities {
   .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgb(209 213 219) rgb(243 244 246);
+    scrollbar-color: hsl(var(--border)) transparent;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
+    height: 10px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgb(243 244 246);
-    border-radius: 9999px;
+    background: transparent;
+    border-radius: var(--radius);
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgb(209 213 219);
-    border-radius: 9999px;
-    transition: background-color 0.2s ease;
+    background: hsl(var(--border));
+    border-radius: var(--radius);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: opacity 0.3s ease-in-out;
+    opacity: 0;
   }
-  
+
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb,
+  .custom-scrollbar:active::-webkit-scrollbar-thumb,
+  .custom-scrollbar.scrolling::-webkit-scrollbar-thumb {
+    opacity: 1;
+  }
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgb(156 163 175);
+    background: hsl(var(--muted-foreground));
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
 
@@ -37,23 +51,23 @@
     --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 20%;
-    --primary: 58.0328 100.0000% 76.0784%;
+    --primary: 58.0328 100% 76.0784%;
     --primary-foreground: 0 0% 0%;
-    --secondary: 253.8462 100.0000% 94.9020%;
+    --secondary: 253.8462 100% 94.902%;
     --secondary-foreground: 0 0% 0%;
     --muted: 253.3333 29.0323% 93.9216%;
     --muted-foreground: 0 0% 43.1373%;
-    --accent: 311.5385 100.0000% 94.9020%;
+    --accent: 311.5385 100% 94.902%;
     --accent-foreground: 0 0% 0%;
     --destructive: 57.0732 84.5361% 61.9608%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 83.1373%;
+    --border: 300 26% 91%;
     --input: 0 0% 83.1373%;
     --ring: 312 100% 90.1961%;
-    --chart-1: 46.8000 100% 90.1961%;
-    --chart-2: 254.3478 71.8750% 74.9020%;
+    --chart-1: 46.8 100% 90.1961%;
+    --chart-2: 254.3478 71.875% 74.902%;
     --chart-3: 253.3333 29.0323% 93.9216%;
-    --chart-4: 27.3333 100.0000% 82.3529%;
+    --chart-4: 27.3333 100% 82.3529%;
     --chart-5: 176.7785 60.3239% 51.5686%;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -69,14 +83,24 @@
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: Roboto Mono, monospace;
     --radius: 0.75rem;
-    --shadow-2xs: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00);
-    --shadow-xs: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00);
-    --shadow-sm: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00), 0 1px 2px -1px hsl(0 12.1693% 62.9412% / 0.00);
-    --shadow: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00), 0 1px 2px -1px hsl(0 12.1693% 62.9412% / 0.00);
-    --shadow-md: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00), 0 2px 4px -1px hsl(0 12.1693% 62.9412% / 0.00);
-    --shadow-lg: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00), 0 4px 6px -1px hsl(0 12.1693% 62.9412% / 0.00);
-    --shadow-xl: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00), 0 8px 10px -1px hsl(0 12.1693% 62.9412% / 0.00);
-    --shadow-2xl: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0.00);
+    --shadow-2xs: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0);
+    --shadow-xs: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0);
+    --shadow-sm:
+      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
+      0 1px 2px -1px hsl(0 12.1693% 62.9412% / 0);
+    --shadow:
+      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
+      0 1px 2px -1px hsl(0 12.1693% 62.9412% / 0);
+    --shadow-md:
+      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
+      0 2px 4px -1px hsl(0 12.1693% 62.9412% / 0);
+    --shadow-lg:
+      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
+      0 4px 6px -1px hsl(0 12.1693% 62.9412% / 0);
+    --shadow-xl:
+      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
+      0 8px 10px -1px hsl(0 12.1693% 62.9412% / 0);
+    --shadow-2xl: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0);
     --tracking-normal: 0em;
     --spacing: 1.25rem;
   }
@@ -88,24 +112,24 @@
     --card-foreground: 0 0% 89.8039%;
     --popover: 255 7.6923% 20.3922%;
     --popover-foreground: 0 0% 89.8039%;
-    --primary: 27.3333 100.0000% 82.3529%;
+    --primary: 27.3333 100% 82.3529%;
     --primary-foreground: 0 0% 0%;
     --secondary: 176.7785 60.3239% 51.5686%;
     --secondary-foreground: 0 0% 0%;
     --muted: 0 0% 26.6667%;
     --muted-foreground: 0 0% 63.9216%;
-    --accent: 254.3478 71.8750% 74.9020%;
+    --accent: 254.3478 71.875% 74.902%;
     --accent-foreground: 0 0% 0%;
     --destructive: 57 66% 78%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 26.6667%;
     --input: 0 0% 26.6667%;
-    --ring: 27.3333 100.0000% 82.3529%;
-    --chart-1: 27.3333 100.0000% 82.3529%;
+    --ring: 27.3333 100% 82.3529%;
+    --chart-1: 27.3333 100% 82.3529%;
     --chart-2: 176.7785 60.3239% 51.5686%;
-    --chart-3: 254.3478 71.8750% 74.9020%;
-    --chart-4: 117.0850 100.0000% 51.5686%;
-    --chart-5: 105.1822 100.0000% 51.5686%;
+    --chart-3: 254.3478 71.875% 74.902%;
+    --chart-4: 117.085 100% 51.5686%;
+    --chart-5: 105.1822 100% 51.5686%;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -118,14 +142,18 @@
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: Roboto Mono, monospace;
     --radius: 0.75rem;
-    --shadow-2xs: 0 1px 25px 0px hsl(0 0% 0% / 0.00);
-    --shadow-xs: 0 1px 25px 0px hsl(0 0% 0% / 0.00);
-    --shadow-sm: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 1px 2px -1px hsl(0 0% 0% / 0.00);
-    --shadow: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 1px 2px -1px hsl(0 0% 0% / 0.00);
-    --shadow-md: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 2px 4px -1px hsl(0 0% 0% / 0.00);
-    --shadow-lg: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 4px 6px -1px hsl(0 0% 0% / 0.00);
-    --shadow-xl: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 8px 10px -1px hsl(0 0% 0% / 0.00);
-    --shadow-2xl: 0 1px 25px 0px hsl(0 0% 0% / 0.00);
+    --shadow-2xs: 0 1px 25px 0px hsl(0 0% 0% / 0);
+    --shadow-xs: 0 1px 25px 0px hsl(0 0% 0% / 0);
+    --shadow-sm:
+      0 1px 25px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow: 0 1px 25px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow-md:
+      0 1px 25px 0px hsl(0 0% 0% / 0), 0 2px 4px -1px hsl(0 0% 0% / 0);
+    --shadow-lg:
+      0 1px 25px 0px hsl(0 0% 0% / 0), 0 4px 6px -1px hsl(0 0% 0% / 0);
+    --shadow-xl:
+      0 1px 25px 0px hsl(0 0% 0% / 0), 0 8px 10px -1px hsl(0 0% 0% / 0);
+    --shadow-2xl: 0 1px 25px 0px hsl(0 0% 0% / 0);
     --sidebar-background: 240 5.9% 10%;
   }
   .theme {
@@ -154,22 +182,48 @@
   }
 }
 
-/* 自定义滚动条样式 */
+/* 全局滚动条样式 - shadcn风格 */
 ::-webkit-scrollbar {
-  width: 6px;
-  color: hsl(var(--muted));
-  padding-right: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: var(--radius);
 }
 
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: opacity 0.3s ease-in-out;
+  opacity: 0;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:active::-webkit-scrollbar-thumb,
+*.scrolling::-webkit-scrollbar-thumb {
+  opacity: 1;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 滚动条自动隐藏脚本 */
+@layer base {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+/* 添加滚动时显示滚动条的样式 */
+.scrolling::-webkit-scrollbar-thumb {
+  opacity: 1 !important;
 }

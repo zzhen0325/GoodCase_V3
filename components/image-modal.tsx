@@ -1,20 +1,59 @@
-"use client"
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { FileImage, X, Plus, Edit3, Save, Copy, Check, Trash2, Files, Calendar, Tag as TagIcon } from 'lucide-react';
-import { PromptBlock } from './prompt-block';
-import { TagManager } from './tag-manager';
-import { ImageData, Prompt, Tag, AVAILABLE_COLORS } from '@/types';
-import { generateId, copyToClipboard, formatDate } from '@/lib/utils';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  FileImage,
+  X,
+  Plus,
+  Edit3,
+  Save,
+  Copy,
+  Check,
+  Trash2,
+  Files,
+  Calendar,
+  Tag,
+} from "lucide-react";
+import { PromptBlock } from "./prompt-block";
+import { useTagOperations } from "@/hooks/use-tag-operations";
+
+import { ImageData, Prompt, AVAILABLE_COLORS } from "@/types";
+import { generateId, copyToClipboard, formatDate } from "@/lib/utils";
+import { toast } from "sonner";
 
 // 类型定义
 export interface ImageModalProps {
@@ -24,8 +63,7 @@ export interface ImageModalProps {
   onUpdate: (id: string, updates: Partial<ImageData>) => void;
   onDelete?: (id: string) => void;
   onDuplicate?: (image: ImageData) => void;
-  availableTags: Tag[];
-  onCreateTag: (tag: Omit<Tag, 'id'>) => Promise<Tag>;
+
   onCopyPrompt?: (content: string) => void;
 }
 
@@ -33,8 +71,6 @@ interface ImagePreviewProps {
   image: ImageData;
   onClose: () => void;
 }
-
-
 
 interface ImageActionsProps {
   isEditing: boolean;
@@ -44,28 +80,23 @@ interface ImageActionsProps {
   onCancel: () => void;
   onCopyAll: () => void;
   onDuplicate?: () => void;
-  copyAllStatus: 'idle' | 'success' | 'error';
-  duplicateStatus: 'idle' | 'success' | 'error';
+  copyAllStatus: "idle" | "success" | "error";
+  duplicateStatus: "idle" | "success" | "error";
 }
 
 interface ImageInfoProps {
   image: ImageData;
-  tags: Tag[];
-  availableTags: Tag[];
   isEditing: boolean;
-  onTagsChange: (tags: Tag[]) => void;
-  onCreateTag: (tag: Omit<Tag, 'id'>) => Promise<Tag>;
   onDelete?: () => void;
-  deleteStatus: 'idle' | 'confirming' | 'deleting';
+  deleteStatus: "idle" | "confirming" | "deleting";
+  onUpdate?: (updates: Partial<ImageData>) => void;
 }
-
-
 
 // 图片预览组件
 function ImagePreview({ image, onClose }: ImagePreviewProps) {
   if (!image?.url) {
     return (
-      <div className="w-full h-full flex items-center justify-center p-8 relative bg-muted/50">
+      <div className="w-full h-full flex items-center justify-center p-8 relative bg-white">
         <div className="flex flex-col items-center justify-center text-center">
           <FileImage className="w-16 h-16 text-muted-foreground mb-4" />
           <p className="text-muted-foreground">图片加载失败</p>
@@ -75,18 +106,16 @@ function ImagePreview({ image, onClose }: ImagePreviewProps) {
   }
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-8 relative bg-muted/50">
+    <div className="w-full h-full flex items-center justify-center p-8 relative bg-white rounded-l-lg">
       <img
         src={image.url}
-        alt={image.title || '图片'}
-        className="max-w-full max-h-[calc(85vh-8rem)] object-contain rounded-lg shadow-lg"
+        alt={image.title || "图片"}
+        className="max-w-full max-h-[calc(85vh-8rem)] object-contain rounded-lg"
         loading="lazy"
       />
     </div>
   );
 }
-
-
 
 // 操作按钮组件
 function ImageActions({
@@ -98,18 +127,29 @@ function ImageActions({
   onCopyAll,
   onDuplicate,
   copyAllStatus,
-  duplicateStatus
+  duplicateStatus,
 }: ImageActionsProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {/* 编辑相关按钮 */}
       {isEditing ? (
         <>
-          <Button onClick={onSave} size="sm" className="bg-green-600 hover:bg-green-700">
+          <Button
+            key="save"
+            onClick={onSave}
+            size="sm"
+            className="bg-green-600 hover:bg-green-700"
+          >
             <Save className="w-4 h-4 mr-2" />
             保存
           </Button>
-          <Button onClick={onCancel} variant="outline" size="sm">
+          <Button
+            key="cancel"
+            onClick={onCancel}
+            variant="outline"
+            size="sm"
+            className="border-red-200 hover:bg-red-50 hover:text-red-600"
+          >
             取消
           </Button>
         </>
@@ -120,36 +160,44 @@ function ImageActions({
         </Button>
       )}
 
-      {/* 复制全部提示词 */}
-      <Button
-        onClick={onCopyAll}
-        variant="outline"
-        size="sm"
-        disabled={prompts.length === 0}
-        className={copyAllStatus === 'success' ? 'border-green-500 text-green-700' : ''}
-      >
-        {copyAllStatus === 'success' ? (
-          <Check className="w-4 h-4 mr-2" />
-        ) : (
-          <Copy className="w-4 h-4 mr-2" />
-        )}
-        {copyAllStatus === 'success' ? '已复制' : '复制全部'}
-      </Button>
+      {/* 复制全部提示词 - 编辑模式下隐藏 */}
+      {!isEditing && (
+        <Button
+          onClick={onCopyAll}
+          variant="outline"
+          size="sm"
+          disabled={prompts.length === 0}
+          className={
+            copyAllStatus === "success" ? "border-green-500 text-green-700" : ""
+          }
+        >
+          {copyAllStatus === "success" ? (
+            <Check className="w-4 h-4 mr-2" />
+          ) : (
+            <Copy className="w-4 h-4 mr-2" />
+          )}
+          {copyAllStatus === "success" ? "已复制" : "复制全部"}
+        </Button>
+      )}
 
-      {/* 复制图片 */}
-      {onDuplicate && (
+      {/* 复制图片 - 编辑模式下隐藏 */}
+      {!isEditing && onDuplicate && (
         <Button
           onClick={onDuplicate}
           variant="outline"
           size="sm"
-          className={duplicateStatus === 'success' ? 'border-green-500 text-green-700' : ''}
+          className={
+            duplicateStatus === "success"
+              ? "border-green-500 text-green-700"
+              : ""
+          }
         >
-          {duplicateStatus === 'success' ? (
+          {duplicateStatus === "success" ? (
             <Check className="w-4 h-4 mr-2" />
           ) : (
             <Files className="w-4 h-4 mr-2" />
           )}
-          {duplicateStatus === 'success' ? '已复制' : '复制图片'}
+          {duplicateStatus === "success" ? "已复制" : "复制图片"}
         </Button>
       )}
     </div>
@@ -159,47 +207,243 @@ function ImageActions({
 // 图片信息组件
 function ImageInfo({
   image,
-  tags,
-  availableTags,
   isEditing,
-  onTagsChange,
-  onCreateTag,
   onDelete,
-  deleteStatus
+  deleteStatus,
+  onUpdate,
 }: ImageInfoProps) {
+  const { tags, tagGroups, createTag, refreshTags } = useTagOperations();
+  const [newTagName, setNewTagName] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [showAddTag, setShowAddTag] = useState(false);
+
+  // 获取图片当前的标签
+  const imageTags = tags.filter((tag) => image.tags?.includes(tag.name));
+
+  // 获取可选择的标签（排除已选择的）
+  const availableTags = tags.filter((tag) => !image.tags?.includes(tag.name));
+
+  // 处理添加新标签
+  const handleAddNewTag = async () => {
+    if (!newTagName.trim() || !selectedGroupId) {
+      toast.error("请输入标签名称并选择分组");
+      return;
+    }
+
+    try {
+      const newTag = await createTag({
+        name: newTagName.trim(),
+        groupId: selectedGroupId,
+        usageCount: 0,
+        color: AVAILABLE_COLORS[0],
+      });
+
+      if (newTag) {
+        // 将新标签添加到图片的本地状态
+        const updatedTags = [...(image.tags || []), newTag.name];
+        onUpdate?.({ tags: updatedTags });
+
+        setNewTagName("");
+        setSelectedGroupId("");
+        setShowAddTag(false);
+        refreshTags();
+        toast.success("标签创建并添加成功");
+      }
+    } catch (error) {
+      toast.error("创建标签失败");
+    }
+  };
+
+  // 处理选择已有标签
+  const handleSelectTag = (tagId: string) => {
+    try {
+      const tag = tags.find((t) => t.id === tagId);
+      if (tag) {
+        const updatedTags = [...(image.tags || []), tag.name];
+        onUpdate?.({ tags: updatedTags });
+        toast.success("标签已添加");
+      }
+    } catch (error) {
+      toast.error("添加标签失败");
+    }
+  };
+
+  // 处理移除标签
+  const handleRemoveTag = (tagName: string) => {
+    try {
+      const updatedTags = (image.tags || []).filter((name) => name !== tagName);
+      onUpdate?.({ tags: updatedTags });
+      toast.success("标签已移除");
+    } catch (error) {
+      toast.error("移除标签失败");
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* 标签管理 */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <TagIcon className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">标签</span>
+      {/* 标签区域 */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Tag className="w-4 h-4 text-gray-500" />
+          <span className="text-sm font-medium text-gray-700">标签</span>
         </div>
-        <TagManager
-           tags={tags}
-           selectedTags={tags}
-           availableTags={availableTags}
-           isEditing={isEditing}
-           onTagsChange={onTagsChange}
-           onCreateTag={onCreateTag}
-         />
+
+        {/* 当前标签显示 */}
+        {imageTags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {imageTags.map((tag) => {
+              const group = tagGroups.find((g) => g.id === tag.groupId);
+              return (
+                <Badge
+                  key={tag.id}
+                  variant="secondary"
+                  className="flex items-center gap-1 px-2 py-1"
+                  style={{
+                    backgroundColor: group?.color + "20",
+                    borderColor: group?.color,
+                    color: group?.color,
+                  }}
+                >
+                  {tag.name}
+                  {isEditing && (
+                    <X
+                      className="w-3 h-3 cursor-pointer hover:text-red-500"
+                      onClick={() => handleRemoveTag(tag.id)}
+                    />
+                  )}
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 编辑模式下的标签操作 */}
+        {isEditing && (
+          <div className="space-y-3">
+            {/* 选择已有标签 */}
+            {availableTags.length > 0 && (
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">
+                  选择已有标签
+                </label>
+                <Select onValueChange={handleSelectTag}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="选择标签" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTags.map((tag) => {
+                      const group = tagGroups.find((g) => g.id === tag.groupId);
+                      return (
+                        <SelectItem key={tag.id} value={tag.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: group?.color }}
+                            />
+                            <span>{tag.name}</span>
+                            <span className="text-xs text-gray-400">
+                              ({group?.name})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* 新建标签 */}
+            <div>
+              {!showAddTag ? (
+                <Button
+                  onClick={() => setShowAddTag(true)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  新建标签
+                </Button>
+              ) : (
+                <div className="space-y-2 p-3 border rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">新建标签</span>
+                    <Button
+                      onClick={() => {
+                        setShowAddTag(false);
+                        setNewTagName("");
+                        setSelectedGroupId("");
+                      }}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <Input
+                    placeholder="输入标签名称"
+                    value={newTagName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setNewTagName(e.target.value)
+                    }
+                    className="text-sm"
+                  />
+
+                  <Select
+                    value={selectedGroupId}
+                    onValueChange={setSelectedGroupId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择分组" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tagGroups.map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: group.color }}
+                            />
+                            {group.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Button
+                    onClick={handleAddNewTag}
+                    size="sm"
+                    className="w-full"
+                    disabled={!newTagName.trim() || !selectedGroupId}
+                  >
+                    创建并添加
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 编辑模式下的删除按钮 */}
+      {/* 编辑模式下的删除按钮 - 右下角 */}
       {isEditing && onDelete && (
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium text-red-600">危险操作</span>
-          </div>
+        <div className="flex justify-end">
           <Button
             onClick={onDelete}
-            variant={deleteStatus === 'confirming' ? 'destructive' : 'outline'}
+            variant={deleteStatus === "confirming" ? "destructive" : "outline"}
             size="sm"
-            disabled={deleteStatus === 'deleting'}
+            disabled={deleteStatus === "deleting"}
             className="border-red-200 text-red-600 hover:bg-red-50"
           >
             <Trash2 className="w-4 h-4 mr-2" />
-            {deleteStatus === 'confirming' ? '确认删除' : deleteStatus === 'deleting' ? '删除中...' : '删除图片'}
+            {deleteStatus === "confirming"
+              ? "确认删除"
+              : deleteStatus === "deleting"
+                ? "删除中..."
+                : "删除图片"}
           </Button>
         </div>
       )}
@@ -215,26 +459,65 @@ export function ImageModal({
   onUpdate,
   onDelete,
   onDuplicate,
-  availableTags,
-  onCreateTag,
-  onCopyPrompt
+
+  onCopyPrompt,
 }: ImageModalProps) {
+  // DnD sensors - 必须在组件顶层调用
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: {
+        start: ["Enter"],
+        cancel: ["Escape"],
+        end: ["Enter", "Escape"],
+      },
+    }),
+  );
+
   // 状态管理
   const [isEditing, setIsEditing] = useState(false);
-  const [editedTitle, setEditedTitle] = useState('');
+  const [editedTitle, setEditedTitle] = useState("");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
+  const [editedTagIds, setEditedTagIds] = useState<string[]>([]);
+
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [copyAllStatus, setCopyAllStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'confirming' | 'deleting'>('idle');
-  const [duplicateStatus, setDuplicateStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [copyAllStatus, setCopyAllStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [deleteStatus, setDeleteStatus] = useState<
+    "idle" | "confirming" | "deleting"
+  >("idle");
+  const [duplicateStatus, setDuplicateStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
 
   // 初始化数据
   useEffect(() => {
     if (image && isOpen) {
       setEditedTitle(image.title);
-      setPrompts([...image.prompts]);
-      setTags([...image.tags]);
+      setPrompts(
+        image.prompt
+          ? [
+              {
+                id: generateId(),
+                text: image.prompt,
+                category: "",
+                tags: [],
+                usageCount: 0,
+                isTemplate: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ]
+          : [],
+      );
+      // 初始化编辑中的标签为图片当前标签
+      setEditedTagIds([...(image.tags || [])]);
       setIsEditing(false);
     }
   }, [image, isOpen]);
@@ -242,25 +525,25 @@ export function ImageModal({
   // 重置状态当弹窗关闭时
   useEffect(() => {
     if (!isOpen) {
-      setDeleteStatus('idle');
-      setDuplicateStatus('idle');
+      setDeleteStatus("idle");
+      setDuplicateStatus("idle");
     }
   }, [isOpen]);
 
   // ESC键退出功能
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose]);
 
@@ -272,24 +555,42 @@ export function ImageModal({
       const updateData = {
         title: editedTitle,
         prompts: prompts,
-        tags: tags
+        tagIds: editedTagIds,
       };
-      
+
+      // 所有标签变更同步到数据库
       await onUpdate(image.id, updateData);
-      toast.success('保存成功');
+      toast.success("保存成功");
       setIsEditing(false);
     } catch (error) {
-      console.error('保存失败:', error);
-      toast.error('保存失败，请重试');
+      console.error("保存失败:", error);
+      toast.error("保存失败，请重试");
     }
   };
 
   // 取消编辑
   const cancelEdit = () => {
     if (image) {
+      // 重置为编辑前的状态
       setEditedTitle(image.title);
-      setPrompts([...image.prompts]);
-      setTags([...image.tags]);
+      setPrompts(
+        image.prompt
+          ? [
+              {
+                id: generateId(),
+                text: image.prompt,
+                category: "",
+                tags: [],
+                usageCount: 0,
+                isTemplate: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ]
+          : [],
+      );
+      setEditedTagIds([...(image.tags || [])]);
+      toast.info("已取消编辑");
     }
     setIsEditing(false);
   };
@@ -297,52 +598,55 @@ export function ImageModal({
   // 复制全部提示词
   const copyAllPrompts = async () => {
     if (prompts.length === 0) {
-      toast.error('没有提示词可复制');
+      toast.error("没有提示词可复制");
       return;
     }
 
-    const allPromptsText = prompts.map(p => p.content).filter(Boolean).join('\n\n');
-    
+    const allPromptsText = prompts
+      .map((p) => p.text)
+      .filter(Boolean)
+      .join("\n\n");
+
     if (!allPromptsText.trim()) {
-      toast.error('没有有效的提示词内容');
+      toast.error("没有有效的提示词内容");
       return;
     }
 
     try {
-      setCopyAllStatus('success');
+      setCopyAllStatus("success");
       await copyToClipboard(allPromptsText);
-      toast.success('所有提示词已复制到剪贴板');
-      
+      toast.success("所有提示词已复制到剪贴板");
+
       if (onCopyPrompt) {
         onCopyPrompt(allPromptsText);
       }
     } catch (error) {
-      setCopyAllStatus('error');
-      toast.error('复制失败，请重试');
+      setCopyAllStatus("error");
+      toast.error("复制失败，请重试");
     }
 
-    setTimeout(() => setCopyAllStatus('idle'), 2000);
+    setTimeout(() => setCopyAllStatus("idle"), 2000);
   };
 
   // 删除图片
   const handleDelete = async () => {
     if (!image || !onDelete) return;
 
-    if (deleteStatus === 'idle') {
-      setDeleteStatus('confirming');
+    if (deleteStatus === "idle") {
+      setDeleteStatus("confirming");
       return;
     }
 
-    if (deleteStatus === 'confirming') {
+    if (deleteStatus === "confirming") {
       try {
-        setDeleteStatus('deleting');
+        setDeleteStatus("deleting");
         await onDelete(image.id);
-        toast.success('图片已删除');
+        toast.success("图片已删除");
         onClose();
       } catch (error) {
-        console.error('删除失败:', error);
-        toast.error('删除失败，请重试');
-        setDeleteStatus('idle');
+        console.error("删除失败:", error);
+        toast.error("删除失败，请重试");
+        setDeleteStatus("idle");
       }
     }
   };
@@ -352,15 +656,15 @@ export function ImageModal({
     if (!image || !onDuplicate) return;
 
     try {
-      setDuplicateStatus('success');
+      setDuplicateStatus("success");
       await onDuplicate(image);
-      toast.success('图片已复制');
+      toast.success("图片已复制");
     } catch (error) {
-      setDuplicateStatus('error');
-      console.error('复制失败:', error);
-      toast.error('复制失败，请重试');
+      setDuplicateStatus("error");
+      console.error("复制失败:", error);
+      toast.error("复制失败，请重试");
     } finally {
-      setTimeout(() => setDuplicateStatus('idle'), 2000);
+      setTimeout(() => setDuplicateStatus("idle"), 2000);
     }
   };
 
@@ -368,7 +672,10 @@ export function ImageModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] h-[85vh] max-h-[85vh] p-0">
+      <DialogContent className="max-w-7xl w-[95vw] h-[85vh] max-h-[85vh] p-0 ">
+        <DialogTitle className="sr-only">
+          {image.title || "图片详情"}
+        </DialogTitle>
         <div className="h-full flex">
           {/* 图片预览区域 */}
           <div className="w-[40%] relative">
@@ -376,91 +683,123 @@ export function ImageModal({
           </div>
 
           {/* 信息面板区域 */}
-          <div className="w-[60%] border-l bg-background">
-            <DialogHeader className="p-6 pb-4">
-              {/* 移除标题，将在底部显示 */}
-            </DialogHeader>
-            
-            <div className="h-[calc(85vh-180px)] flex flex-col">
-              <div className="px-6 pb-4">
+          <div className="w-[60%] border-l bg-background  h-[85vh] max-h-[85vh]  flex flex-col overflow-hidden rounded-r-lg">
+            {/* 顶部标题区域 - 固定高度 */}
+            <div className="flex-shrink-0 px-6 py-4 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold truncate pr-4">
+                  {image.title || "未命名图片"}
+                </h2>
+                <div className="flex-shrink-0">
+                  <ImageActions
+                    isEditing={isEditing}
+                    prompts={prompts}
+                    onEdit={() => setIsEditing(true)}
+                    onSave={saveChanges}
+                    onCancel={cancelEdit}
+                    onCopyAll={copyAllPrompts}
+                    onDuplicate={onDuplicate ? handleDuplicate : undefined}
+                    copyAllStatus={copyAllStatus}
+                    duplicateStatus={duplicateStatus}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 中间提示词滚动区域 - 自适应高度 */}
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-shrink-0 px-6 py-4">
                 {/* 提示词管理区域 */}
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-gray-800">Prompts</h4>
+                <div className="flex items-center justify-between">
                   {isEditing && (
-                    <Button size="sm" variant="outline" onClick={() => {
-                      const newPrompt: Prompt = {
-                        id: generateId(),
-                        title: '',
-                        content: '',
-                        color: AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)],
-                        order: prompts.length,
-                        createdAt: new Date().toISOString()
-                      };
-                      setPrompts([...prompts, newPrompt]);
-                    }}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const newPrompt: Prompt = {
+                          id: generateId(),
+                          text: "",
+                          category: "",
+                          tags: [],
+                          usageCount: 0,
+                          isTemplate: false,
+                          createdAt: new Date(),
+                          updatedAt: new Date(),
+                        };
+                        setPrompts([...prompts, newPrompt]);
+                      }}
+                    >
                       <Plus className="w-4 h-4 mr-1" />
                       添加
                     </Button>
                   )}
                 </div>
               </div>
-              
+
               {/* 提示词滚动区域 */}
               <ScrollArea className="flex-1 px-6">
                 <div className="space-y-3 pb-4">
                   <DndContext
-                    sensors={useSensors(
-                      useSensor(PointerSensor, {
-                        activationConstraint: {
-                          distance: 8,
-                        },
-                      }),
-                      useSensor(KeyboardSensor, {
-                        coordinateGetter: sortableKeyboardCoordinates,
-                      })
-                    )}
+                    sensors={sensors}
                     collisionDetection={closestCenter}
                     onDragStart={(event: any) => setActiveId(event.active.id)}
                     onDragEnd={(event: any) => {
                       const { active, over } = event;
                       if (active.id !== over?.id) {
-                        const oldIndex = prompts.findIndex(item => item.id === active.id);
-                        const newIndex = prompts.findIndex(item => item.id === over.id);
-                        const reorderedPrompts = arrayMove(prompts, oldIndex, newIndex);
+                        const oldIndex = prompts.findIndex(
+                          (item) => item.id === active.id,
+                        );
+                        const newIndex = prompts.findIndex(
+                          (item) => item.id === over.id,
+                        );
+                        const reorderedPrompts = arrayMove(
+                          prompts,
+                          oldIndex,
+                          newIndex,
+                        );
                         setPrompts(reorderedPrompts);
                       }
                       setActiveId(null);
                     }}
                   >
-                    <SortableContext items={prompts.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    <SortableContext
+                      items={prompts.map((p) => p.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
                       {prompts.map((prompt) => (
                         <PromptBlock
                           key={prompt.id}
                           prompt={prompt}
                           isEditing={isEditing}
                           onUpdate={(id: string, updates: Partial<Prompt>) => {
-                            const updatedPrompts = prompts.map(prompt => 
-                              prompt.id === id ? { ...prompt, ...updates } : prompt
+                            const updatedPrompts = prompts.map((prompt) =>
+                              prompt.id === id
+                                ? { ...prompt, ...updates }
+                                : prompt,
                             );
                             setPrompts(updatedPrompts);
                           }}
                           onDelete={(id: string) => {
-                            const updatedPrompts = prompts.filter(prompt => prompt.id !== id);
+                            const updatedPrompts = prompts.filter(
+                              (prompt) => prompt.id !== id,
+                            );
                             setPrompts(updatedPrompts);
                           }}
                           onCopy={onCopyPrompt || (() => {})}
+                          onEnterEditMode={() => setIsEditing(true)}
                         />
                       ))}
                     </SortableContext>
-                    
+
                     <DragOverlay>
                       {activeId ? (
                         <PromptBlock
-                          prompt={prompts.find(p => p.id === activeId)!}
+                          prompt={prompts.find((p) => p.id === activeId)!}
                           isEditing={isEditing}
                           onUpdate={() => {}}
                           onDelete={() => {}}
                           onCopy={() => {}}
+                          onEnterEditMode={() => {}}
                         />
                       ) : null}
                     </DragOverlay>
@@ -476,11 +815,13 @@ export function ImageModal({
                           onClick={() => {
                             const newPrompt: Prompt = {
                               id: generateId(),
-                              title: '',
-                              content: '',
-                              color: AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)],
-                              order: prompts.length,
-                              createdAt: new Date().toISOString()
+                              text: "",
+                              category: "",
+                              tags: [],
+                              usageCount: 0,
+                              isTemplate: false,
+                              createdAt: new Date(),
+                              updatedAt: new Date(),
                             };
                             setPrompts([...prompts, newPrompt]);
                           }}
@@ -494,43 +835,27 @@ export function ImageModal({
                   )}
                 </div>
               </ScrollArea>
-              
-              <div className="px-6">
-                <Separator className="mb-4" />
-                {/* 图片信息 */}
-                <ImageInfo
-                  image={image}
-                  tags={tags}
-                  availableTags={availableTags}
-                  isEditing={isEditing}
-                  onTagsChange={setTags}
-                  onCreateTag={onCreateTag}
-                  onDelete={onDelete ? handleDelete : undefined}
-                  deleteStatus={deleteStatus}
-                />
-                
-                {/* 底部标题和按钮区域 */}
-                <div className="mt-4 flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-semibold truncate">
-                      {image.title || '未命名图片'}
-                    </h2>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <ImageActions
-                      isEditing={isEditing}
-                      prompts={prompts}
-                      onEdit={() => setIsEditing(true)}
-                      onSave={saveChanges}
-                      onCancel={cancelEdit}
-                      onCopyAll={copyAllPrompts}
-                      onDuplicate={onDuplicate ? handleDuplicate : undefined}
-                      copyAllStatus={copyAllStatus}
-                      duplicateStatus={duplicateStatus}
-                    />
-                  </div>
+            </div>
+
+            {/* 底部标签和按钮区域 - 限制高度 */}
+            <div className="flex-shrink-0 border-t max-h-48 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="px-1 py-4">
+                  {/* 图片信息 */}
+                  <ImageInfo
+                    image={{ ...image, tags: editedTagIds }}
+                    isEditing={isEditing}
+                    onDelete={onDelete ? handleDelete : undefined}
+                    deleteStatus={deleteStatus}
+                    onUpdate={(updates) => {
+                      if (updates.tags) {
+                        // 只更新本地状态，不同步到数据库
+                        setEditedTagIds(updates.tags);
+                      }
+                    }}
+                  />
                 </div>
-              </div>
+              </ScrollArea>
             </div>
           </div>
         </div>
@@ -540,8 +865,4 @@ export function ImageModal({
 }
 
 // 导出类型
-export type {
-  ImagePreviewProps,
-  ImageActionsProps,
-  ImageInfoProps
-};
+export type { ImagePreviewProps, ImageActionsProps, ImageInfoProps };

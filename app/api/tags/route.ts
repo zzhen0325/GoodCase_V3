@@ -1,32 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseAdmin } from '@/lib/database-admin';
-import { Tag } from '@/types';
+import { NextRequest, NextResponse } from "next/server";
+import { DatabaseAdmin } from "@/lib/database-admin";
+import { Tag } from "@/types";
 
-// GET - 获取所有标签
-export async function GET() {
+// 获取所有标签
+export async function GET(request: NextRequest) {
   try {
-    const tags = await DatabaseAdmin.getAllTags();
+    const { searchParams } = new URL(request.url);
+    const groupId = searchParams.get("groupId");
+
+    let tags;
+    if (groupId) {
+      tags = await DatabaseAdmin.getTagsByGroupId(groupId);
+    } else {
+      tags = await DatabaseAdmin.getAllTags();
+    }
+
     return NextResponse.json({ success: true, data: tags });
   } catch (error) {
-    console.error('获取标签失败:', error);
+    console.error("获取标签失败:", error);
     return NextResponse.json(
-      { success: false, error: '获取标签失败' },
-      { status: 500 }
+      { success: false, error: "获取标签失败" },
+      { status: 500 },
     );
   }
 }
 
-// POST - 添加新标签
-export async function POST(req: NextRequest) {
+// 创建标签
+export async function POST(request: NextRequest) {
   try {
-    const tagData = (await req.json()) as Omit<Tag, 'id'>;
-    // 暂时返回成功，因为DatabaseAdmin可能没有addTag方法
-    return NextResponse.json({ success: true, message: '标签功能暂未实现' }, { status: 201 });
+    const { name, groupId } = await request.json();
+
+    if (!name || !groupId) {
+      return NextResponse.json(
+        { success: false, error: "标签名称和分组ID不能为空" },
+        { status: 400 },
+      );
+    }
+
+    // 检查分组是否存在
+    const tagGroup = await DatabaseAdmin.getTagGroupById(groupId);
+    if (!tagGroup) {
+      return NextResponse.json(
+        { success: false, error: "指定的分组不存在" },
+        { status: 400 },
+      );
+    }
+
+    const tag = await DatabaseAdmin.createTag({ name, groupId });
+    return NextResponse.json({ success: true, data: tag });
   } catch (error) {
-    console.error('添加标签失败:', error);
+    console.error("创建标签失败:", error);
     return NextResponse.json(
-      { success: false, error: '添加标签失败' },
-      { status: 500 }
+      { success: false, error: "创建标签失败" },
+      { status: 500 },
     );
   }
 }

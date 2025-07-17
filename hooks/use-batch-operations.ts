@@ -1,11 +1,11 @@
-import { useCallback } from 'react';
-import { ImageData, Tag } from '@/types';
-import { ApiClient } from '@/lib/api';
+import { useCallback } from "react";
+import { ImageData } from "@/types";
+import { apiClient } from "@/lib/api";
 
 interface UseBatchOperationsProps {
   selectedImageIds: Set<string>;
   filteredImages: ImageData[];
-  tags: Tag[];
+
   setSelectedImageIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   getFileExtensionFromUrl: (url: string) => string;
 }
@@ -17,26 +17,29 @@ interface UseBatchOperationsProps {
 export function useBatchOperations({
   selectedImageIds,
   filteredImages,
-  tags,
-  setSelectedImageIds,
-  getFileExtensionFromUrl
-}: UseBatchOperationsProps) {
 
+  setSelectedImageIds,
+  getFileExtensionFromUrl,
+}: UseBatchOperationsProps) {
   // 批量删除
   const handleBatchDelete = useCallback(async () => {
     if (selectedImageIds.size === 0) return;
-    
-    const confirmed = confirm(`确定要删除选中的 ${selectedImageIds.size} 张图片吗？`);
+
+    const confirmed = confirm(
+      `确定要删除选中的 ${selectedImageIds.size} 张图片吗？`,
+    );
     if (!confirmed) return;
 
     try {
-      const deletePromises = Array.from(selectedImageIds).map(id => ApiClient.deleteImage(id));
+      const deletePromises = Array.from(selectedImageIds).map((id) =>
+        apiClient.deleteImage(id),
+      );
       await Promise.all(deletePromises);
       setSelectedImageIds(new Set());
-      console.log('✅ 批量删除成功');
+      console.log("✅ 批量删除成功");
     } catch (error) {
-      console.error('❌ 批量删除失败:', error);
-      alert('批量删除失败: ' + (error as Error).message);
+      console.error("❌ 批量删除失败:", error);
+      alert("批量删除失败: " + (error as Error).message);
     }
   }, [selectedImageIds, setSelectedImageIds]);
 
@@ -45,7 +48,9 @@ export function useBatchOperations({
     if (selectedImageIds.size === 0) return;
 
     try {
-      const selectedImages = filteredImages.filter(img => selectedImageIds.has(img.id));
+      const selectedImages = filteredImages.filter((img) =>
+        selectedImageIds.has(img.id),
+      );
 
       // 导出图片
       for (let i = 0; i < selectedImages.length; i++) {
@@ -53,7 +58,7 @@ export function useBatchOperations({
         if (!image.url) continue;
 
         try {
-          const imgElements = document.querySelectorAll('img');
+          const imgElements = document.querySelectorAll("img");
           let cachedImg: HTMLImageElement | null = null;
 
           for (let j = 0; j < imgElements.length; j++) {
@@ -67,19 +72,20 @@ export function useBatchOperations({
           let blob: Blob;
 
           if (cachedImg && cachedImg.complete) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
             canvas.width = cachedImg.naturalWidth;
             canvas.height = cachedImg.naturalHeight;
             ctx?.drawImage(cachedImg, 0, 0);
             blob = await new Promise<Blob>((resolve) => {
               canvas.toBlob((blob) => {
                 resolve(blob!);
-              }, 'image/png');
+              }, "image/png");
             });
           } else {
             const response = await fetch(image.url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok)
+              throw new Error(`HTTP error! status: ${response.status}`);
             blob = await response.blob();
           }
 
@@ -87,7 +93,7 @@ export function useBatchOperations({
           const filename = `${image.title || `image-${image.id}`}.${extension}`;
 
           const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
+          const a = document.createElement("a");
           a.href = url;
           a.download = filename;
           document.body.appendChild(a);
@@ -96,7 +102,7 @@ export function useBatchOperations({
           URL.revokeObjectURL(url);
 
           if (i < selectedImages.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
           }
         } catch (error) {
           console.error(`❌ 下载图片 ${image.title || image.id} 失败:`, error);
@@ -106,22 +112,18 @@ export function useBatchOperations({
       // 导出JSON数据
       const exportData = {
         images: selectedImages,
-        tags: tags.filter(tag =>
-          selectedImages.some(img =>
-            img.tags.some(imgTag =>
-              typeof imgTag === 'string' ? imgTag === tag.name : imgTag.id === tag.id
-            )
-          )
-        ),
+        tags: [],
         exportTime: new Date().toISOString(),
-        totalCount: selectedImages.length
+        totalCount: selectedImages.length,
       };
 
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `selected-images-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `selected-images-${new Date().toISOString().split("T")[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -129,10 +131,10 @@ export function useBatchOperations({
 
       alert(`已开始下载 ${selectedImages.length} 张图片并导出JSON数据`);
     } catch (error) {
-      console.error('❌ 批量导出失败:', error);
-      alert('批量导出失败: ' + (error as Error).message);
+      console.error("❌ 批量导出失败:", error);
+      alert("批量导出失败: " + (error as Error).message);
     }
-  }, [selectedImageIds, filteredImages, tags, getFileExtensionFromUrl]);
+  }, [selectedImageIds, filteredImages, getFileExtensionFromUrl]);
 
   return {
     handleBatchDelete,

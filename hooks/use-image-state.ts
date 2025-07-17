@@ -1,99 +1,179 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ImageData, Tag, SearchFilters } from '@/types';
-import { filterImages } from '@/lib/utils';
-import { ListenerManager } from '@/lib/listeners';
+"use client";
 
-/**
- * 图片状态管理 Hook
- * 负责管理图片数据、标签数据、搜索过滤器等核心状态
- */
-export function useImageState() {
-  // 核心数据状态
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { ImageData, SearchFilters, DEFAULT_SEARCH_FILTERS } from "@/types";
+import { dataService } from "@/lib/data-service";
+import { listenerManager } from "@/lib/listeners";
+
+interface ImageState {
+  images: ImageData[];
+  filteredImages: ImageData[];
+  isLoading: boolean;
+  searchFilters: SearchFilters;
+  connectionStatus: "connected" | "disconnected" | "reconnecting";
+  cacheStatus: "hit" | "miss" | "loading";
+}
+
+interface ImageActions {
+  handleSearchChange: (filters: Partial<SearchFilters>) => void;
+  refreshImages: (useCache?: boolean) => Promise<void>;
+  clearSearch: () => void;
+  clearCache: () => void;
+  setImages: React.Dispatch<React.SetStateAction<ImageData[]>>;
+  setConnectionStatus: React.Dispatch<React.SetStateAction<"connected" | "disconnected" | "reconnecting">>;
+}
+
+export function useImageState(): ImageState & ImageActions {
   const [images, setImages] = useState<ImageData[]>([]);
   const [filteredImages, setFilteredImages] = useState<ImageData[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // 搜索和过滤状态
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    query: '',
-    tags: [],
-    sortBy: 'createdAt',
-    sortOrder: 'desc'
-  });
-  
-  // 连接状态
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "disconnected" | "reconnecting"
+  >("disconnected");
+  const [cacheStatus, setCacheStatus] = useState<"hit" | "miss" | "loading">(
+    "loading",
+  );
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>(
+    DEFAULT_SEARCH_FILTERS,
+  );
 
-  // 初始化实时监听
+  // 监听网络状态
   useEffect(() => {
-    console.log('🚀 初始化实时数据监听...');
-    
-    // 监听图片数据变化
-    const unsubscribeImages = ListenerManager.subscribeToImages((newImages) => {
-      console.log('📸 图片数据更新:', newImages.length, '张图片');
-      setImages(newImages);
-      setIsLoading(false);
-      setConnectionStatus('connected');
-    });
+    const handleOnline = () => setConnectionStatus("connected");
+    const handleOffline = () => setConnectionStatus("disconnected");
 
-    // 监听标签数据变化
-    const unsubscribeTags = ListenerManager.subscribeToTags((newTags) => {
-      console.log('🏷️ 标签数据更新:', newTags.length, '个标签');
-      setTags(newTags);
-    });
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      setConnectionStatus(navigator.onLine ? "connected" : "disconnected");
 
-    // 监听网络状态
-    const handleOnline = () => {
-      console.log('🌐 网络已连接');
-      setConnectionStatus('connected');
-    };
-
-    const handleOffline = () => {
-      console.log('🔌 网络已断开');
-      setConnectionStatus('disconnected');
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
     }
+  }, []);
 
-    // 清理函数
+  // 加载图片数据
+  const loadImages = useCallback(async (useCache = true) => {
+    try {
+      setIsLoading(true);
+      setCacheStatus("loading");
+
+      const startTime = Date.now();
+      const imageData = await dataService.getAllImages(useCache);
+      const loadTime = Date.now() - startTime;
+
+      setImages(imageData);
+      setConnectionStatus("connected");
+
+      // 判断是否来自缓存（简单的时间判断）
+      setCacheStatus(loadTime < 50 ? "hit" : "miss");
+
+      console.log(`📸 加载了 ${imageData.length} 张图片，耗时 ${loadTime}ms`);
+    } catch (error) {
+      console.error("❌ 加载图片失败:", error);
+      setConnectionStatus("disconnected");
+      setCacheStatus("miss");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // 初始化数据加载
+  useEffect(() => {
+    loadImages(true);
+  }, [loadImages]);
+
+  // 订阅实时数据变化
+  useEffect(() => {
+    console.log("🔄 开始监听图片数据变化");
+
+    const unsubscribe = dataService.subscribeToImages(
+      (newImages: ImageData[]) => {
+        console.log(`📸 实时更新: 接收到 ${newImages.length} 张图片`);
+        setImages(newImages);
+        setConnectionStatus("connected");
+      },
+      (error) => {
+        console.error("❌ 实时监听错误:", error);
+        setConnectionStatus("disconnected");
+      },
+    );
+
     return () => {
-      console.log('🧹 清理监听器...');
-      ListenerManager.unregisterAllListeners();
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      }
+      console.log("🔇 取消图片数据监听");
+      unsubscribe();
     };
   }, []);
 
-  // 搜索和筛选图片
-  useEffect(() => {
-    const filtered = filterImages(images, searchFilters);
-    setFilteredImages(filtered);
+  // 执行搜索和筛选
+  const performSearch = useCallback(async () => {
+    if (!searchFilters.query && searchFilters.tags.length === 0) {
+      // 没有搜索条件时，显示所有图片
+      setFilteredImages(images);
+      return;
+    }
+
+    try {
+      const searchResult = await dataService.searchImages(searchFilters, {
+        page: 1,
+        limit: 1000,
+      });
+      setFilteredImages(searchResult.images);
+      console.log(
+        `🔍 搜索完成: 找到 ${searchResult.total} 个结果，耗时 ${searchResult.searchTime}ms`,
+      );
+    } catch (error) {
+      console.error("❌ 搜索失败:", error);
+      setFilteredImages([]);
+    }
   }, [images, searchFilters]);
 
+  // 当图片数据或搜索条件变化时执行搜索
+  useEffect(() => {
+    performSearch();
+  }, [performSearch]);
+
   // 处理搜索变化
-  const handleSearchChange = useCallback((filters: SearchFilters) => {
-    setSearchFilters(filters);
+  const handleSearchChange = useCallback(
+    (newFilters: Partial<SearchFilters>) => {
+      setSearchFilters((prev) => ({ ...prev, ...newFilters }));
+    },
+    [],
+  );
+
+  // 刷新图片数据
+  const refreshImages = useCallback(
+    async (useCache = false) => {
+      await loadImages(useCache);
+    },
+    [loadImages],
+  );
+
+  // 清除搜索
+  const clearSearch = useCallback(() => {
+    setSearchFilters(DEFAULT_SEARCH_FILTERS);
+  }, []);
+
+  // 清除缓存
+  const clearCache = useCallback(() => {
+    dataService.clearAllCache();
+    setCacheStatus("miss");
   }, []);
 
   return {
-    // 状态
     images,
     filteredImages,
-    tags,
     isLoading,
     searchFilters,
     connectionStatus,
-    
-    // 状态更新函数
-    setImages,
-    setTags,
-    setConnectionStatus,
+    cacheStatus,
     handleSearchChange,
+    refreshImages,
+    clearSearch,
+    clearCache,
+    setImages,
+    setConnectionStatus,
   };
 }

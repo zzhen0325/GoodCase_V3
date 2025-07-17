@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { ImageData } from '@/types';
+import { useState, useCallback } from "react";
+import { ImageData } from "@/types";
 
 /**
  * 模态框状态管理 Hook
@@ -10,10 +10,9 @@ export function useModalState() {
   const [selectedImage, setSelectedImage] = useState<ImageData | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isLemoTaggerOpen, setIsLemoTaggerOpen] = useState(false);
-  
+
   // 视图状态
-  const [activeView, setActiveView] = useState('grid');
+  const [activeView, setActiveView] = useState("grid");
 
   // 处理图片点击
   const handleImageClick = useCallback((image: ImageData) => {
@@ -28,8 +27,7 @@ export function useModalState() {
   }, []);
 
   const closeUploadModal = useCallback(() => setIsUploadModalOpen(false), []);
-  const handleLemoTagger = useCallback(() => setIsLemoTaggerOpen(true), []);
-  const closeLemoTagger = useCallback(() => setIsLemoTaggerOpen(false), []);
+
   const handleUpload = useCallback(() => setIsUploadModalOpen(true), []);
 
   return {
@@ -37,17 +35,16 @@ export function useModalState() {
     selectedImage,
     isImageModalOpen,
     isUploadModalOpen,
-    isLemoTaggerOpen,
+
     activeView,
-    
+
     // 状态更新函数
     setSelectedImage,
     setActiveView,
     handleImageClick,
     closeImageModal,
     closeUploadModal,
-    handleLemoTagger,
-    closeLemoTagger,
+
     handleUpload,
   };
 }

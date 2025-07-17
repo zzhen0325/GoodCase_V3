@@ -1,205 +1,454 @@
-import { ImageData, Tag } from '@/types';
+import {
+  ImageData,
+  Tag,
+  TagGroup,
+  DBResult,
+  SearchFilters,
+  SearchResult,
+  Pagination,
+  BatchResult,
+  UploadValidationResult,
+  FileUploadOptions,
+} from "@/types";
 
-export class ApiClient {
-  private static baseUrl = '/api';
+class ApiClient {
+  private static instance: ApiClient | null = null;
+  private baseUrl = "/api";
 
-  // 注意：搜索功能已移至前端实现，使用 filterImages 函数
+  private constructor() {}
 
-  // 获取所有图片（兼容旧接口）
-  static async getAllImages(): Promise<{ success: boolean; data?: ImageData[]; error?: string }> {
+  static getInstance(): ApiClient {
+    if (!ApiClient.instance) {
+      ApiClient.instance = new ApiClient();
+    }
+    return ApiClient.instance;
+  }
+
+  // ==================== 图片相关 ====================
+
+  // 获取所有图片
+  async getAllImages(): Promise<DBResult<ImageData[]>> {
     try {
       const response = await fetch(`${this.baseUrl}/images`);
       const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('获取图片失败:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '获取图片失败'
-      };
-    }
-  }
 
-  // 获取单个图片
-  static async getImageById(id: string): Promise<ImageData> {
-    const response = await fetch(`${this.baseUrl}/images/${id}`);
-    const result = await response.json();
-    
-    if (result.success) {
-      return result.data;
-    } else {
-      throw new Error(result.error || '获取图片失败');
-    }
-  }
-
-  // 添加图片
-  static async addImage(file: File, prompt: string, tags: string = ''): Promise<{ success: boolean; data?: ImageData; error?: string }> {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('prompt', prompt);
-      formData.append('tags', tags);
-
-      const response = await fetch(`${this.baseUrl}/images`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const result = await response.json();
-      
       if (!response.ok) {
         return {
           success: false,
-          error: result.error || 'Failed to add image'
+          error: result.error || "获取图片失败",
+          timestamp: new Date(),
         };
       }
 
       return {
-        success: true,
-        data: result.data
+        ...result,
+        timestamp: new Date(),
       };
     } catch (error) {
-      console.error('添加图片失败:', error);
+      console.error("获取图片失败:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '添加图片失败'
+        error: "网络错误",
+        timestamp: new Date(),
       };
     }
   }
 
-  // 验证上传的图片URL
-  static async validateUpload(imageUrl: string, metadata?: any): Promise<{ url: string; metadata: any }> {
-    const response = await fetch(`${this.baseUrl}/upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ imageUrl, metadata }),
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      return result.data;
-    } else {
-      throw new Error(result.error || '验证上传失败');
+  // 根据ID获取图片
+  async getImageById(id: string): Promise<DBResult<ImageData | null>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/images/${id}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "获取图片失败",
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("获取图片失败:", error);
+      return {
+        success: false,
+        error: "网络错误",
+        timestamp: new Date(),
+      };
+    }
+  }
+
+  // 搜索图片
+  async searchImages(
+    filters: SearchFilters,
+    pagination?: Pagination,
+  ): Promise<SearchResult> {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.query) params.append("query", filters.query);
+      if (filters.tags?.length) params.append("tags", filters.tags.join(","));
+      if (filters.sortBy) params.append("sortBy", filters.sortBy);
+      if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+      if (filters.dateRange?.start)
+        params.append("dateStart", filters.dateRange.start);
+      if (filters.dateRange?.end)
+        params.append("dateEnd", filters.dateRange.end);
+      if (filters.sizeRange?.min)
+        params.append("sizeMin", filters.sizeRange.min.toString());
+      if (filters.sizeRange?.max)
+        params.append("sizeMax", filters.sizeRange.max.toString());
+
+      if (pagination?.page) params.append("page", pagination.page.toString());
+      if (pagination?.limit)
+        params.append("limit", pagination.limit.toString());
+
+      const response = await fetch(`${this.baseUrl}/images/search?${params}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          images: [],
+          total: 0,
+          page: 1,
+          limit: 20,
+          hasMore: false,
+          filters,
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("搜索图片失败:", error);
+      return {
+        images: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        hasMore: false,
+        filters,
+        timestamp: new Date(),
+      };
+    }
+  }
+
+  // 添加图片
+  async addImage(
+    imageData: Omit<ImageData, "id" | "createdAt" | "updatedAt">,
+  ): Promise<DBResult<ImageData>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/images`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(imageData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "添加图片失败",
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("添加图片失败:", error);
+      return {
+        success: false,
+        error: "网络错误",
+        timestamp: new Date(),
+      };
     }
   }
 
   // 更新图片
-  static async updateImage(id: string, imageData: Partial<Omit<ImageData, 'id' | 'createdAt' | 'updatedAt'>>): Promise<{ success: boolean; data?: ImageData; error?: string }> {
+  async updateImage(
+    id: string,
+    updates: Partial<ImageData>,
+  ): Promise<DBResult<ImageData>> {
     try {
       const response = await fetch(`${this.baseUrl}/images/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(imageData),
+        body: JSON.stringify(updates),
       });
-      
+
       const result = await response.json();
-      return result;
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "更新图片失败",
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
     } catch (error) {
-      console.error('更新图片失败:', error);
+      console.error("更新图片失败:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '更新图片失败'
+        error: "网络错误",
+        timestamp: new Date(),
       };
     }
   }
 
-  // 删除图片（包括Storage中的文件）
-  static async deleteImage(id: string): Promise<{ success: boolean; error?: string }> {
+  // 删除图片
+  async deleteImage(id: string): Promise<DBResult<void>> {
     try {
       const response = await fetch(`${this.baseUrl}/images/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
-      
+
       const result = await response.json();
-      return result;
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "删除图片失败",
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
     } catch (error) {
-      console.error('删除图片失败:', error);
+      console.error("删除图片失败:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '删除图片失败'
+        error: "网络错误",
+        timestamp: new Date(),
       };
     }
   }
+
+  // 批量删除图片
+  async deleteImages(ids: string[]): Promise<BatchResult> {
+    try {
+      const response = await fetch(`${this.baseUrl}/images/batch`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: 0,
+          failed: ids.length,
+          errors: [result.error || "批量删除失败"],
+          results: ids.map(() => ({
+            success: false,
+            error: result.error || "批量删除失败",
+            timestamp: new Date(),
+          })),
+        };
+      }
+
+      return result;
+    } catch (error) {
+      console.error("批量删除图片失败:", error);
+      const errorMessage = "网络错误";
+      return {
+        success: 0,
+        failed: ids.length,
+        errors: [errorMessage],
+        results: ids.map(() => ({
+          success: false,
+          error: errorMessage,
+          timestamp: new Date(),
+        })),
+      };
+    }
+  }
+
+  // ==================== 文件上传相关 ====================
+
+  // 验证上传
+  async validateUpload(
+    file: File,
+    options?: FileUploadOptions,
+  ): Promise<UploadValidationResult> {
+    const maxSize = options?.maxSize || 10 * 1024 * 1024; // 默认10MB
+    const allowedTypes = options?.allowedTypes || [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+
+    // 检查文件类型
+    if (!allowedTypes.includes(file.type)) {
+      return {
+        valid: false,
+        error: "不支持的文件类型",
+        details: {
+          fileType: file.type,
+          allowedTypes,
+        },
+      };
+    }
+
+    // 检查文件大小
+    if (file.size > maxSize) {
+      return {
+        valid: false,
+        error: `文件大小不能超过${Math.round(maxSize / 1024 / 1024)}MB`,
+        details: {
+          fileSize: file.size,
+          maxSize,
+        },
+      };
+    }
+
+    return {
+      valid: true,
+      details: {
+        fileSize: file.size,
+        fileType: file.type,
+      },
+    };
+  }
+
+  // 上传文件
+  async uploadFile(
+    file: File,
+    options?: FileUploadOptions,
+  ): Promise<DBResult<{ url: string; thumbnailUrl?: string }>> {
+    try {
+      // 先验证文件
+      const validation = await this.validateUpload(file, options);
+      if (!validation.valid) {
+        return {
+          success: false,
+          error: validation.error || "文件验证失败",
+          timestamp: new Date(),
+        };
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      if (options?.generateThumbnail) {
+        formData.append("generateThumbnail", "true");
+      }
+
+      const response = await fetch(`${this.baseUrl}/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "上传失败",
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("上传文件失败:", error);
+      return {
+        success: false,
+        error: "网络错误",
+        timestamp: new Date(),
+      };
+    }
+  }
+
+  // ==================== 标签相关 ====================
 
   // 获取所有标签
-  static async getAllTags(): Promise<{ success: boolean; data?: Tag[]; error?: string }> {
+  async getAllTags(): Promise<DBResult<Tag[]>> {
     try {
       const response = await fetch(`${this.baseUrl}/tags`);
       const result = await response.json();
-      return result;
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "获取标签失败",
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
     } catch (error) {
-      console.error('获取标签失败:', error);
+      console.error("获取标签失败:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '获取标签失败'
+        error: "网络错误",
+        timestamp: new Date(),
       };
     }
   }
 
-  // 添加标签
-  static async addTag(tagData: Omit<Tag, 'id'>): Promise<{ success: boolean; data?: Tag; error?: string }> {
-    try {
-      const response = await fetch(`${this.baseUrl}/tags`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(tagData),
-      });
-      
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('添加标签失败:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '添加标签失败'
-      };
-    }
-  }
+  // ==================== 标签分组相关 ====================
 
-  // 更新标签
-  static async updateTag(id: string, tagData: Partial<Tag>): Promise<{ success: boolean; data?: Tag; error?: string }> {
+  // 获取所有标签分组
+  async getAllTagGroups(): Promise<DBResult<TagGroup[]>> {
     try {
-      const response = await fetch(`${this.baseUrl}/tags/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(tagData),
-      });
-      
+      const response = await fetch(`${this.baseUrl}/tag-groups`);
       const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('更新标签失败:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '更新标签失败'
-      };
-    }
-  }
 
-  // 删除标签
-  static async deleteTag(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const response = await fetch(`${this.baseUrl}/tags/${id}`, {
-        method: 'DELETE',
-      });
-      
-      const result = await response.json();
-      return result;
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "获取标签分组失败",
+          timestamp: new Date(),
+        };
+      }
+
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
     } catch (error) {
-      console.error('删除标签失败:', error);
+      console.error("获取标签分组失败:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '删除标签失败'
+        error: "网络错误",
+        timestamp: new Date(),
       };
     }
   }
 }
+
+export const apiClient = ApiClient.getInstance();
+export default apiClient;

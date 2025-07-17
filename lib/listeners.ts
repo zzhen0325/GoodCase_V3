@@ -1,180 +1,476 @@
-"use client"
+"use client";
 
-import { Database } from './database';
-import { ImageData, Tag } from '@/types';
+import {
+  onSnapshot,
+  doc,
+  collection,
+  query,
+  orderBy,
+  Unsubscribe,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import {
+  ImageData,
+  Tag,
+  TagGroup,
+  ConnectionStatus,
+  PerformanceMetrics,
+} from "@/types";
+import { CacheManager } from "./cache-manager";
 
-// 监听器管理类
-export class ListenerManager {
-  private static listeners: Map<string, () => void> = new Map();
-  private static isOnline = true;
-  private static reconnectAttempts = 0;
-  private static maxReconnectAttempts = 3;
-  private static reconnectDelay = 1000; // 1秒
+interface ListenerOptions {
+  enableCache?: boolean;
+  cacheKey?: string;
+  cacheTTL?: number;
+}
 
-  // 初始化网络状态监听
-  static initNetworkListener() {
-    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-      window.addEventListener('online', this.handleOnline.bind(this));
-      window.addEventListener('offline', this.handleOffline.bind(this));
-      this.isOnline = navigator.onLine;
+class ListenerManager {
+  private listeners: Map<string, Unsubscribe> = new Map();
+  private connectionStatus: ConnectionStatus = "disconnected";
+  private statusCallbacks: Set<(status: ConnectionStatus) => void> = new Set();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000; // 1秒
+  private cacheManager: CacheManager;
+  private performanceMetrics: PerformanceMetrics = {
+    totalRequests: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
+    averageResponseTime: 0,
+    errorCount: 0,
+    lastUpdated: new Date(),
+  };
+
+  constructor() {
+    this.cacheManager = CacheManager.getInstance();
+    this.setupNetworkListener();
+  }
+
+  private setupNetworkListener() {
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", () => {
+        this.handleNetworkChange(true);
+      });
+
+      window.addEventListener("offline", () => {
+        this.handleNetworkChange(false);
+      });
     }
   }
 
-  // 处理网络连接
-  private static handleOnline() {
-    console.log('🌐 网络已连接，重新建立监听器');
-    this.isOnline = true;
-    this.reconnectAttempts = 0;
-    this.reconnectAllListeners();
+  private handleNetworkChange(isOnline: boolean) {
+    if (isOnline) {
+      this.setConnectionStatus("reconnecting");
+      this.reconnectListeners();
+    } else {
+      this.setConnectionStatus("disconnected");
+    }
   }
 
-  // 处理网络断开
-  private static handleOffline() {
-    console.log('🔌 网络已断开，暂停监听器');
-    this.isOnline = false;
+  private setConnectionStatus(status: ConnectionStatus) {
+    this.connectionStatus = status;
+    this.statusCallbacks.forEach((callback) => callback(status));
   }
 
-  // 重新连接所有监听器
-  private static reconnectAllListeners() {
-    if (!this.isOnline || this.reconnectAttempts >= this.maxReconnectAttempts) {
+  private async reconnectListeners() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error("达到最大重连次数，停止重连");
+      this.setConnectionStatus("disconnected");
       return;
     }
 
-    this.reconnectAttempts++;
-    console.log(`🔄 尝试重新连接监听器 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    try {
+      // 等待一段时间后重连
+      await new Promise((resolve) => setTimeout(resolve, this.reconnectDelay));
 
-    setTimeout(() => {
-      // 这里可以添加重新建立监听器的逻辑
-      // 由于监听器通常在组件中管理，这里主要是记录状态
-    }, this.reconnectDelay * this.reconnectAttempts);
+      // 重新建立所有监听器
+      // 这里可以添加重连逻辑
+
+      this.reconnectAttempts = 0;
+      this.setConnectionStatus("connected");
+    } catch (error) {
+      console.error("重连失败:", error);
+      this.reconnectAttempts++;
+      this.reconnectDelay *= 2; // 指数退避
+      this.reconnectListeners();
+    }
   }
 
-  // 注册监听器
-  static registerListener(key: string, unsubscribe: () => void) {
-    // 确保 listeners Map 已初始化
-    if (!this.listeners) {
-      this.listeners = new Map();
+  private updatePerformanceMetrics(
+    isError: boolean = false,
+    responseTime?: number,
+  ) {
+    this.performanceMetrics.totalRequests++;
+
+    if (isError) {
+      this.performanceMetrics.errorCount++;
     }
-    
-    // 如果已存在同名监听器，先取消订阅
-    if (this.listeners.has(key)) {
-      this.listeners.get(key)!();
+
+    if (responseTime) {
+      const currentAvg = this.performanceMetrics.averageResponseTime;
+      const totalRequests = this.performanceMetrics.totalRequests;
+      this.performanceMetrics.averageResponseTime =
+        (currentAvg * (totalRequests - 1) + responseTime) / totalRequests;
     }
-    this.listeners.set(key, unsubscribe);
-    console.log(`📡 注册监听器: ${key}`);
+
+    this.performanceMetrics.lastUpdated = new Date();
   }
 
-  // 取消监听器
-  static unregisterListener(key: string) {
-    if (!this.listeners) {
-      return;
+  // 订阅连接状态变化
+  onConnectionStatusChange(
+    callback: (status: ConnectionStatus) => void,
+  ): () => void {
+    this.statusCallbacks.add(callback);
+    // 立即调用一次回调，传递当前状态
+    callback(this.connectionStatus);
+
+    return () => {
+      this.statusCallbacks.delete(callback);
+    };
+  }
+
+  // 获取当前连接状态
+  getConnectionStatus(): ConnectionStatus {
+    return this.connectionStatus;
+  }
+
+  // 获取性能指标
+  getPerformanceMetrics(): PerformanceMetrics {
+    return { ...this.performanceMetrics };
+  }
+
+  // 订阅所有图片
+  subscribeToImages(
+    onUpdate: (images: ImageData[]) => void,
+    onError?: (error: Error) => void,
+    options?: ListenerOptions,
+  ): () => void {
+    const listenerId = "images";
+    const cacheKey = options?.cacheKey || "all-images";
+    const startTime = Date.now();
+
+    // 如果已经有监听器，先取消
+    this.unsubscribe(listenerId);
+
+    // 如果启用缓存，先尝试从缓存获取
+    if (options?.enableCache) {
+      const cachedData = this.cacheManager.get<ImageData[]>(cacheKey);
+      if (cachedData) {
+        onUpdate(cachedData);
+        this.performanceMetrics.cacheHits++;
+      } else {
+        this.performanceMetrics.cacheMisses++;
+      }
     }
-    
-    const unsubscribe = this.listeners.get(key);
+
+    try {
+      const q = query(collection(db, "images"), orderBy("createdAt", "desc"));
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          try {
+            const images: ImageData[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              images.push({
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate?.() || new Date(),
+                updatedAt: data.updatedAt?.toDate?.() || new Date(),
+              } as ImageData);
+            });
+
+            // 更新缓存
+            if (options?.enableCache) {
+              this.cacheManager.set(cacheKey, images, options.cacheTTL);
+            }
+
+            onUpdate(images);
+            this.setConnectionStatus("connected");
+            this.updatePerformanceMetrics(false, Date.now() - startTime);
+          } catch (error) {
+            console.error("处理图片数据时出错:", error);
+            this.updatePerformanceMetrics(true);
+            onError?.(error as Error);
+          }
+        },
+        (error) => {
+          console.error("监听图片失败:", error);
+          this.setConnectionStatus("disconnected");
+          this.updatePerformanceMetrics(true);
+          onError?.(error);
+
+          // 尝试重连
+          this.handleNetworkChange(navigator.onLine);
+        },
+      );
+
+      this.listeners.set(listenerId, unsubscribe);
+
+      return () => this.unsubscribe(listenerId);
+    } catch (error) {
+      console.error("创建图片监听器失败:", error);
+      this.updatePerformanceMetrics(true);
+      onError?.(error as Error);
+      return () => {};
+    }
+  }
+
+  // 订阅单个图片
+  subscribeToImage(
+    id: string,
+    onUpdate: (image: ImageData | null) => void,
+    onError?: (error: Error) => void,
+    options?: ListenerOptions,
+  ): () => void {
+    const listenerId = `image-${id}`;
+    const cacheKey = options?.cacheKey || `image-${id}`;
+    const startTime = Date.now();
+
+    // 如果已经有监听器，先取消
+    this.unsubscribe(listenerId);
+
+    // 如果启用缓存，先尝试从缓存获取
+    if (options?.enableCache) {
+      const cachedData = this.cacheManager.get<ImageData>(cacheKey);
+      if (cachedData) {
+        onUpdate(cachedData);
+        this.performanceMetrics.cacheHits++;
+      } else {
+        this.performanceMetrics.cacheMisses++;
+      }
+    }
+
+    try {
+      const unsubscribe = onSnapshot(
+        doc(db, "images", id),
+        (doc) => {
+          try {
+            if (doc.exists()) {
+              const data = doc.data();
+              const image: ImageData = {
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate?.() || new Date(),
+                updatedAt: data.updatedAt?.toDate?.() || new Date(),
+              } as ImageData;
+
+              // 更新缓存
+              if (options?.enableCache) {
+                this.cacheManager.set(cacheKey, image, options.cacheTTL);
+              }
+
+              onUpdate(image);
+            } else {
+              // 从缓存中删除不存在的图片
+              if (options?.enableCache) {
+                this.cacheManager.delete(cacheKey);
+              }
+              onUpdate(null);
+            }
+
+            this.setConnectionStatus("connected");
+            this.updatePerformanceMetrics(false, Date.now() - startTime);
+          } catch (error) {
+            console.error("处理图片数据时出错:", error);
+            this.updatePerformanceMetrics(true);
+            onError?.(error as Error);
+          }
+        },
+        (error) => {
+          console.error("监听图片失败:", error);
+          this.setConnectionStatus("disconnected");
+          this.updatePerformanceMetrics(true);
+          onError?.(error);
+        },
+      );
+
+      this.listeners.set(listenerId, unsubscribe);
+
+      return () => this.unsubscribe(listenerId);
+    } catch (error) {
+      console.error("创建图片监听器失败:", error);
+      this.updatePerformanceMetrics(true);
+      onError?.(error as Error);
+      return () => {};
+    }
+  }
+
+  // 订阅所有标签
+  subscribeToTags(
+    onUpdate: (tags: Tag[]) => void,
+    onError?: (error: Error) => void,
+    options?: ListenerOptions,
+  ): () => void {
+    const listenerId = "tags";
+    const cacheKey = options?.cacheKey || "all-tags";
+    const startTime = Date.now();
+
+    this.unsubscribe(listenerId);
+
+    if (options?.enableCache) {
+      const cachedData = this.cacheManager.get<Tag[]>(cacheKey);
+      if (cachedData) {
+        onUpdate(cachedData);
+        this.performanceMetrics.cacheHits++;
+      } else {
+        this.performanceMetrics.cacheMisses++;
+      }
+    }
+
+    try {
+      const q = query(collection(db, "tags"), orderBy("name", "asc"));
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          try {
+            const tags: Tag[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              tags.push({
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate?.() || new Date(),
+                updatedAt: data.updatedAt?.toDate?.() || new Date(),
+              } as Tag);
+            });
+
+            if (options?.enableCache) {
+              this.cacheManager.set(cacheKey, tags, options.cacheTTL);
+            }
+
+            onUpdate(tags);
+            this.setConnectionStatus("connected");
+            this.updatePerformanceMetrics(false, Date.now() - startTime);
+          } catch (error) {
+            console.error("处理标签数据时出错:", error);
+            this.updatePerformanceMetrics(true);
+            onError?.(error as Error);
+          }
+        },
+        (error) => {
+          console.error("监听标签失败:", error);
+          this.setConnectionStatus("disconnected");
+          this.updatePerformanceMetrics(true);
+          onError?.(error);
+        },
+      );
+
+      this.listeners.set(listenerId, unsubscribe);
+
+      return () => this.unsubscribe(listenerId);
+    } catch (error) {
+      console.error("创建标签监听器失败:", error);
+      this.updatePerformanceMetrics(true);
+      onError?.(error as Error);
+      return () => {};
+    }
+  }
+
+  // 订阅所有标签分组
+  subscribeToTagGroups(
+    onUpdate: (tagGroups: TagGroup[]) => void,
+    onError?: (error: Error) => void,
+    options?: ListenerOptions,
+  ): () => void {
+    const listenerId = "tag-groups";
+    const cacheKey = options?.cacheKey || "all-tag-groups";
+    const startTime = Date.now();
+
+    this.unsubscribe(listenerId);
+
+    if (options?.enableCache) {
+      const cachedData = this.cacheManager.get<TagGroup[]>(cacheKey);
+      if (cachedData) {
+        onUpdate(cachedData);
+        this.performanceMetrics.cacheHits++;
+      } else {
+        this.performanceMetrics.cacheMisses++;
+      }
+    }
+
+    try {
+      const q = query(collection(db, "tag-groups"), orderBy("name", "asc"));
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          try {
+            const tagGroups: TagGroup[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              tagGroups.push({
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate?.() || new Date(),
+                updatedAt: data.updatedAt?.toDate?.() || new Date(),
+              } as TagGroup);
+            });
+
+            if (options?.enableCache) {
+              this.cacheManager.set(cacheKey, tagGroups, options.cacheTTL);
+            }
+
+            onUpdate(tagGroups);
+            this.setConnectionStatus("connected");
+            this.updatePerformanceMetrics(false, Date.now() - startTime);
+          } catch (error) {
+            console.error("处理标签分组数据时出错:", error);
+            this.updatePerformanceMetrics(true);
+            onError?.(error as Error);
+          }
+        },
+        (error) => {
+          console.error("监听标签分组失败:", error);
+          this.setConnectionStatus("disconnected");
+          this.updatePerformanceMetrics(true);
+          onError?.(error);
+        },
+      );
+
+      this.listeners.set(listenerId, unsubscribe);
+
+      return () => this.unsubscribe(listenerId);
+    } catch (error) {
+      console.error("创建标签分组监听器失败:", error);
+      this.updatePerformanceMetrics(true);
+      onError?.(error as Error);
+      return () => {};
+    }
+  }
+
+  // 取消特定监听器
+  unsubscribe(listenerId: string) {
+    const unsubscribe = this.listeners.get(listenerId);
     if (unsubscribe) {
       unsubscribe();
-      this.listeners.delete(key);
-      console.log(`🔇 取消监听器: ${key}`);
+      this.listeners.delete(listenerId);
     }
   }
 
   // 取消所有监听器
-  static unregisterAllListeners() {
-    console.log('🔇 取消所有监听器');
-    if (this.listeners) {
-      this.listeners.forEach((unsubscribe, key) => {
-        unsubscribe();
-        console.log(`🔇 取消监听器: ${key}`);
-      });
-      this.listeners.clear();
-    }
+  unsubscribeAll() {
+    this.listeners.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+    this.listeners.clear();
   }
 
-  // 获取监听器状态
-  static getListenerStatus() {
-    return {
-      isOnline: this.isOnline,
-      activeListeners: this.listeners ? Array.from(this.listeners.keys()) : [],
-      reconnectAttempts: this.reconnectAttempts
-    };
+  // 清理缓存
+  clearCache() {
+    this.cacheManager.clear();
   }
 
-  // 错误处理
-  static handleError(listenerKey: string, error: Error) {
-    console.error(`❌ 监听器错误 [${listenerKey}]:`, error);
-    
-    // 如果是网络错误，尝试重新连接
-    if (error.message.includes('network') || error.message.includes('offline')) {
-      this.isOnline = false;
-      setTimeout(() => {
-        if (typeof navigator !== 'undefined' && navigator.onLine) {
-          this.handleOnline();
-        }
-      }, this.reconnectDelay);
-    }
-  }
-
-  // 图片监听器
-  static subscribeToImages(
-    callback: (images: ImageData[]) => void,
-    key: string = 'images'
-  ) {
-    const unsubscribe = Database.subscribeToImages(
-      callback,
-      (error) => this.handleError(key, error)
-    );
-    this.registerListener(key, unsubscribe);
-    return unsubscribe;
-  }
-
-  // 标签监听器
-  static subscribeToTags(
-    callback: (tags: Tag[]) => void,
-    key: string = 'tags'
-  ) {
-    const unsubscribe = Database.subscribeToTags(
-      callback,
-      (error) => this.handleError(key, error)
-    );
-    this.registerListener(key, unsubscribe);
-    return unsubscribe;
-  }
-
-  // 单个图片监听器
-  static subscribeToImage(
-    id: string,
-    callback: (image: ImageData | null) => void,
-    key?: string
-  ) {
-    const listenerKey = key || `image-${id}`;
-    const unsubscribe = Database.subscribeToImage(
-      id,
-      callback,
-      (error) => this.handleError(listenerKey, error)
-    );
-    this.registerListener(listenerKey, unsubscribe);
-    return unsubscribe;
-  }
-
-  // 搜索监听器 - 暂时使用普通图片监听器
-  static subscribeToSearchImages(
-    searchQuery: string,
-    tags: Tag[],
-    callback: (images: ImageData[]) => void,
-    key: string = 'search'
-  ) {
-    // 由于Database没有subscribeToSearchImages方法，使用subscribeToImages
-    const unsubscribe = Database.subscribeToImages(
-      callback,
-      (error) => this.handleError(key, error)
-    );
-    this.registerListener(key, unsubscribe);
-    return unsubscribe;
+  // 清理资源
+  destroy() {
+    this.unsubscribeAll();
+    this.statusCallbacks.clear();
+    this.clearCache();
   }
 }
 
-
-// 初始化监听器管理器
-if (typeof window !== 'undefined') {
-  ListenerManager.initNetworkListener();
-}
+// 导出单例实例
+export const listenerManager = new ListenerManager();
+export default listenerManager;

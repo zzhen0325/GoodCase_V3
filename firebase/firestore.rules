@@ -6,11 +6,7 @@ service cloud.firestore {
       allow read, write, create, update, delete: if true;
     }
     
-    // 标签集合 - 所有人都可以读写
-    match /tags/{tagId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
+
     // 通用规则 - 所有文档都允许读写
     match /{document=**} {
       allow read, write, create, update, delete: if true;
