@@ -56,10 +56,7 @@ export function AppSidebar({ tags, selectedTags, onTagToggle, onSearch, onTagsCh
   )
 
   const handleGroupNameChange = (colorName: string, newName: string) => {
-    setCustomGroupNames(prev => ({
-      ...prev,
-      [colorName]: newName
-    }))
+    setCustomGroupNames(prev => ({ ...prev, [colorName]: newName }))
     onGroupNameChange?.(colorName, newName)
   }
   
@@ -108,11 +105,8 @@ export function AppSidebar({ tags, selectedTags, onTagToggle, onSearch, onTagsCh
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {groupedTags.map((group, index) => (
-          <GroupItem
-            key={group.colorName}
-            group={group}
-          >
+        {groupedTags.map((group) => (
+          <GroupItem key={group.colorName} group={group}>
             <SidebarMenu>
               {group.tags.map((tag) => (
                 <TagItem
@@ -128,15 +122,12 @@ export function AppSidebar({ tags, selectedTags, onTagToggle, onSearch, onTagsCh
       </SidebarContent>
       <SidebarFooter>
         {/* 工具按钮 */}
-        {toolButtons && toolButtons.length > 0 && (
+        {toolButtons?.length && (
           <SidebarGroup>
             <SidebarMenu>
               {toolButtons.map((button, index) => (
                 <SidebarMenuItem key={index}>
-                  <SidebarMenuButton
-                    onClick={button.onClick}
-                    className="w-full"
-                  >
+                  <SidebarMenuButton onClick={button.onClick} className="w-full">
                     <button.icon className="w-4 h-4" />
                     <span>{button.label}</span>
                   </SidebarMenuButton>

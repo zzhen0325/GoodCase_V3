@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageData } from '@/types';
-import { gridConfig, getGridColumnsClass } from '@/lib/utils';
 import { ImageCard } from './image-card';
 import { Loader2 } from 'lucide-react';
 
@@ -42,20 +41,14 @@ export const ImageGrid = React.memo(function ImageGrid({
     
     const handleScroll = () => {
       setIsScrolling(true);
-      
-      // 检测是否接近底部
       const { scrollTop, scrollHeight, clientHeight } = container;
-      const threshold = 200; // 距离底部200px时开始加载
       
-      if (scrollHeight - scrollTop - clientHeight < threshold && !loadingMore) {
+      if (scrollHeight - scrollTop - clientHeight < 200 && !loadingMore) {
         onLoadMore();
       }
       
-      // 滚动停止检测
       clearTimeout((window as any).scrollTimer);
-      (window as any).scrollTimer = setTimeout(() => {
-        setIsScrolling(false);
-      }, 150);
+      (window as any).scrollTimer = setTimeout(() => setIsScrolling(false), 150);
     };
     
     container.addEventListener('scroll', handleScroll);
@@ -142,30 +135,22 @@ export const ImageGrid = React.memo(function ImageGrid({
       </AnimatePresence>
       
       {/* 图片网格 */}
-      <div className={`columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10 ${
-        isCompact ? 'columns-1' : ''
-      }`}>
-        <AnimatePresence>
-          {images.map((image, index) => (
-            <motion.div 
-              key={image.id} 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ delay: index * 0.05, duration: 0.4 }}
-              className="break-inside-avoid mb-6"
-            >
-              <ImageCard
-                image={image}
-                onClick={onImageClick}
-                index={index}
-                isEditMode={isEditMode}
-                isSelected={selectedImageIds.has(image.id)}
-                onSelect={onSelectImage}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+      <div className={`columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10${isCompact ? ' !columns-1' : ''}`}>
+        {images.map((image, index) => (
+          <div 
+            key={image.id} 
+            className="break-inside-avoid mb-6"
+          >
+            <ImageCard
+              image={image}
+              onClick={onImageClick}
+              index={index}
+              isEditMode={isEditMode}
+              isSelected={selectedImageIds.has(image.id)}
+              onSelect={onSelectImage}
+            />
+          </div>
+        ))}
       </div>
       
       {/* 加载更多指示器 */}

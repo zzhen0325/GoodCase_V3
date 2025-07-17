@@ -21,31 +21,16 @@ export function useModalState() {
     setIsImageModalOpen(true);
   }, []);
 
-  // 关闭图片详情弹窗
+  // 模态框控制函数
   const closeImageModal = useCallback(() => {
     setIsImageModalOpen(false);
     setSelectedImage(null);
   }, []);
 
-  // 关闭上传弹窗
-  const closeUploadModal = useCallback(() => {
-    setIsUploadModalOpen(false);
-  }, []);
-
-  // 处理 Lemo Tagger
-  const handleLemoTagger = useCallback(() => {
-    setIsLemoTaggerOpen(true);
-  }, []);
-
-  // 关闭 Lemo Tagger
-  const closeLemoTagger = useCallback(() => {
-    setIsLemoTaggerOpen(false);
-  }, []);
-
-  // 处理上传
-  const handleUpload = useCallback(() => {
-    setIsUploadModalOpen(true);
-  }, []);
+  const closeUploadModal = useCallback(() => setIsUploadModalOpen(false), []);
+  const handleLemoTagger = useCallback(() => setIsLemoTaggerOpen(true), []);
+  const closeLemoTagger = useCallback(() => setIsLemoTaggerOpen(false), []);
+  const handleUpload = useCallback(() => setIsUploadModalOpen(true), []);
 
   return {
     // 状态

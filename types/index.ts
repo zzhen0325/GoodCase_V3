@@ -79,11 +79,8 @@ export const COLOR_THEMES: ColorTheme[] = [
   { name: 'fuchsia', bg: '#fae8ff', text: '#d946ef' },
 ] as const;
 
-// 提示词颜色选项（保持向后兼容）
-export const PROMPT_COLORS = COLOR_THEMES.map(theme => theme.name);
-
-// 标签颜色选项（保持向后兼容）
-export const TAG_COLORS = COLOR_THEMES.map(theme => theme.name);
+// 颜色选项（统一使用）
+export const AVAILABLE_COLORS = COLOR_THEMES.map(theme => theme.name);
 
 // 根据颜色名称获取主题
 export const getColorTheme = (colorName: string): ColorTheme => {

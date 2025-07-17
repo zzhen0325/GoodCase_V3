@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ImageGrid } from '@/components/image-grid';
 import { ImageModal } from '@/components/image-modal';
 import { UploadModal } from '@/components/upload-modal';
-
 import { ConnectionStatus } from '@/components/connection-status';
 import CircularText from '@/components/circular-text';
 import { DownloadProgressToast } from '@/components/download-progress-toast';
@@ -84,33 +83,23 @@ export default function HomePage() {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    // 添加滚动节流
-const handleScroll = _.throttle(() => {
-  const scrollTop = container.scrollTop;
-  const { scrollHeight, clientHeight } = container;
-  setShowScrollTop(scrollTop > 200);
-  
-  // 自动加载更多（保留原有逻辑）
-  if (scrollHeight - scrollTop - clientHeight < 100 && !loadingMore && hasMore) {
-    loadMore();
-  }
-}, 200);
+    const handleScroll = _.throttle(() => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      setShowScrollTop(scrollTop > 200);
+      
+      if (scrollHeight - scrollTop - clientHeight < 100 && !loadingMore && hasMore) {
+        loadMore();
+      }
+    }, 200);
 
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [loadMore, loadingMore, hasMore]);
 
   // 滚动到顶部
   const scrollToTop = () => {
-    scrollContainerRef.current?.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-
-
-
 
   if (isLoading) {
     return (
@@ -212,7 +201,6 @@ const handleScroll = _.throttle(() => {
                   availableTags={tags}
                   onCopyPrompt={handleCopyPrompt}
                   onDuplicate={handleImageDuplicate}
-                  isPanel={true}
                 />
               </div>
             </motion.div>

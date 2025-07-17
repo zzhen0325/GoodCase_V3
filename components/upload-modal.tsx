@@ -92,56 +92,35 @@ export function UploadModal({
     });
   };
 
+  // 创建默认提示词
+  const createDefaultPrompts = (): Prompt[] => {
+    const now = new Date().toISOString();
+    return ['风格', '主体', '场景'].map((title, index) => ({
+      id: generateId(),
+      title,
+      content: '',
+      color: 'slate' as const,
+      order: index,
+      createdAt: now,
+      updatedAt: now,
+    }));
+  };
+
   // 处理文件
   const processFile = async (file: File) => {
-    // 检查文件类型
     if (!file.type.startsWith('image/')) {
       alert('请选择图片文件');
       return;
     }
     
     try {
-      // 转换为base64并设置预览
       const base64 = await fileToBase64(file);
       setSelectedFile(file);
       setPreviewUrl(base64);
+      setImageName(file.name.split('.').slice(0, -1).join('.'));
       
-      // 使用文件名作为图片名称
-      const fileName = file.name.split('.').slice(0, -1).join('.');
-      setImageName(fileName);
-      
-      // 创建默认的提示词块
       if (prompts.length === 0) {
-        const defaultPrompts: Prompt[] = [
-          {
-            id: generateId(),
-            title: '风格',
-            content: '',
-            color: 'slate',
-            order: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: generateId(),
-            title: '主体',
-            content: '',
-            color: 'slate',
-            order: 1,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: generateId(),
-            title: '场景',
-            content: '',
-            color: 'slate',
-            order: 2,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ];
-        setPrompts(defaultPrompts);
+        setPrompts(createDefaultPrompts());
       }
     } catch (error) {
       console.error('文件处理失败:', error);
@@ -158,9 +137,7 @@ export function UploadModal({
   const clearSelectedFile = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // 处理上传
