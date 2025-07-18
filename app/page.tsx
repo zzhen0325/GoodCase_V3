@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import _ from "lodash";
-import { useRef, useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ImageGrid } from "@/components/image-grid";
-import { ImageModal } from "@/components/image-modal";
-import { UploadModal } from "@/components/upload-modal";
-import { ConnectionStatus } from "@/components/connection-status";
-import CircularText from "@/components/circular-text";
-import { DownloadProgressToast } from "@/components/download-progress-toast";
+import _ from 'lodash';
+import { useRef, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ImageGrid } from '@/components/image-grid';
+import { ImageModal } from '@/components/image-modal';
+import { UploadModal } from '@/components/upload-modal';
+import { ConnectionStatus } from '@/components/connection-status';
+import CircularText from '@/components/circular-text';
+import { DownloadProgressToast } from '@/components/download-progress-toast';
 
 import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
-import { AppSidebar } from "@/components/app-sidebar";
-import { useHomePage } from "@/hooks/use-home-page";
-import { Button } from "@/components/ui/button";
-import { Bot, Wrench, FileText, ArrowUp } from "lucide-react";
+} from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
+import { AppSidebar } from '@/components/app-sidebar';
+import { useHomePage } from '@/hooks/use-home-page';
+import { Button } from '@/components/ui/button';
+import { Bot, Wrench, FileText, ArrowUp } from 'lucide-react';
 
 // 主页面组件
 export default function HomePage() {
@@ -96,13 +96,13 @@ export default function HomePage() {
       }
     }, 200);
 
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
   }, [loadMore, loadingMore, hasMore]);
 
   // 滚动到顶部
   const scrollToTop = () => {
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (isLoading) {
@@ -130,17 +130,17 @@ export default function HomePage() {
         // 将右上角工具按钮传递给侧边栏
         toolButtons={[
           {
-            label: "lemo-prompt",
+            label: 'lemo-prompt',
             icon: Bot,
             onClick: () =>
               window.open(
-                "https://www.coze.cn/store/agent/7517149263135670299?bot_id=true&bid=6grtojeg03g13",
-                "_blank",
+                'https://www.coze.cn/store/agent/7517149263135670299?bot_id=true&bid=6grtojeg03g13',
+                '_blank'
               ),
           },
 
           {
-            label: "Lemon8 AI WIKI",
+            label: 'Lemon8 AI WIKI',
             icon: FileText,
             onClick: handleLarkDoc,
           },
@@ -163,7 +163,7 @@ export default function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
               <div className="w-full h-full rounded-3xl overflow-hidden">
                 <ImageModal

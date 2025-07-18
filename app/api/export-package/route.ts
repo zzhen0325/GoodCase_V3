@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import JSZip from "jszip";
-import { DatabaseAdmin } from "@/lib/database-admin";
+import { NextRequest, NextResponse } from 'next/server';
+import JSZip from 'jszip';
+import { DatabaseAdmin } from '@/lib/database-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,18 +14,18 @@ export async function POST(request: NextRequest) {
 
     // 添加JSON数据文件
     const jsonData = JSON.stringify(exportData, null, 2);
-    zip.file("data.json", jsonData);
+    zip.file('data.json', jsonData);
 
     // 如果提供了图片ID列表，则只导出指定图片
     let imagesToExport = exportData.images;
     if (imageIds && Array.isArray(imageIds) && imageIds.length > 0) {
       imagesToExport = exportData.images.filter((img) =>
-        imageIds.includes(img.id),
+        imageIds.includes(img.id)
       );
     }
 
     // 创建图片文件夹
-    const imagesFolder = zip.folder("images");
+    const imagesFolder = zip.folder('images');
 
     // 下载进度跟踪
     let processedCount = 0;
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
           // 优先使用缓存的图片数据
           const cachedImage = cachedImages?.find(
-            (cached: any) => cached.id === image.id,
+            (cached: any) => cached.id === image.id
           );
           if (cachedImage && cachedImage.data) {
             // 使用缓存的图片数据
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
             imageData = bytes.buffer;
 
             const fileExtension =
-              cachedImage.extension || getFileExtension(image.url) || "jpg";
+              cachedImage.extension || getFileExtension(image.url) || 'jpg';
             fileName = `${image.id}.${fileExtension}`;
           } else {
             // 从URL下载图片
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
             }
 
             imageData = await response.arrayBuffer();
-            const fileExtension = getFileExtension(image.url) || "jpg";
+            const fileExtension = getFileExtension(image.url) || 'jpg';
             fileName = `${image.id}.${fileExtension}`;
           }
 
@@ -76,28 +76,28 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           console.error(`Error processing image ${image.id}:`, error);
         }
-      },
+      }
     );
 
     await Promise.all(downloadPromises);
 
     // 生成ZIP文件
-    const zipBuffer = await zip.generateAsync({ type: "arraybuffer" });
+    const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
 
-    const filename = `gallery-export-${new Date().toISOString().split("T")[0]}.zip`;
+    const filename = `gallery-export-${new Date().toISOString().split('T')[0]}.zip`;
 
     return new NextResponse(zipBuffer, {
       status: 200,
       headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Content-Length": zipBuffer.byteLength.toString(),
-        "Cache-Control": "no-cache",
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': zipBuffer.byteLength.toString(),
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {
-    console.error("打包导出失败:", error);
-    return NextResponse.json({ error: "打包导出失败" }, { status: 500 });
+    console.error('打包导出失败:', error);
+    return NextResponse.json({ error: '打包导出失败' }, { status: 500 });
   }
 }
 
@@ -105,23 +105,23 @@ export async function POST(request: NextRequest) {
 function getFileExtension(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    const extension = pathname.split(".").pop();
-    return extension || "jpg";
+    const extension = pathname.split('.').pop();
+    return extension || 'jpg';
   } catch {
-    return "jpg";
+    return 'jpg';
   }
 }
 
 // GET方法用于获取导出进度
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const sessionId = searchParams.get("sessionId");
+  const sessionId = searchParams.get('sessionId');
 
   // 这里可以实现进度查询逻辑
   // 暂时返回简单响应
   return NextResponse.json({
     success: true,
     progress: 100,
-    status: "completed",
+    status: 'completed',
   });
 }

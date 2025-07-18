@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import React, { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 interface DownloadProgressToastProps {
   isVisible: boolean;
@@ -43,7 +43,7 @@ export function DownloadProgressToast({
               <X className="h-3 w-3" />
             </Button>
           </div>
-          
+
           <div className="space-y-2">
             <Progress value={progress} className="h-2" />
             <div className="text-xs text-gray-500 text-right">

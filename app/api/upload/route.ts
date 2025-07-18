@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
 // POST - 图片上传接口（客户端处理）
 export async function POST(request: NextRequest) {
@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
 
     if (!imageUrl) {
       return NextResponse.json(
-        { success: false, error: "图片URL不能为空" },
-        { status: 400 },
+        { success: false, error: '图片URL不能为空' },
+        { status: 400 }
       );
     }
 
@@ -20,16 +20,16 @@ export async function POST(request: NextRequest) {
       new URL(imageUrl);
     } catch {
       return NextResponse.json(
-        { success: false, error: "无效的图片URL" },
-        { status: 400 },
+        { success: false, error: '无效的图片URL' },
+        { status: 400 }
       );
     }
 
     // 验证是否为Firebase Storage URL
-    if (!imageUrl.includes("firebasestorage.googleapis.com")) {
+    if (!imageUrl.includes('firebasestorage.googleapis.com')) {
       return NextResponse.json(
-        { success: false, error: "只允许Firebase Storage的图片URL" },
-        { status: 400 },
+        { success: false, error: '只允许Firebase Storage的图片URL' },
+        { status: 400 }
       );
     }
 
@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("处理上传失败:", error);
+    console.error('处理上传失败:', error);
     return NextResponse.json(
-      { success: false, error: "处理上传失败" },
-      { status: 500 },
+      { success: false, error: '处理上传失败' },
+      { status: 500 }
     );
   }
 }

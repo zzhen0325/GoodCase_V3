@@ -8,12 +8,12 @@
  * @returns 图片格式 (webp, jpeg, png, gif, 等)
  */
 export function detectImageFormat(dataUrl: string): string {
-  if (!dataUrl.startsWith("data:image/")) {
-    return "unknown";
+  if (!dataUrl.startsWith('data:image/')) {
+    return 'unknown';
   }
 
-  const mimeType = dataUrl.split(";")[0].split(":")[1];
-  const format = mimeType.split("/")[1];
+  const mimeType = dataUrl.split(';')[0].split(':')[1];
+  const format = mimeType.split('/')[1];
 
   return format.toLowerCase();
 }
@@ -24,11 +24,11 @@ export function detectImageFormat(dataUrl: string): string {
  * @returns 估算的文件大小（字节）
  */
 export function estimateImageSize(dataUrl: string): number {
-  if (!dataUrl.startsWith("data:")) {
+  if (!dataUrl.startsWith('data:')) {
     return 0;
   }
 
-  const base64Data = dataUrl.split(",")[1];
+  const base64Data = dataUrl.split(',')[1];
   if (!base64Data) {
     return 0;
   }
@@ -45,7 +45,7 @@ export function estimateImageSize(dataUrl: string): number {
  */
 export async function convertToWebp(
   dataUrl: string,
-  quality: number = 0.8,
+  quality: number = 0.8
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
@@ -55,11 +55,11 @@ export async function convertToWebp(
       img.onload = () => {
         try {
           // 创建canvas
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
 
           if (!ctx) {
-            reject(new Error("无法获取canvas上下文"));
+            reject(new Error('无法获取canvas上下文'));
             return;
           }
 
@@ -71,7 +71,7 @@ export async function convertToWebp(
           ctx.drawImage(img, 0, 0);
 
           // 转换为WebP格式
-          const webpDataUrl = canvas.toDataURL("image/webp", quality);
+          const webpDataUrl = canvas.toDataURL('image/webp', quality);
 
           resolve(webpDataUrl);
         } catch (error) {
@@ -80,7 +80,7 @@ export async function convertToWebp(
       };
 
       img.onerror = () => {
-        reject(new Error("图片加载失败"));
+        reject(new Error('图片加载失败'));
       };
 
       // 加载图片
@@ -103,7 +103,7 @@ export async function resizeImage(
   dataUrl: string,
   maxWidth: number,
   maxHeight: number,
-  quality: number = 0.8,
+  quality: number = 0.8
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
@@ -111,11 +111,11 @@ export async function resizeImage(
 
       img.onload = () => {
         try {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
 
           if (!ctx) {
-            reject(new Error("无法获取canvas上下文"));
+            reject(new Error('无法获取canvas上下文'));
             return;
           }
 
@@ -140,7 +140,7 @@ export async function resizeImage(
           ctx.drawImage(img, 0, 0, width, height);
 
           // 输出为WebP格式
-          const resizedDataUrl = canvas.toDataURL("image/webp", quality);
+          const resizedDataUrl = canvas.toDataURL('image/webp', quality);
 
           resolve(resizedDataUrl);
         } catch (error) {
@@ -149,7 +149,7 @@ export async function resizeImage(
       };
 
       img.onerror = () => {
-        reject(new Error("图片加载失败"));
+        reject(new Error('图片加载失败'));
       };
 
       img.src = dataUrl;
@@ -171,7 +171,7 @@ export async function compressImage(
   dataUrl: string,
   maxSizeKB: number = 500,
   maxWidth: number = 1920,
-  maxHeight: number = 1080,
+  maxHeight: number = 1080
 ): Promise<string> {
   let quality = 0.9;
   let compressed = await resizeImage(dataUrl, maxWidth, maxHeight, quality);
@@ -191,7 +191,7 @@ export async function compressImage(
  * @returns boolean - 是否为支持的格式
  */
 export function isSupportedImageFormat(dataUrl: string): boolean {
-  const supportedFormats = ["jpeg", "jpg", "png", "webp", "gif"];
+  const supportedFormats = ['jpeg', 'jpg', 'png', 'webp', 'gif'];
   const format = detectImageFormat(dataUrl);
   return supportedFormats.includes(format);
 }
@@ -202,7 +202,7 @@ export function isSupportedImageFormat(dataUrl: string): boolean {
  * @returns Promise<{width: number, height: number}> - 图片尺寸
  */
 export async function getImageDimensions(
-  dataUrl: string,
+  dataUrl: string
 ): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -215,7 +215,7 @@ export async function getImageDimensions(
     };
 
     img.onerror = () => {
-      reject(new Error("无法加载图片"));
+      reject(new Error('无法加载图片'));
     };
 
     img.src = dataUrl;

@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { GalleryVerticalEnd, Upload, MoreHorizontal, Tag } from "lucide-react";
-import { SearchFilters } from "@/types";
-import { useTagOperations } from "@/hooks/use-tag-operations";
+import * as React from 'react';
+import { GalleryVerticalEnd, Upload, MoreHorizontal, Tag } from 'lucide-react';
+import { SearchFilters } from '@/types';
+import { useTagOperations } from '@/hooks/use-tag-operations';
 
-import { SearchBar } from "@/components/search-bar";
-import { Button } from "@/components/ui/button";
+import { SearchBar } from '@/components/search-bar';
+import { Button } from '@/components/ui/button';
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Sidebar,
   SidebarContent,
@@ -23,9 +23,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 
-import { GroupItem } from "@/components/sidebar/group-item";
+import { GroupItem } from '@/components/sidebar/group-item';
 
 interface ToolButton {
   label: string;
@@ -51,7 +51,7 @@ export function AppSidebar({
     Record<string, string>
   >({});
   const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(
-    new Set(),
+    new Set()
   );
 
   // 获取标签数据
@@ -74,12 +74,12 @@ export function AppSidebar({
       : [...currentTags, tagId];
 
     onSearch?.({
-      query: currentFilters?.query || "",
+      query: currentFilters?.query || '',
       tags: newTags,
       dateRange: currentFilters?.dateRange,
       sizeRange: currentFilters?.sizeRange,
-      sortBy: currentFilters?.sortBy || "createdAt",
-      sortOrder: currentFilters?.sortOrder || "desc",
+      sortBy: currentFilters?.sortBy || 'createdAt',
+      sortOrder: currentFilters?.sortOrder || 'desc',
     });
   };
 
@@ -176,7 +176,7 @@ export function AppSidebar({
                         </div>
                         <span
                           className={`text-xs transition-transform ${
-                            isExpanded ? "rotate-90" : ""
+                            isExpanded ? 'rotate-90' : ''
                           }`}
                         >
                           ▶
@@ -194,8 +194,8 @@ export function AppSidebar({
                                 onClick={() => handleTagClick(tag.id)}
                                 className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
                                   isSelected
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                                    : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                                    : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'
                                 }`}
                               >
                                 <div className="flex items-center justify-between">

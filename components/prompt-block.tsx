@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Copy, Trash2, Palette, Check, X } from "lucide-react";
-import { PromptBlock, COLOR_THEMES, getColorTheme } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { copyToClipboard, cn } from "@/lib/utils";
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Copy, Trash2, Palette, Check, X } from 'lucide-react';
+import { PromptBlock, COLOR_THEMES, getColorTheme } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { copyToClipboard, cn } from '@/lib/utils';
 
 // 提示词块组件属性
 interface PromptBlockProps {
@@ -36,15 +36,15 @@ export function PromptBlock({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [tempTitle, setTempTitle] = useState(prompt.text);
   const [tempContent, setTempContent] = useState(prompt.text);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">(
-    "idle",
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>(
+    'idle'
   );
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isEditingContent && textAreaRef.current) {
       // 自动调整高度
-      textAreaRef.current.style.height = "auto";
+      textAreaRef.current.style.height = 'auto';
       const scrollHeight = textAreaRef.current.scrollHeight;
       textAreaRef.current.style.height = `${scrollHeight}px`;
     }
@@ -92,14 +92,14 @@ export function PromptBlock({
   const handleCopy = async () => {
     const success = await copyToClipboard(prompt.text);
     if (success) {
-      setCopyStatus("success");
+      setCopyStatus('success');
       onCopy(prompt.text);
       // 2秒后重置状态
-      setTimeout(() => setCopyStatus("idle"), 2000);
+      setTimeout(() => setCopyStatus('idle'), 2000);
     } else {
-      setCopyStatus("error");
+      setCopyStatus('error');
       // 2秒后重置状态
-      setTimeout(() => setCopyStatus("idle"), 2000);
+      setTimeout(() => setCopyStatus('idle'), 2000);
     }
   };
 
@@ -110,7 +110,7 @@ export function PromptBlock({
   };
 
   // 获取当前颜色主题
-  const currentTheme = getColorTheme((prompt as any).color || "default");
+  const currentTheme = getColorTheme((prompt as any).color || 'default');
 
   return (
     <div className="relative group">
@@ -122,25 +122,25 @@ export function PromptBlock({
               variant="ghost"
               size="icon"
               className={cn(
-                "h-8 w-8 rounded-full transition-colors bg-white hover:bg-gray-50 shadow-lg border border-gray-200",
-                copyStatus === "success"
-                  ? "text-green-600 hover:text-green-700"
-                  : copyStatus === "error"
-                    ? "text-red-600 hover:text-red-700"
-                    : "text-gray-600 hover:text-gray-700",
+                'h-8 w-8 rounded-full transition-colors bg-white hover:bg-gray-50 shadow-lg border border-gray-200',
+                copyStatus === 'success'
+                  ? 'text-green-600 hover:text-green-700'
+                  : copyStatus === 'error'
+                    ? 'text-red-600 hover:text-red-700'
+                    : 'text-gray-600 hover:text-gray-700'
               )}
               onClick={handleCopy}
               title={
-                copyStatus === "success"
-                  ? "复制成功"
-                  : copyStatus === "error"
-                    ? "复制失败"
-                    : "复制"
+                copyStatus === 'success'
+                  ? '复制成功'
+                  : copyStatus === 'error'
+                    ? '复制失败'
+                    : '复制'
               }
             >
-              {copyStatus === "success" ? (
+              {copyStatus === 'success' ? (
                 <Check className="h-3.5 w-3.5" />
-              ) : copyStatus === "error" ? (
+              ) : copyStatus === 'error' ? (
                 <X className="h-3.5 w-3.5" />
               ) : (
                 <Copy className="h-3.5 w-3.5" />
@@ -148,16 +148,16 @@ export function PromptBlock({
             </Button>
 
             {/* 状态提示 */}
-            {copyStatus !== "idle" && (
+            {copyStatus !== 'idle' && (
               <div
                 className={cn(
-                  "absolute -bottom-8 right-0 px-2 py-1 text-xs rounded shadow-lg z-20 whitespace-nowrap",
-                  copyStatus === "success"
-                    ? "bg-green-100 text-green-800 border border-green-200"
-                    : "bg-red-100 text-red-800 border border-red-200",
+                  'absolute -bottom-8 right-0 px-2 py-1 text-xs rounded shadow-lg z-20 whitespace-nowrap',
+                  copyStatus === 'success'
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : 'bg-red-100 text-red-800 border border-red-200'
                 )}
               >
-                {copyStatus === "success" ? "复制成功" : "复制失败"}
+                {copyStatus === 'success' ? '复制成功' : '复制失败'}
               </div>
             )}
           </div>
@@ -167,7 +167,7 @@ export function PromptBlock({
       <motion.div
         ref={setNodeRef}
         style={style}
-        className={`relative group ${isDragging ? "z-50 opacity-50" : ""}`}
+        className={`relative group ${isDragging ? 'z-50 opacity-50' : ''}`}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
@@ -184,8 +184,8 @@ export function PromptBlock({
                 onChange={(e) => setTempTitle(e.target.value)}
                 onBlur={saveTitle}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") saveTitle();
-                  if (e.key === "Escape") cancelTitleEdit();
+                  if (e.key === 'Enter') saveTitle();
+                  if (e.key === 'Escape') cancelTitleEdit();
                 }}
                 className="text-sm font-semibold h-7 px-2 border-0 bg-transparent"
                 style={{ color: currentTheme.text }}
@@ -194,9 +194,9 @@ export function PromptBlock({
             ) : (
               <h5
                 className="text-sm text-gray-300"
-                title={prompt.text || "未命名提示词"}
+                title={prompt.text || '未命名提示词'}
               >
-                {prompt.text || "未命名提示词"}
+                {prompt.text || '未命名提示词'}
               </h5>
             )}
           </div>
@@ -232,8 +232,8 @@ export function PromptBlock({
                               color: theme.text,
                               borderColor:
                                 (prompt as any).color === theme.name
-                                  ? "#000"
-                                  : "transparent",
+                                  ? '#000'
+                                  : 'transparent',
                             }}
                             onClick={() => changeColor(theme.name)}
                             title={theme.name}
@@ -264,8 +264,8 @@ export function PromptBlock({
         <div className="w-full relative group">
           <Badge
             className={cn(
-              "w-full p-4 rounded-2xl  transition-all duration-200 flex flex-col gap-3 ",
-              isEditing ? "cursor-grab active:cursor-grabbing" : "",
+              'w-full p-4 rounded-2xl  transition-all duration-200 flex flex-col gap-3 ',
+              isEditing ? 'cursor-grab active:cursor-grabbing' : ''
             )}
             style={{
               backgroundColor: currentTheme.bg,
@@ -282,8 +282,8 @@ export function PromptBlock({
                   onChange={(e) => setTempContent(e.target.value)}
                   onBlur={saveContent}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && e.ctrlKey) saveContent();
-                    if (e.key === "Escape") cancelContentEdit();
+                    if (e.key === 'Enter' && e.ctrlKey) saveContent();
+                    if (e.key === 'Escape') cancelContentEdit();
                   }}
                   className="w-full text-sm  resize-none overflow-hidden focus:outline-none focus:ring-0 break-words min-h-[60px] rounded-lg"
                   autoFocus
@@ -299,9 +299,9 @@ export function PromptBlock({
                       ? currentTheme.text
                       : `${currentTheme.text}60`,
 
-                    wordBreak: "break-word",
-                    overflowWrap: "break-word",
-                    lineHeight: "1.2",
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    lineHeight: '1.2',
                   }}
                   onDoubleClick={() => {
                     if (isEditing) {
@@ -312,7 +312,7 @@ export function PromptBlock({
                     }
                   }}
                 >
-                  {prompt.text || "描述一下画面"}
+                  {prompt.text || '描述一下画面'}
                 </h2>
               )}
             </div>

@@ -61,14 +61,14 @@
 
 ```typescript
 export const COLOR_THEMES: ColorTheme[] = [
-  { name: "slate", bg: "#f1f5f9", text: "#1e293b" },
-  { name: "amber", bg: "#fef3c7", text: "#c2410c" },
-  { name: "lime", bg: "#ecfccb", text: "#84cc16" },
-  { name: "green", bg: "#dcfce7", text: "#22c55e" },
-  { name: "cyan", bg: "#a5f3fc", text: "#0891b2" },
-  { name: "sky", bg: "#e0f2fe", text: "#38bdf8" },
-  { name: "violet", bg: "#ede9fe", text: "#8b5cf6" },
-  { name: "fuchsia", bg: "#fae8ff", text: "#d946ef" },
+  { name: 'slate', bg: '#f1f5f9', text: '#1e293b' },
+  { name: 'amber', bg: '#fef3c7', text: '#c2410c' },
+  { name: 'lime', bg: '#ecfccb', text: '#84cc16' },
+  { name: 'green', bg: '#dcfce7', text: '#22c55e' },
+  { name: 'cyan', bg: '#a5f3fc', text: '#0891b2' },
+  { name: 'sky', bg: '#e0f2fe', text: '#38bdf8' },
+  { name: 'violet', bg: '#ede9fe', text: '#8b5cf6' },
+  { name: 'fuchsia', bg: '#fae8ff', text: '#d946ef' },
 ];
 ```
 
@@ -193,14 +193,14 @@ const ANIMATION_CONFIG = {
   duration: 0.3,
   ease: [0.25, 0.46, 0.45, 0.94],
   spring: {
-    type: "spring",
+    type: 'spring',
     stiffness: 300,
     damping: 25,
   },
   hover: {
     scale: 1.05,
     y: -2,
-    transition: { duration: 0.2, ease: "easeOut" },
+    transition: { duration: 0.2, ease: 'easeOut' },
   },
   tap: {
     scale: 0.95,
@@ -217,14 +217,14 @@ const cardVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: "easeOut" },
+    transition: { duration: 0.4, ease: 'easeOut' },
   },
 };
 
 const hoverVariants = {
   hover: {
     y: -4,
-    transition: { duration: 0.2, ease: "easeOut" },
+    transition: { duration: 0.2, ease: 'easeOut' },
   },
 };
 ```
@@ -295,7 +295,7 @@ container: {
 
 ```typescript
 export const COLOR_THEMES: ColorTheme[] = [
-  { name: "新颜色名", bg: "背景色", text: "文字色" },
+  { name: '新颜色名', bg: '背景色', text: '文字色' },
   // ... 其他颜色
 ];
 ```

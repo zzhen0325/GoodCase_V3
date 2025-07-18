@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { motion, useAnimation, useMotionValue } from "framer-motion";
+import { useEffect } from 'react';
+import { motion, useAnimation, useMotionValue } from 'framer-motion';
 
 const getRotationTransition = (
   duration: number,
   from: number,
-  loop = true,
+  loop = true
 ) => ({
   from,
   to: from + 360,
-  ease: "linear" as const,
+  ease: 'linear' as const,
   duration,
-  type: "tween" as const,
+  type: 'tween' as const,
   repeat: loop ? Infinity : 0,
 });
 
 const getTransition = (duration: number, from: number) => ({
   rotate: getRotationTransition(duration, from),
   scale: {
-    type: "spring" as const,
+    type: 'spring' as const,
     damping: 20,
     stiffness: 300,
   },
@@ -28,15 +28,15 @@ const getTransition = (duration: number, from: number) => ({
 interface CircularTextProps {
   text: string;
   spinDuration?: number;
-  onHover?: "slowDown" | "speedUp" | "pause" | "goBonkers" | null;
+  onHover?: 'slowDown' | 'speedUp' | 'pause' | 'goBonkers' | null;
   className?: string;
 }
 
 const CircularText = ({
   text,
   spinDuration = 20,
-  onHover = "speedUp",
-  className = "",
+  onHover = 'speedUp',
+  className = '',
 }: CircularTextProps) => {
   const letters = Array.from(text);
   const controls = useAnimation();
@@ -59,20 +59,20 @@ const CircularText = ({
     let scaleVal = 1;
 
     switch (onHover) {
-      case "slowDown":
+      case 'slowDown':
         transitionConfig = getTransition(spinDuration * 2, start);
         break;
-      case "speedUp":
+      case 'speedUp':
         transitionConfig = getTransition(spinDuration / 4, start);
         break;
-      case "pause":
+      case 'pause':
         transitionConfig = {
-          rotate: { type: "spring" as const, damping: 20, stiffness: 300 },
-          scale: { type: "spring" as const, damping: 20, stiffness: 300 },
+          rotate: { type: 'spring' as const, damping: 20, stiffness: 300 },
+          scale: { type: 'spring' as const, damping: 20, stiffness: 300 },
         };
         scaleVal = 1;
         break;
-      case "goBonkers":
+      case 'goBonkers':
         transitionConfig = getTransition(spinDuration / 20, start);
         scaleVal = 0.8;
         break;

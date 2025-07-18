@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { DatabaseAdmin } from "@/lib/database-admin";
+import { NextRequest, NextResponse } from 'next/server';
+import { DatabaseAdmin } from '@/lib/database-admin';
 
 // 重新计算所有标签的使用次数
 export async function POST(request: NextRequest) {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
           console.error(`更新标签 ${tag} 使用次数失败:`, error);
           return null;
         }
-      },
+      }
     );
 
     const results = await Promise.all(updatePromises);
@@ -59,10 +59,10 @@ export async function POST(request: NextRequest) {
       updatedTags,
     });
   } catch (error) {
-    console.error("重新计算标签使用次数失败:", error);
+    console.error('重新计算标签使用次数失败:', error);
     return NextResponse.json(
-      { success: false, error: "重新计算标签使用次数失败" },
-      { status: 500 },
+      { success: false, error: '重新计算标签使用次数失败' },
+      { status: 500 }
     );
   }
 }

@@ -1,11 +1,11 @@
-import { useCallback } from "react";
-import { ImageData } from "@/types";
-import { dataService } from "@/lib/data-service";
+import { useCallback } from 'react';
+import { ImageData } from '@/types';
+import { database } from '@/lib/database';
 
 interface UseDataSyncProps {
   setImages: React.Dispatch<React.SetStateAction<ImageData[]>>;
   setConnectionStatus: React.Dispatch<
-    React.SetStateAction<"connected" | "disconnected" | "reconnecting">
+    React.SetStateAction<'connected' | 'disconnected' | 'reconnecting'>
   >;
 }
 
@@ -17,19 +17,22 @@ export function useDataSync({
   setImages,
   setConnectionStatus,
 }: UseDataSyncProps) {
-
   // 手动刷新数据
   const refreshData = useCallback(async () => {
-    console.log("🔄 手动刷新数据...");
-    setConnectionStatus("reconnecting");
+    console.log('🔄 手动刷新数据...');
+    setConnectionStatus('reconnecting');
     try {
-      const images = await dataService.getImages();
-      setImages(images);
-      console.log("📸 手动刷新图片成功");
-      setConnectionStatus("connected");
+      const result = await database.getAllImages();
+      if (result.success) {
+        setImages(result.data);
+        console.log('📸 手动刷新图片成功');
+        setConnectionStatus('connected');
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
-      console.error("手动刷新数据失败:", error);
-      setConnectionStatus("disconnected");
+      console.error('手动刷新数据失败:', error);
+      setConnectionStatus('disconnected');
     }
   }, [setImages, setConnectionStatus]);
 

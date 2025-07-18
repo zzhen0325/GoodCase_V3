@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useCallback } from "react";
-import { motion } from "framer-motion";
-import { useInView } from "react-intersection-observer";
-import { ImageData } from "@/types";
-import { Card } from "@/components/ui/card";
+import React, { useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
+import { ImageData } from '@/types';
+import { Card } from '@/components/ui/card';
 
 interface ImageCardProps {
   image: ImageData;
@@ -20,11 +20,11 @@ const animationVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const },
+    transition: { duration: 0.4, ease: 'easeOut' as const },
   },
   hover: {
     y: -4,
-    transition: { duration: 0.2, ease: "easeOut" as const },
+    transition: { duration: 0.2, ease: 'easeOut' as const },
   },
 };
 
@@ -52,9 +52,9 @@ export const ImageCard = React.memo(function ImageCard({
   const cardClassName = `w-full overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer bg-white hover:shadow-xl ${
     isEditMode
       ? isSelected
-        ? "ring-2 ring-blue-500 shadow-2xl scale-95"
-        : "ring-1 ring-gray-300"
-      : ""
+        ? 'ring-2 ring-blue-500 shadow-2xl scale-95'
+        : 'ring-1 ring-gray-300'
+      : ''
   }`;
 
   return (
@@ -62,7 +62,7 @@ export const ImageCard = React.memo(function ImageCard({
       ref={ref}
       variants={animationVariants}
       initial="hidden"
-      animate={inView ? "visible" : "hidden"}
+      animate={inView ? 'visible' : 'hidden'}
       whileHover="hover"
       className="group relative w-full"
     >
@@ -73,8 +73,8 @@ export const ImageCard = React.memo(function ImageCard({
               <div
                 className={`w-6 h-6 rounded-full border-2 flex items-center justify-center backdrop-blur-sm transition-all duration-300 shadow-md ${
                   isSelected
-                    ? "bg-blue-500 border-blue-500"
-                    : "bg-white/80 border-gray-300"
+                    ? 'bg-blue-500 border-blue-500'
+                    : 'bg-white/80 border-gray-300'
                 }`}
               >
                 {isSelected && (

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ImageData } from "@/types";
-import { ImageCard } from "./image-card";
-import { Loader2 } from "lucide-react";
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ImageData } from '@/types';
+import { ImageCard } from './image-card';
+import { Loader2 } from 'lucide-react';
 
 interface ImageGridProps {
   images: ImageData[];
@@ -50,13 +50,13 @@ export const ImageGrid = React.memo(function ImageGrid({
       clearTimeout((window as any).scrollTimer);
       (window as any).scrollTimer = setTimeout(
         () => setIsScrolling(false),
-        150,
+        150
       );
     };
 
-    container.addEventListener("scroll", handleScroll);
+    container.addEventListener('scroll', handleScroll);
     return () => {
-      container.removeEventListener("scroll", handleScroll);
+      container.removeEventListener('scroll', handleScroll);
       clearTimeout((window as any).scrollTimer);
     };
   }, [onLoadMore, hasMore, loadingMore]);
@@ -137,7 +137,7 @@ export const ImageGrid = React.memo(function ImageGrid({
 
       {/* 图片网格 */}
       <div
-        className={`columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10${isCompact ? " !columns-1" : ""}`}
+        className={`columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-10 space-y-10${isCompact ? ' !columns-1' : ''}`}
       >
         {images.map((image, index) => (
           <div key={image.id} className="break-inside-avoid mb-6">

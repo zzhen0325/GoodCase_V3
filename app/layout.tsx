@@ -1,35 +1,35 @@
-import React from "react";
-import type { Metadata, Viewport } from "next";
-import { Poppins, Roboto_Mono } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
-import { FirebaseProvider } from "@/components/firebase-provider";
-import "./globals.css";
+import React from 'react';
+import type { Metadata, Viewport } from 'next';
+import { Poppins, Roboto_Mono } from 'next/font/google';
+import { Toaster } from '@/components/ui/sonner';
+import { FirebaseProvider } from '@/components/firebase-provider';
+import './globals.css';
 
 const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-sans",
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-sans',
 });
 
 const robotoMono = Roboto_Mono({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-mono",
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-mono',
 });
 
 export const metadata: Metadata = {
-  title: "GooodCase",
-  description: "管理你的图片和提示词，让创作更高效",
-  keywords: ["图片管理", "提示词", "AI", "创作工具"],
-  authors: [{ name: "zz" }],
+  title: 'GooodCase',
+  description: '管理你的图片和提示词，让创作更高效',
+  keywords: ['图片管理', '提示词', 'AI', '创作工具'],
+  authors: [{ name: 'zz' }],
 };
 
 export const viewport: Viewport = {
-  width: "device-width",
+  width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: 'black' },
   ],
 };
 

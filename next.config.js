@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["localhost"],
+    domains: ['localhost'],
     unoptimized: true,
   },
-  serverExternalPackages: ["firebase-admin"],
+  serverExternalPackages: ['firebase-admin'],
   webpack: (config, { isServer }) => {
     // 在客户端构建中排除服务端模块
     if (!isServer) {
@@ -19,10 +19,10 @@ const nextConfig = {
       // 排除 firebase-admin 相关模块
       config.externals = config.externals || [];
       config.externals.push({
-        "firebase-admin": "firebase-admin",
-        "firebase-admin/app": "firebase-admin/app",
-        "firebase-admin/firestore": "firebase-admin/firestore",
-        "firebase-admin/storage": "firebase-admin/storage",
+        'firebase-admin': 'firebase-admin',
+        'firebase-admin/app': 'firebase-admin/app',
+        'firebase-admin/firestore': 'firebase-admin/firestore',
+        'firebase-admin/storage': 'firebase-admin/storage',
       });
     }
 

@@ -1,5 +1,5 @@
-import { getServerFirebase } from "./firebase-server";
-import { Timestamp } from "firebase-admin/firestore";
+import { getServerFirebase } from './firebase-server';
+import { Timestamp } from 'firebase-admin/firestore';
 import type {
   ImageData,
   ImageDocument,
@@ -10,14 +10,14 @@ import type {
   TagGroupDocument,
   Tag,
   TagDocument,
-} from "@/types";
+} from '@/types';
 
 // Firestore 集合名称
 const COLLECTIONS = {
-  IMAGES: "images",
-  PROMPTS: "prompts",
-  TAG_GROUPS: "tag-groups",
-  TAGS: "tags",
+  IMAGES: 'images',
+  PROMPTS: 'prompts',
+  TAG_GROUPS: 'tag-groups',
+  TAGS: 'tags',
 } as const;
 
 export class DatabaseAdmin {
@@ -27,7 +27,7 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       const imagesSnapshot = await db
         .collection(COLLECTIONS.IMAGES)
-        .orderBy("createdAt", "desc")
+        .orderBy('createdAt', 'desc')
         .get();
 
       const images: ImageData[] = [];
@@ -38,24 +38,26 @@ export class DatabaseAdmin {
         // 获取关联的提示词
         const promptsSnapshot = await db
           .collection(COLLECTIONS.PROMPTS)
-          .where("imageId", "==", doc.id)
-          .orderBy("createdAt", "asc")
+          .where('imageId', '==', doc.id)
+          .orderBy('createdAt', 'asc')
           .get();
 
-        const prompts: PromptBlock[] = promptsSnapshot.docs.map((promptDoc: any) => {
-          const promptData = promptDoc.data() as PromptDocument;
-          return {
-            id: promptDoc.id,
-            text: promptData.text || '',
-            category: promptData.category,
-            tags: promptData.tags || [],
-            usageCount: promptData.usageCount || 0,
-            isTemplate: promptData.isTemplate || false,
-            color: promptData.color,
-            createdAt: promptData.createdAt?.toDate?.() || new Date(),
-            updatedAt: promptData.updatedAt?.toDate?.() || new Date(),
-          };
-        });
+        const prompts: PromptBlock[] = promptsSnapshot.docs.map(
+          (promptDoc: any) => {
+            const promptData = promptDoc.data() as PromptDocument;
+            return {
+              id: promptDoc.id,
+              text: promptData.text || '',
+              category: promptData.category,
+              tags: promptData.tags || [],
+              usageCount: promptData.usageCount || 0,
+              isTemplate: promptData.isTemplate || false,
+              color: promptData.color,
+              createdAt: promptData.createdAt?.toDate?.() || new Date(),
+              updatedAt: promptData.updatedAt?.toDate?.() || new Date(),
+            };
+          }
+        );
 
         images.push({
           id: doc.id,
@@ -83,7 +85,7 @@ export class DatabaseAdmin {
 
       return images;
     } catch (error) {
-      console.error("获取所有图片失败:", error);
+      console.error('获取所有图片失败:', error);
       return [];
     }
   }
@@ -94,7 +96,7 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       const promptsSnapshot = await db
         .collection(COLLECTIONS.PROMPTS)
-        .orderBy("createdAt", "desc")
+        .orderBy('createdAt', 'desc')
         .get();
 
       return promptsSnapshot.docs.map((doc: any) => {
@@ -112,7 +114,7 @@ export class DatabaseAdmin {
         };
       });
     } catch (error) {
-      console.error("获取所有提示词失败:", error);
+      console.error('获取所有提示词失败:', error);
       return [];
     }
   }
@@ -120,7 +122,7 @@ export class DatabaseAdmin {
   // 导出所有数据
   static async exportAllData(): Promise<ExportData> {
     try {
-      console.log("开始导出数据...");
+      console.log('开始导出数据...');
 
       const [images, prompts] = await Promise.all([
         this.getAllImages(),
@@ -128,7 +130,7 @@ export class DatabaseAdmin {
       ]);
 
       const exportData: ExportData = {
-        version: "2.0",
+        version: '2.0',
         exportDate: new Date(),
         images,
         tags: [],
@@ -142,20 +144,20 @@ export class DatabaseAdmin {
       };
 
       console.log(
-        `导出完成: ${images.length} 张图片, ${prompts.length} 个提示词`,
+        `导出完成: ${images.length} 张图片, ${prompts.length} 个提示词`
       );
 
       return exportData;
     } catch (error) {
-      console.error("导出数据失败:", error);
-      throw new Error("导出数据失败");
+      console.error('导出数据失败:', error);
+      throw new Error('导出数据失败');
     }
   }
 
   // 清空所有数据（危险操作）
   static async clearAllData(): Promise<void> {
     try {
-      console.log("开始清空所有数据...");
+      console.log('开始清空所有数据...');
 
       const { db } = await getServerFirebase();
       const batch = db.batch();
@@ -176,10 +178,10 @@ export class DatabaseAdmin {
 
       await batch.commit();
 
-      console.log("所有数据已清空");
+      console.log('所有数据已清空');
     } catch (error) {
-      console.error("清空数据失败:", error);
-      throw new Error("清空数据失败");
+      console.error('清空数据失败:', error);
+      throw new Error('清空数据失败');
     }
   }
 
@@ -200,7 +202,7 @@ export class DatabaseAdmin {
         totalPrompts: promptsSnapshot.size,
       };
     } catch (error) {
-      console.error("获取统计信息失败:", error);
+      console.error('获取统计信息失败:', error);
       return {
         totalImages: 0,
         totalPrompts: 0,
@@ -209,7 +211,9 @@ export class DatabaseAdmin {
   }
 
   // 创建图片（管理员版本）
-  static async createImage(imageData: Partial<ImageData> & { url: string; title: string }): Promise<string> {
+  static async createImage(
+    imageData: Partial<ImageData> & { url: string; title: string }
+  ): Promise<string> {
     try {
       const { db } = await getServerFirebase();
       const now = Timestamp.now();
@@ -253,8 +257,8 @@ export class DatabaseAdmin {
 
       return imageRef.id;
     } catch (error) {
-      console.error("创建图片失败:", error);
-      throw new Error("创建图片失败");
+      console.error('创建图片失败:', error);
+      throw new Error('创建图片失败');
     }
   }
 
@@ -266,7 +270,7 @@ export class DatabaseAdmin {
     error?: string;
   }> {
     try {
-      console.log("开始批量导入数据...");
+      console.log('开始批量导入数据...');
 
       const { db } = await getServerFirebase();
       // 标签现在直接存储在图片文档中，无需单独导入
@@ -286,8 +290,14 @@ export class DatabaseAdmin {
           height: image.size?.height || 0,
           fileSize: image.size?.fileSize || 0,
           format: image.metadata?.format || 'unknown',
-          createdAt: typeof image.createdAt === 'string' ? Timestamp.fromDate(new Date(image.createdAt)) : image.createdAt,
-          updatedAt: typeof image.updatedAt === 'string' ? Timestamp.fromDate(new Date(image.updatedAt)) : image.updatedAt,
+          createdAt:
+            typeof image.createdAt === 'string'
+              ? Timestamp.fromDate(new Date(image.createdAt))
+              : image.createdAt,
+          updatedAt:
+            typeof image.updatedAt === 'string'
+              ? Timestamp.fromDate(new Date(image.updatedAt))
+              : image.updatedAt,
         };
         await imageRef.set(imageDoc);
         importedImages++;
@@ -303,8 +313,14 @@ export class DatabaseAdmin {
             usageCount: 0,
             isTemplate: false,
             imageId: imageRef.id,
-            createdAt: typeof image.createdAt === 'string' ? Timestamp.fromDate(new Date(image.createdAt)) : image.createdAt,
-            updatedAt: typeof image.updatedAt === 'string' ? Timestamp.fromDate(new Date(image.updatedAt)) : image.updatedAt,
+            createdAt:
+              typeof image.createdAt === 'string'
+                ? Timestamp.fromDate(new Date(image.createdAt))
+                : image.createdAt,
+            updatedAt:
+              typeof image.updatedAt === 'string'
+                ? Timestamp.fromDate(new Date(image.updatedAt))
+                : image.updatedAt,
           };
           await promptRef.set(promptDoc);
           importedPrompts++;
@@ -313,20 +329,30 @@ export class DatabaseAdmin {
         // 兼容旧格式的prompts数组
         if ((image as any).prompts && Array.isArray((image as any).prompts)) {
           for (const prompt of (image as any).prompts) {
-          const promptRef = db.collection(COLLECTIONS.PROMPTS).doc();
-          const promptDoc: PromptDocument = {
-            id: promptRef.id,
-            text: prompt.text || prompt.title || prompt.content || '',
-            category: prompt.category || 'imported',
-            tags: prompt.tags || [],
-            usageCount: prompt.usageCount || 0,
-            isTemplate: prompt.isTemplate || false,
-            imageId: imageRef.id,
-            createdAt: typeof (prompt.createdAt || image.createdAt) === 'string' ? Timestamp.fromDate(new Date(prompt.createdAt || image.createdAt)) : (prompt.createdAt || image.createdAt),
-            updatedAt: typeof (prompt.updatedAt || image.updatedAt) === 'string' ? Timestamp.fromDate(new Date(prompt.updatedAt || image.updatedAt)) : (prompt.updatedAt || image.updatedAt),
-          };
-          await promptRef.set(promptDoc);
-          importedPrompts++;
+            const promptRef = db.collection(COLLECTIONS.PROMPTS).doc();
+            const promptDoc: PromptDocument = {
+              id: promptRef.id,
+              text: prompt.text || prompt.title || prompt.content || '',
+              category: prompt.category || 'imported',
+              tags: prompt.tags || [],
+              usageCount: prompt.usageCount || 0,
+              isTemplate: prompt.isTemplate || false,
+              imageId: imageRef.id,
+              createdAt:
+                typeof (prompt.createdAt || image.createdAt) === 'string'
+                  ? Timestamp.fromDate(
+                      new Date(prompt.createdAt || image.createdAt)
+                    )
+                  : prompt.createdAt || image.createdAt,
+              updatedAt:
+                typeof (prompt.updatedAt || image.updatedAt) === 'string'
+                  ? Timestamp.fromDate(
+                      new Date(prompt.updatedAt || image.updatedAt)
+                    )
+                  : prompt.updatedAt || image.updatedAt,
+            };
+            await promptRef.set(promptDoc);
+            importedPrompts++;
           }
         }
 
@@ -334,7 +360,7 @@ export class DatabaseAdmin {
       }
 
       console.log(
-        `导入完成: ${importedImages} 张图片, ${importedPrompts} 个提示词`,
+        `导入完成: ${importedImages} 张图片, ${importedPrompts} 个提示词`
       );
 
       return {
@@ -343,12 +369,12 @@ export class DatabaseAdmin {
         importedPrompts,
       };
     } catch (error) {
-      console.error("批量导入数据失败:", error);
+      console.error('批量导入数据失败:', error);
       return {
         success: false,
         importedImages: 0,
         importedPrompts: 0,
-        error: "导入数据失败",
+        error: '导入数据失败',
       };
     }
   }
@@ -361,7 +387,7 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       const snapshot = await db
         .collection(COLLECTIONS.TAG_GROUPS)
-        .orderBy("createdAt", "desc")
+        .orderBy('createdAt', 'desc')
         .get();
 
       const tagGroups: TagGroup[] = [];
@@ -372,7 +398,7 @@ export class DatabaseAdmin {
         // 获取该分组下的标签数量
         const tagsSnapshot = await db
           .collection(COLLECTIONS.TAGS)
-          .where("groupId", "==", doc.id)
+          .where('groupId', '==', doc.id)
           .get();
 
         tagGroups.push({
@@ -387,7 +413,7 @@ export class DatabaseAdmin {
 
       return tagGroups;
     } catch (error) {
-      console.error("获取标签分组失败:", error);
+      console.error('获取标签分组失败:', error);
       return [];
     }
   }
@@ -407,7 +433,7 @@ export class DatabaseAdmin {
       // 获取该分组下的标签数量
       const tagsSnapshot = await db
         .collection(COLLECTIONS.TAGS)
-        .where("groupId", "==", doc.id)
+        .where('groupId', '==', doc.id)
         .get();
 
       return {
@@ -419,7 +445,7 @@ export class DatabaseAdmin {
         updatedAt: data.updatedAt,
       };
     } catch (error) {
-      console.error("获取标签分组失败:", error);
+      console.error('获取标签分组失败:', error);
       return null;
     }
   }
@@ -454,15 +480,15 @@ export class DatabaseAdmin {
         updatedAt: now.toDate(),
       };
     } catch (error) {
-      console.error("创建标签分组失败:", error);
-      throw new Error("创建标签分组失败");
+      console.error('创建标签分组失败:', error);
+      throw new Error('创建标签分组失败');
     }
   }
 
   // 更新标签分组
   static async updateTagGroup(
     id: string,
-    data: { name: string; color: string },
+    data: { name: string; color: string }
   ): Promise<TagGroup> {
     try {
       const { db } = await getServerFirebase();
@@ -479,13 +505,13 @@ export class DatabaseAdmin {
       // 获取更新后的数据
       const tagGroup = await this.getTagGroupById(id);
       if (!tagGroup) {
-        throw new Error("标签分组不存在");
+        throw new Error('标签分组不存在');
       }
 
       return tagGroup;
     } catch (error) {
-      console.error("更新标签分组失败:", error);
-      throw new Error("更新标签分组失败");
+      console.error('更新标签分组失败:', error);
+      throw new Error('更新标签分组失败');
     }
   }
 
@@ -495,8 +521,8 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       await db.collection(COLLECTIONS.TAG_GROUPS).doc(id).delete();
     } catch (error) {
-      console.error("删除标签分组失败:", error);
-      throw new Error("删除标签分组失败");
+      console.error('删除标签分组失败:', error);
+      throw new Error('删除标签分组失败');
     }
   }
 
@@ -508,7 +534,7 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       const snapshot = await db
         .collection(COLLECTIONS.TAGS)
-        .orderBy("createdAt", "desc")
+        .orderBy('createdAt', 'desc')
         .get();
 
       return snapshot.docs.map((doc: any) => {
@@ -524,7 +550,7 @@ export class DatabaseAdmin {
         };
       });
     } catch (error) {
-      console.error("获取标签失败:", error);
+      console.error('获取标签失败:', error);
       return [];
     }
   }
@@ -535,8 +561,8 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       const snapshot = await db
         .collection(COLLECTIONS.TAGS)
-        .where("groupId", "==", groupId)
-        .orderBy("createdAt", "desc")
+        .where('groupId', '==', groupId)
+        .orderBy('createdAt', 'desc')
         .get();
 
       return snapshot.docs.map((doc: any) => {
@@ -552,7 +578,7 @@ export class DatabaseAdmin {
         };
       });
     } catch (error) {
-      console.error("获取标签失败:", error);
+      console.error('获取标签失败:', error);
       return [];
     }
   }
@@ -590,15 +616,15 @@ export class DatabaseAdmin {
         updatedAt: now.toDate(),
       };
     } catch (error) {
-      console.error("创建标签失败:", error);
-      throw new Error("创建标签失败");
+      console.error('创建标签失败:', error);
+      throw new Error('创建标签失败');
     }
   }
 
   // 更新标签
   static async updateTag(
     id: string,
-    data: { name: string; color: string; groupId: string },
+    data: { name: string; color: string; groupId: string }
   ): Promise<Tag> {
     try {
       const { db } = await getServerFirebase();
@@ -616,7 +642,7 @@ export class DatabaseAdmin {
       // 获取更新后的数据
       const doc = await db.collection(COLLECTIONS.TAGS).doc(id).get();
       if (!doc.exists) {
-        throw new Error("标签不存在");
+        throw new Error('标签不存在');
       }
 
       const tagData = doc.data() as TagDocument;
@@ -630,8 +656,8 @@ export class DatabaseAdmin {
         updatedAt: tagData.updatedAt,
       };
     } catch (error) {
-      console.error("更新标签失败:", error);
-      throw new Error("更新标签失败");
+      console.error('更新标签失败:', error);
+      throw new Error('更新标签失败');
     }
   }
 
@@ -641,8 +667,8 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       await db.collection(COLLECTIONS.TAGS).doc(id).delete();
     } catch (error) {
-      console.error("删除标签失败:", error);
-      throw new Error("删除标签失败");
+      console.error('删除标签失败:', error);
+      throw new Error('删除标签失败');
     }
   }
 
@@ -652,7 +678,7 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       const imagesSnapshot = await db
         .collection(COLLECTIONS.IMAGES)
-        .where("tags", "array-contains", tagId)
+        .where('tags', 'array-contains', tagId)
         .get();
 
       const batch = db.batch();
@@ -668,15 +694,15 @@ export class DatabaseAdmin {
 
       await batch.commit();
     } catch (error) {
-      console.error("从图片中移除标签失败:", error);
-      throw new Error("从图片中移除标签失败");
+      console.error('从图片中移除标签失败:', error);
+      throw new Error('从图片中移除标签失败');
     }
   }
 
   // 更新标签使用次数
   static async updateTagUsageCount(
     tagId: string,
-    increment: number = 1,
+    increment: number = 1
   ): Promise<void> {
     try {
       const { db } = await getServerFirebase();
@@ -685,7 +711,7 @@ export class DatabaseAdmin {
       await db.runTransaction(async (transaction) => {
         const tagDoc = await transaction.get(tagRef);
         if (!tagDoc.exists) {
-          throw new Error("标签不存在");
+          throw new Error('标签不存在');
         }
 
         const tagData = tagDoc.data() as TagDocument;
@@ -697,8 +723,8 @@ export class DatabaseAdmin {
         });
       });
     } catch (error) {
-      console.error("更新标签使用次数失败:", error);
-      throw new Error("更新标签使用次数失败");
+      console.error('更新标签使用次数失败:', error);
+      throw new Error('更新标签使用次数失败');
     }
   }
 }

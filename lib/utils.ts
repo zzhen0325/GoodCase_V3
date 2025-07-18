@@ -1,6 +1,6 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { ImageData, SearchFilters } from "@/types";
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { ImageData, SearchFilters } from '@/types';
 
 // 合并CSS类名
 export function cn(...inputs: ClassValue[]) {
@@ -10,57 +10,57 @@ export function cn(...inputs: ClassValue[]) {
 // 生成随机ID
 export function generateId(): string {
   // 使用浏览器兼容的UUID生成方法
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
   // 降级方案：生成类似UUID的随机字符串
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
 
 // 格式化日期
 export function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(date);
 }
 
 // 文件大小格式化
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return '0 Bytes';
 
   const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 // 复制到剪贴板
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(text);
       return true;
     } else {
       // 降级方案：使用传统的复制方法
-      const textArea = document.createElement("textarea");
+      const textArea = document.createElement('textarea');
       textArea.value = text;
       document.body.appendChild(textArea);
       textArea.select();
-      const success = document.execCommand("copy");
+      const success = document.execCommand('copy');
       document.body.removeChild(textArea);
       return success;
     }
   } catch (error) {
-    console.error("复制失败:", error);
+    console.error('复制失败:', error);
     return false;
   }
 }
@@ -68,7 +68,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 // 防抖函数
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
-  wait: number,
+  wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout;
   return (...args: Parameters<T>) => {
@@ -80,7 +80,7 @@ export function debounce<T extends (...args: any[]) => any>(
 // 节流函数
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
-  limit: number,
+  limit: number
 ): (...args: Parameters<T>) => void {
   let inThrottle: boolean;
   return (...args: Parameters<T>) => {
@@ -95,7 +95,7 @@ export function throttle<T extends (...args: any[]) => any>(
 // 图片筛选函数 - 优化版
 export function filterImages(
   images: ImageData[],
-  filters: SearchFilters,
+  filters: SearchFilters
 ): ImageData[] {
   let filtered = [...images];
 
@@ -107,11 +107,11 @@ export function filterImages(
     filtered = filtered.filter((image) => {
       const searchableText = [
         image.title,
-        image.description || "",
-        image.prompts?.[0]?.text || "",
+        image.description || '',
+        image.prompts?.[0]?.text || '',
         ...image.tags,
       ]
-        .join(" ")
+        .join(' ')
         .toLowerCase();
 
       // 所有搜索词都必须匹配（AND逻辑）
@@ -122,7 +122,7 @@ export function filterImages(
   // 标签筛选 - 支持多标签筛选
   if (filters.tags && filters.tags.length > 0) {
     filtered = filtered.filter((image) =>
-      filters.tags.some((tag) => image.tags.includes(tag)),
+      filters.tags.some((tag) => image.tags.includes(tag))
     );
   }
 
@@ -155,19 +155,19 @@ export function filterImages(
       let aValue: any, bValue: any;
 
       switch (filters.sortBy) {
-        case "title":
+        case 'title':
           aValue = a.title.toLowerCase();
           bValue = b.title.toLowerCase();
           break;
-        case "createdAt":
+        case 'createdAt':
           aValue = new Date(a.createdAt).getTime();
           bValue = new Date(b.createdAt).getTime();
           break;
-        case "updatedAt":
+        case 'updatedAt':
           aValue = new Date(a.updatedAt).getTime();
           bValue = new Date(b.updatedAt).getTime();
           break;
-        case "size":
+        case 'size':
           aValue = a.size.width * a.size.height;
           bValue = b.size.width * b.size.height;
           break;
@@ -175,7 +175,7 @@ export function filterImages(
           return 0;
       }
 
-      if (filters.sortOrder === "desc") {
+      if (filters.sortOrder === 'desc') {
         return bValue > aValue ? 1 : -1;
       } else {
         return aValue > bValue ? 1 : -1;
@@ -194,7 +194,7 @@ export function searchImagesOptimized(
     fuzzy?: boolean;
     maxResults?: number;
     threshold?: number;
-  } = {},
+  } = {}
 ): ImageData[] {
   if (!query.trim()) return images;
 
@@ -205,11 +205,11 @@ export function searchImagesOptimized(
     .map((image) => {
       const searchableText = [
         image.title,
-        image.description || "",
-        image.prompts?.[0]?.text || "",
+        image.description || '',
+        image.prompts?.[0]?.text || '',
         ...image.tags,
       ]
-        .join(" ")
+        .join(' ')
         .toLowerCase();
 
       let score = 0;
@@ -233,7 +233,7 @@ export function searchImagesOptimized(
       } else {
         // 精确搜索
         const matchCount = searchTerms.filter((term) =>
-          searchableText.includes(term),
+          searchableText.includes(term)
         ).length;
         score = matchCount / searchTerms.length;
       }
@@ -279,7 +279,7 @@ function levenshteinDistance(str1: string, str2: string): number {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1,
           matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1,
+          matrix[i - 1][j] + 1
         );
       }
     }

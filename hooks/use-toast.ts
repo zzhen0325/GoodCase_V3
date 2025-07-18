@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useRef } from "react";
-import { ToastProps } from "@/components/ui/toast";
+import { useState, useCallback, useRef } from 'react';
+import { ToastProps } from '@/components/ui/toast';
 
 export interface ToastOptions {
-  type: "loading" | "success" | "error" | "info";
+  type: 'loading' | 'success' | 'error' | 'info';
   title: string;
   description?: string;
   progress?: number;
@@ -39,7 +39,7 @@ export function useToast() {
         ...options,
         id,
         createdAt: Date.now(),
-        duration: options.duration ?? (options.type === "loading" ? 0 : 4000),
+        duration: options.duration ?? (options.type === 'loading' ? 0 : 4000),
       };
 
       setToasts((prev) => [...prev, toast]);
@@ -54,15 +54,15 @@ export function useToast() {
 
       return id;
     },
-    [removeToast],
+    [removeToast]
   );
 
   const updateToast = useCallback(
     (id: string, updates: Partial<ToastOptions>) => {
       setToasts((prev) =>
         prev.map((toast) =>
-          toast.id === id ? { ...toast, ...updates } : toast,
-        ),
+          toast.id === id ? { ...toast, ...updates } : toast
+        )
       );
 
       // 如果更新了duration，重新设置定时器
@@ -81,7 +81,7 @@ export function useToast() {
         }
       }
     },
-    [removeToast],
+    [removeToast]
   );
 
   const clearAllToasts = useCallback(() => {
@@ -94,16 +94,16 @@ export function useToast() {
   // 便捷方法
   const toast = {
     loading: (title: string, description?: string, progress?: number) =>
-      addToast({ type: "loading", title, description, progress }),
+      addToast({ type: 'loading', title, description, progress }),
 
     success: (title: string, description?: string, duration?: number) =>
-      addToast({ type: "success", title, description, duration }),
+      addToast({ type: 'success', title, description, duration }),
 
     error: (title: string, description?: string, duration?: number) =>
-      addToast({ type: "error", title, description, duration }),
+      addToast({ type: 'error', title, description, duration }),
 
     info: (title: string, description?: string, duration?: number) =>
-      addToast({ type: "info", title, description, duration }),
+      addToast({ type: 'info', title, description, duration }),
 
     // 更新进度（主要用于loading状态）
     updateProgress: (id: string, progress: number) =>
@@ -114,14 +114,14 @@ export function useToast() {
       id: string,
       title?: string,
       description?: string,
-      progress?: number,
+      progress?: number
     ) => updateToast(id, { title, description, progress }),
 
     // 将loading toast转换为success/error
     resolve: (id: string, title?: string, description?: string) => {
       updateToast(id, {
-        type: "success",
-        title: title || "操作成功",
+        type: 'success',
+        title: title || '操作成功',
         description,
         progress: undefined,
         duration: 3000,
@@ -130,8 +130,8 @@ export function useToast() {
 
     reject: (id: string, title?: string, description?: string) => {
       updateToast(id, {
-        type: "error",
-        title: title || "操作失败",
+        type: 'error',
+        title: title || '操作失败',
         description,
         progress: undefined,
         duration: 5000,

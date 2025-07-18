@@ -80,7 +80,7 @@
     --grid-background: 0 0% 100%;
     --sidebar-height: 100vh;
     --font-sans: Poppins, sans-serif;
-    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --font-mono: Roboto Mono, monospace;
     --radius: 0.75rem;
     --shadow-2xs: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0);
@@ -139,7 +139,7 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
     --font-sans: Poppins, sans-serif;
-    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --font-mono: Roboto Mono, monospace;
     --radius: 0.75rem;
     --shadow-2xs: 0 1px 25px 0px hsl(0 0% 0% / 0);
@@ -159,7 +159,7 @@
   .theme {
     --font-sans: Poppins, sans-serif;
     --font-mono: Roboto Mono, monospace;
-    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --radius: 0.75rem;
     --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
     --tracking-tight: calc(var(--tracking-normal) - 0.025em);

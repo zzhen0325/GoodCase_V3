@@ -1,15 +1,15 @@
-import { useImageState } from "./use-image-state";
-import { useModalState } from "./use-modal-state";
-import { useEditMode } from "./use-edit-mode";
-import { useImageOperations } from "./use-image-operations";
+import { useImageState } from './use-image-state';
+import { useModalState } from './use-modal-state';
+import { useEditMode } from './use-edit-mode';
+import { useImageOperations } from './use-image-operations';
 
-import { useBatchOperations } from "./use-batch-operations";
-import { useNavigation } from "./use-navigation";
-import { useDataSync } from "./use-data-sync";
-import { useDownloadProgress } from "@/components/download-progress-toast";
-import { useInfiniteScroll } from "./use-infinite-scroll";
-import { listenerManager } from "@/lib/listeners";
-import { useEffect } from "react";
+import { useBatchOperations } from './use-batch-operations';
+import { useNavigation } from './use-navigation';
+import { useDataSync } from './use-data-sync';
+import { useDownloadProgress } from '@/components/download-progress-toast';
+import { useInfiniteScroll } from './use-infinite-scroll';
+import { listenerManager } from '@/lib/listeners';
+import { useEffect } from 'react';
 
 /**
  * 主页面状态管理 Hook
@@ -64,7 +64,7 @@ export function useHomePage() {
   // 获取监听器状态
   const getConnectionInfo = () => {
     const status = listenerManager.getConnectionStatus();
-    console.log("📊 监听器状态:", status);
+    console.log('📊 监听器状态:', status);
     return status;
   };
 

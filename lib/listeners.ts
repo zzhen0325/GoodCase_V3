@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   onSnapshot,
@@ -7,16 +7,16 @@ import {
   query,
   orderBy,
   Unsubscribe,
-} from "firebase/firestore";
-import { db, getDb } from "@/lib/firebase";
+} from 'firebase/firestore';
+import { db, getDb } from '@/lib/firebase';
 import {
   ImageData,
   Tag,
   TagGroup,
   ConnectionStatus,
   PerformanceMetrics,
-} from "@/types";
-import { CacheManager } from "./cache-manager";
+} from '@/types';
+import { CacheManager } from './cache-manager';
 
 interface ListenerOptions {
   enableCache?: boolean;
@@ -26,7 +26,7 @@ interface ListenerOptions {
 
 class ListenerManager {
   private listeners: Map<string, Unsubscribe> = new Map();
-  private connectionStatus: ConnectionStatus = "disconnected";
+  private connectionStatus: ConnectionStatus = 'disconnected';
   private statusCallbacks: Set<(status: ConnectionStatus) => void> = new Set();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -52,12 +52,12 @@ class ListenerManager {
   }
 
   private setupNetworkListener() {
-    if (typeof window !== "undefined") {
-      window.addEventListener("online", () => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
         this.handleNetworkChange(true);
       });
 
-      window.addEventListener("offline", () => {
+      window.addEventListener('offline', () => {
         this.handleNetworkChange(false);
       });
     }
@@ -65,10 +65,10 @@ class ListenerManager {
 
   private handleNetworkChange(isOnline: boolean) {
     if (isOnline) {
-      this.setConnectionStatus("reconnecting");
+      this.setConnectionStatus('reconnecting');
       this.reconnectListeners();
     } else {
-      this.setConnectionStatus("disconnected");
+      this.setConnectionStatus('disconnected');
     }
   }
 
@@ -79,8 +79,8 @@ class ListenerManager {
 
   private async reconnectListeners() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("达到最大重连次数，停止重连");
-      this.setConnectionStatus("disconnected");
+      console.error('达到最大重连次数，停止重连');
+      this.setConnectionStatus('disconnected');
       return;
     }
 
@@ -92,9 +92,9 @@ class ListenerManager {
       // 这里可以添加重连逻辑
 
       this.reconnectAttempts = 0;
-      this.setConnectionStatus("connected");
+      this.setConnectionStatus('connected');
     } catch (error) {
-      console.error("重连失败:", error);
+      console.error('重连失败:', error);
       this.reconnectAttempts++;
       this.reconnectDelay *= 2; // 指数退避
       this.reconnectListeners();
@@ -103,7 +103,7 @@ class ListenerManager {
 
   private updatePerformanceMetrics(
     isError: boolean = false,
-    responseTime?: number,
+    responseTime?: number
   ) {
     this.performanceMetrics.totalRequests++;
 
@@ -123,7 +123,7 @@ class ListenerManager {
 
   // 订阅连接状态变化
   onConnectionStatusChange(
-    callback: (status: ConnectionStatus) => void,
+    callback: (status: ConnectionStatus) => void
   ): () => void {
     this.statusCallbacks.add(callback);
     // 立即调用一次回调，传递当前状态
@@ -148,10 +148,10 @@ class ListenerManager {
   subscribeToImages(
     onUpdate: (images: ImageData[]) => void,
     onError?: (error: Error) => void,
-    options?: ListenerOptions,
+    options?: ListenerOptions
   ): () => void {
-    const listenerId = "images";
-    const cacheKey = options?.cacheKey || "all-images";
+    const listenerId = 'images';
+    const cacheKey = options?.cacheKey || 'all-images';
     const startTime = Date.now();
 
     // 如果已经有监听器，先取消
@@ -171,9 +171,12 @@ class ListenerManager {
     try {
       const dbInstance = getDb();
       if (!dbInstance) {
-        throw new Error("Database not initialized");
+        throw new Error('Database not initialized');
       }
-      const q = query(collection(dbInstance, "images"), orderBy("createdAt", "desc"));
+      const q = query(
+        collection(dbInstance, 'images'),
+        orderBy('createdAt', 'desc')
+      );
 
       const unsubscribe = onSnapshot(
         q,
@@ -196,30 +199,30 @@ class ListenerManager {
             }
 
             onUpdate(images);
-            this.setConnectionStatus("connected");
+            this.setConnectionStatus('connected');
             this.updatePerformanceMetrics(false, Date.now() - startTime);
           } catch (error) {
-            console.error("处理图片数据时出错:", error);
+            console.error('处理图片数据时出错:', error);
             this.updatePerformanceMetrics(true);
             onError?.(error as Error);
           }
         },
         (error) => {
-          console.error("监听图片失败:", error);
-          this.setConnectionStatus("disconnected");
+          console.error('监听图片失败:', error);
+          this.setConnectionStatus('disconnected');
           this.updatePerformanceMetrics(true);
           onError?.(error);
 
           // 尝试重连
           this.handleNetworkChange(navigator.onLine);
-        },
+        }
       );
 
       this.listeners.set(listenerId, unsubscribe);
 
       return () => this.unsubscribe(listenerId);
     } catch (error) {
-      console.error("创建图片监听器失败:", error);
+      console.error('创建图片监听器失败:', error);
       this.updatePerformanceMetrics(true);
       onError?.(error as Error);
       return () => {};
@@ -231,7 +234,7 @@ class ListenerManager {
     id: string,
     onUpdate: (image: ImageData | null) => void,
     onError?: (error: Error) => void,
-    options?: ListenerOptions,
+    options?: ListenerOptions
   ): () => void {
     const listenerId = `image-${id}`;
     const cacheKey = options?.cacheKey || `image-${id}`;
@@ -252,12 +255,12 @@ class ListenerManager {
     }
 
     try {
-       const dbInstance = getDb();
-       if (!dbInstance) {
-         throw new Error("Database not initialized");
-       }
-       const unsubscribe = onSnapshot(
-         doc(dbInstance, "images", id),
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Database not initialized');
+      }
+      const unsubscribe = onSnapshot(
+        doc(dbInstance, 'images', id),
         (doc) => {
           try {
             if (doc.exists()) {
@@ -283,27 +286,27 @@ class ListenerManager {
               onUpdate(null);
             }
 
-            this.setConnectionStatus("connected");
+            this.setConnectionStatus('connected');
             this.updatePerformanceMetrics(false, Date.now() - startTime);
           } catch (error) {
-            console.error("处理图片数据时出错:", error);
+            console.error('处理图片数据时出错:', error);
             this.updatePerformanceMetrics(true);
             onError?.(error as Error);
           }
         },
         (error) => {
-          console.error("监听图片失败:", error);
-          this.setConnectionStatus("disconnected");
+          console.error('监听图片失败:', error);
+          this.setConnectionStatus('disconnected');
           this.updatePerformanceMetrics(true);
           onError?.(error);
-        },
+        }
       );
 
       this.listeners.set(listenerId, unsubscribe);
 
       return () => this.unsubscribe(listenerId);
     } catch (error) {
-      console.error("创建图片监听器失败:", error);
+      console.error('创建图片监听器失败:', error);
       this.updatePerformanceMetrics(true);
       onError?.(error as Error);
       return () => {};
@@ -314,10 +317,10 @@ class ListenerManager {
   subscribeToTags(
     onUpdate: (tags: Tag[]) => void,
     onError?: (error: Error) => void,
-    options?: ListenerOptions,
+    options?: ListenerOptions
   ): () => void {
-    const listenerId = "tags";
-    const cacheKey = options?.cacheKey || "all-tags";
+    const listenerId = 'tags';
+    const cacheKey = options?.cacheKey || 'all-tags';
     const startTime = Date.now();
 
     this.unsubscribe(listenerId);
@@ -335,9 +338,9 @@ class ListenerManager {
     try {
       const dbInstance = getDb();
       if (!dbInstance) {
-        throw new Error("Database not initialized");
+        throw new Error('Database not initialized');
       }
-      const q = query(collection(dbInstance, "tags"), orderBy("name", "asc"));
+      const q = query(collection(dbInstance, 'tags'), orderBy('name', 'asc'));
 
       const unsubscribe = onSnapshot(
         q,
@@ -359,27 +362,27 @@ class ListenerManager {
             }
 
             onUpdate(tags);
-            this.setConnectionStatus("connected");
+            this.setConnectionStatus('connected');
             this.updatePerformanceMetrics(false, Date.now() - startTime);
           } catch (error) {
-            console.error("处理标签数据时出错:", error);
+            console.error('处理标签数据时出错:', error);
             this.updatePerformanceMetrics(true);
             onError?.(error as Error);
           }
         },
         (error) => {
-          console.error("监听标签失败:", error);
-          this.setConnectionStatus("disconnected");
+          console.error('监听标签失败:', error);
+          this.setConnectionStatus('disconnected');
           this.updatePerformanceMetrics(true);
           onError?.(error);
-        },
+        }
       );
 
       this.listeners.set(listenerId, unsubscribe);
 
       return () => this.unsubscribe(listenerId);
     } catch (error) {
-      console.error("创建标签监听器失败:", error);
+      console.error('创建标签监听器失败:', error);
       this.updatePerformanceMetrics(true);
       onError?.(error as Error);
       return () => {};
@@ -390,10 +393,10 @@ class ListenerManager {
   subscribeToTagGroups(
     onUpdate: (tagGroups: TagGroup[]) => void,
     onError?: (error: Error) => void,
-    options?: ListenerOptions,
+    options?: ListenerOptions
   ): () => void {
-    const listenerId = "tag-groups";
-    const cacheKey = options?.cacheKey || "all-tag-groups";
+    const listenerId = 'tag-groups';
+    const cacheKey = options?.cacheKey || 'all-tag-groups';
     const startTime = Date.now();
 
     this.unsubscribe(listenerId);
@@ -411,9 +414,12 @@ class ListenerManager {
     try {
       const dbInstance = getDb();
       if (!dbInstance) {
-        throw new Error("Database not initialized");
+        throw new Error('Database not initialized');
       }
-      const q = query(collection(dbInstance, "tag-groups"), orderBy("name", "asc"));
+      const q = query(
+        collection(dbInstance, 'tag-groups'),
+        orderBy('name', 'asc')
+      );
 
       const unsubscribe = onSnapshot(
         q,
@@ -435,27 +441,27 @@ class ListenerManager {
             }
 
             onUpdate(tagGroups);
-            this.setConnectionStatus("connected");
+            this.setConnectionStatus('connected');
             this.updatePerformanceMetrics(false, Date.now() - startTime);
           } catch (error) {
-            console.error("处理标签分组数据时出错:", error);
+            console.error('处理标签分组数据时出错:', error);
             this.updatePerformanceMetrics(true);
             onError?.(error as Error);
           }
         },
         (error) => {
-          console.error("监听标签分组失败:", error);
-          this.setConnectionStatus("disconnected");
+          console.error('监听标签分组失败:', error);
+          this.setConnectionStatus('disconnected');
           this.updatePerformanceMetrics(true);
           onError?.(error);
-        },
+        }
       );
 
       this.listeners.set(listenerId, unsubscribe);
 
       return () => this.unsubscribe(listenerId);
     } catch (error) {
-      console.error("创建标签分组监听器失败:", error);
+      console.error('创建标签分组监听器失败:', error);
       this.updatePerformanceMetrics(true);
       onError?.(error as Error);
       return () => {};

@@ -3,10 +3,10 @@ import {
   getApps,
   cert,
   ServiceAccount,
-} from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
-import { Timestamp } from "firebase-admin/firestore";
+} from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
+import { Timestamp } from 'firebase-admin/firestore';
 
 // Firebase Admin SDK 配置
 function getServiceAccount(): ServiceAccount {
@@ -14,7 +14,7 @@ function getServiceAccount(): ServiceAccount {
   return {
     projectId: process.env.FIREBASE_PROJECT_ID!,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n")!,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')!,
   };
 }
 
@@ -23,7 +23,7 @@ let adminApp: any = null;
 
 function initializeFirebaseAdmin() {
   // 仅在运行时初始化Firebase（而非构建时）
-  if (typeof window === "undefined" && !adminApp) {
+  if (typeof window === 'undefined' && !adminApp) {
     if (!getApps().length) {
       const serviceAccount = getServiceAccount();
       adminApp = initializeApp({
@@ -42,7 +42,7 @@ export async function getServerFirebase() {
   const app = initializeFirebaseAdmin();
   if (!app) {
     throw new Error(
-      "Firebase Admin not initialized - this function should only be called on server side",
+      'Firebase Admin not initialized - this function should only be called on server side'
     );
   }
   const db = getFirestore(app);
@@ -83,10 +83,10 @@ export class FirebaseManager {
 
   // 获取存储实例（客户端使用）
   async getStorage() {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       // 客户端环境
       if (!this.clientStorage) {
-        throw new Error("客户端存储未初始化");
+        throw new Error('客户端存储未初始化');
       }
       return this.clientStorage;
     } else {
@@ -98,10 +98,10 @@ export class FirebaseManager {
 
   // 获取数据库实例（客户端使用）
   async getDb() {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       // 客户端环境
       if (!this.clientDb) {
-        throw new Error("客户端数据库未初始化");
+        throw new Error('客户端数据库未初始化');
       }
       return this.clientDb;
     } else {

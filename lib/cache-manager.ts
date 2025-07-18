@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 interface CacheItem<T> {
   data: T;
@@ -81,14 +81,14 @@ export class CacheManager {
   private cleanExpiredCache(): void {
     const now = Date.now();
     const keysToDelete: string[] = [];
-    
+
     this.cache.forEach((item, key) => {
       if (item.ttl && now - item.timestamp > item.ttl) {
         keysToDelete.push(key);
       }
     });
-    
-    keysToDelete.forEach(key => this.cache.delete(key));
+
+    keysToDelete.forEach((key) => this.cache.delete(key));
   }
 
   // 获取缓存统计信息

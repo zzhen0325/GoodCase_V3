@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Database } from "@/lib/database";
-import { ExportData } from "@/types";
+import { NextRequest, NextResponse } from 'next/server';
+import { Database } from '@/lib/database';
+import { ExportData } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
     // 验证数据格式
     if (!data || !data.version || !Array.isArray(data.images)) {
       return NextResponse.json(
-        { error: "无效的导入数据格式" },
-        { status: 400 },
+        { error: '无效的导入数据格式' },
+        { status: 400 }
       );
     }
 
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         const result = await database.addImage({
           title: image.title,
           url: image.url,
-          prompt: image.prompts?.[0]?.text || image.prompt || "",
+          prompt: image.prompts?.[0]?.text || image.prompt || '',
           size: image.size || 0,
           tags: image.tags || [],
         });
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    console.error("导入失败:", error);
-    return NextResponse.json({ error: "导入失败" }, { status: 500 });
+    console.error('导入失败:', error);
+    return NextResponse.json({ error: '导入失败' }, { status: 500 });
   }
 }

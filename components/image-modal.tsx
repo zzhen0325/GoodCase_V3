@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   DndContext,
   closestCenter,
@@ -28,13 +28,13 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-} from "@dnd-kit/core";
+} from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+} from '@dnd-kit/sortable';
 import {
   FileImage,
   X,
@@ -47,13 +47,17 @@ import {
   Files,
   Calendar,
   Tag,
-} from "lucide-react";
-import { PromptBlock } from "./prompt-block";
-import { useTagOperations } from "@/hooks/use-tag-operations";
+} from 'lucide-react';
+import { PromptBlock } from './prompt-block';
+import { useTagOperations } from '@/hooks/use-tag-operations';
 
-import { ImageData, PromptBlock as PromptBlockType, AVAILABLE_COLORS } from "@/types";
-import { generateId, copyToClipboard, formatDate } from "@/lib/utils";
-import { toast } from "sonner";
+import {
+  ImageData,
+  PromptBlock as PromptBlockType,
+  AVAILABLE_COLORS,
+} from '@/types';
+import { generateId, copyToClipboard, formatDate } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // 类型定义
 export interface ImageModalProps {
@@ -80,15 +84,15 @@ interface ImageActionsProps {
   onCancel: () => void;
   onCopyAll: () => void;
   onDuplicate?: () => void;
-  copyAllStatus: "idle" | "success" | "error";
-  duplicateStatus: "idle" | "success" | "error";
+  copyAllStatus: 'idle' | 'success' | 'error';
+  duplicateStatus: 'idle' | 'success' | 'error';
 }
 
 interface ImageInfoProps {
   image: ImageData;
   isEditing: boolean;
   onDelete?: () => void;
-  deleteStatus: "idle" | "confirming" | "deleting";
+  deleteStatus: 'idle' | 'confirming' | 'deleting';
   onUpdate?: (updates: Partial<ImageData>) => void;
 }
 
@@ -109,7 +113,7 @@ function ImagePreview({ image, onClose }: ImagePreviewProps) {
     <div className="w-full h-full flex items-center justify-center p-8 relative bg-white rounded-l-lg">
       <img
         src={image.url}
-        alt={image.title || "图片"}
+        alt={image.title || '图片'}
         className="max-w-full max-h-[calc(85vh-8rem)] object-contain rounded-lg"
         loading="lazy"
       />
@@ -168,15 +172,15 @@ function ImageActions({
           size="sm"
           disabled={prompts.length === 0}
           className={
-            copyAllStatus === "success" ? "border-green-500 text-green-700" : ""
+            copyAllStatus === 'success' ? 'border-green-500 text-green-700' : ''
           }
         >
-          {copyAllStatus === "success" ? (
+          {copyAllStatus === 'success' ? (
             <Check className="w-4 h-4 mr-2" />
           ) : (
             <Copy className="w-4 h-4 mr-2" />
           )}
-          {copyAllStatus === "success" ? "已复制" : "复制全部"}
+          {copyAllStatus === 'success' ? '已复制' : '复制全部'}
         </Button>
       )}
 
@@ -187,17 +191,17 @@ function ImageActions({
           variant="outline"
           size="sm"
           className={
-            duplicateStatus === "success"
-              ? "border-green-500 text-green-700"
-              : ""
+            duplicateStatus === 'success'
+              ? 'border-green-500 text-green-700'
+              : ''
           }
         >
-          {duplicateStatus === "success" ? (
+          {duplicateStatus === 'success' ? (
             <Check className="w-4 h-4 mr-2" />
           ) : (
             <Files className="w-4 h-4 mr-2" />
           )}
-          {duplicateStatus === "success" ? "已复制" : "复制图片"}
+          {duplicateStatus === 'success' ? '已复制' : '复制图片'}
         </Button>
       )}
     </div>
@@ -213,8 +217,8 @@ function ImageInfo({
   onUpdate,
 }: ImageInfoProps) {
   const { tags, tagGroups, createTag, refreshTags } = useTagOperations();
-  const [newTagName, setNewTagName] = useState("");
-  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [newTagName, setNewTagName] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState('');
   const [showAddTag, setShowAddTag] = useState(false);
 
   // 获取图片当前的标签
@@ -226,7 +230,7 @@ function ImageInfo({
   // 处理添加新标签
   const handleAddNewTag = async () => {
     if (!newTagName.trim() || !selectedGroupId) {
-      toast.error("请输入标签名称并选择分组");
+      toast.error('请输入标签名称并选择分组');
       return;
     }
 
@@ -243,14 +247,14 @@ function ImageInfo({
         const updatedTags = [...(image.tags || []), newTag.name];
         onUpdate?.({ tags: updatedTags });
 
-        setNewTagName("");
-        setSelectedGroupId("");
+        setNewTagName('');
+        setSelectedGroupId('');
         setShowAddTag(false);
         // createTag 已经包含了刷新逻辑，无需重复调用
-        toast.success("标签创建并添加成功");
+        toast.success('标签创建并添加成功');
       }
     } catch (error) {
-      toast.error("创建标签失败");
+      toast.error('创建标签失败');
     }
   };
 
@@ -261,10 +265,10 @@ function ImageInfo({
       if (tag) {
         const updatedTags = [...(image.tags || []), tag.name];
         onUpdate?.({ tags: updatedTags });
-        toast.success("标签已添加");
+        toast.success('标签已添加');
       }
     } catch (error) {
-      toast.error("添加标签失败");
+      toast.error('添加标签失败');
     }
   };
 
@@ -273,9 +277,9 @@ function ImageInfo({
     try {
       const updatedTags = (image.tags || []).filter((name) => name !== tagName);
       onUpdate?.({ tags: updatedTags });
-      toast.success("标签已移除");
+      toast.success('标签已移除');
     } catch (error) {
-      toast.error("移除标签失败");
+      toast.error('移除标签失败');
     }
   };
 
@@ -299,7 +303,7 @@ function ImageInfo({
                   variant="secondary"
                   className="flex items-center gap-1 px-2 py-1"
                   style={{
-                    backgroundColor: group?.color + "20",
+                    backgroundColor: group?.color + '20',
                     borderColor: group?.color,
                     color: group?.color,
                   }}
@@ -372,8 +376,8 @@ function ImageInfo({
                     <Button
                       onClick={() => {
                         setShowAddTag(false);
-                        setNewTagName("");
-                        setSelectedGroupId("");
+                        setNewTagName('');
+                        setSelectedGroupId('');
                       }}
                       variant="ghost"
                       size="sm"
@@ -433,17 +437,17 @@ function ImageInfo({
         <div className="flex justify-end">
           <Button
             onClick={onDelete}
-            variant={deleteStatus === "confirming" ? "destructive" : "outline"}
+            variant={deleteStatus === 'confirming' ? 'destructive' : 'outline'}
             size="sm"
-            disabled={deleteStatus === "deleting"}
+            disabled={deleteStatus === 'deleting'}
             className="border-red-200 text-red-600 hover:bg-red-50"
           >
             <Trash2 className="w-4 h-4 mr-2" />
-            {deleteStatus === "confirming"
-              ? "确认删除"
-              : deleteStatus === "deleting"
-                ? "删除中..."
-                : "删除图片"}
+            {deleteStatus === 'confirming'
+              ? '确认删除'
+              : deleteStatus === 'deleting'
+                ? '删除中...'
+                : '删除图片'}
           </Button>
         </div>
       )}
@@ -472,42 +476,44 @@ export function ImageModal({
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
       keyboardCodes: {
-        start: ["Enter"],
-        cancel: ["Escape"],
-        end: ["Enter", "Escape"],
+        start: ['Enter'],
+        cancel: ['Escape'],
+        end: ['Enter', 'Escape'],
       },
-    }),
+    })
   );
 
   // 状态管理
   const [isEditing, setIsEditing] = useState(false);
-  const [editedTitle, setEditedTitle] = useState("");
+  const [editedTitle, setEditedTitle] = useState('');
   const [prompts, setPrompts] = useState<PromptBlockType[]>([]);
   const [editedTagIds, setEditedTagIds] = useState<string[]>([]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [copyAllStatus, setCopyAllStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
+    'idle' | 'success' | 'error'
+  >('idle');
   const [deleteStatus, setDeleteStatus] = useState<
-    "idle" | "confirming" | "deleting"
-  >("idle");
+    'idle' | 'confirming' | 'deleting'
+  >('idle');
   const [duplicateStatus, setDuplicateStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
+    'idle' | 'success' | 'error'
+  >('idle');
 
   // 初始化数据
   useEffect(() => {
     if (image && isOpen) {
       setEditedTitle(image.title);
-      // 优先使用promptBlocks数组，如果没有则使用description作为后备
-      if (image.promptBlocks && image.promptBlocks.length > 0) {
-        setPrompts(image.promptBlocks);
+      // 优先使用prompts数组，如果没有则使用description作为后备
+      if (image.prompts && image.prompts.length > 0) {
+        setPrompts(image.prompts);
       } else if (image.description) {
         setPrompts([
           {
             id: generateId(),
             text: image.description,
+            title: '',
+            imageId: image.id,
             sortOrder: 0,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -525,25 +531,25 @@ export function ImageModal({
   // 重置状态当弹窗关闭时
   useEffect(() => {
     if (!isOpen) {
-      setDeleteStatus("idle");
-      setDuplicateStatus("idle");
+      setDeleteStatus('idle');
+      setDuplicateStatus('idle');
     }
   }, [isOpen]);
 
   // ESC键退出功能
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && isOpen) {
+      if (event.key === 'Escape' && isOpen) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
@@ -554,17 +560,17 @@ export function ImageModal({
     try {
       const updateData = {
         title: editedTitle,
-        promptBlocks: prompts,
+        prompts: prompts,
         tags: editedTagIds,
       };
 
       // 所有标签变更同步到数据库
       await onUpdate(image.id, updateData);
-      toast.success("保存成功");
+      toast.success('保存成功');
       setIsEditing(false);
     } catch (error) {
-      console.error("保存失败:", error);
-      toast.error("保存失败，请重试");
+      console.error('保存失败:', error);
+      toast.error('保存失败，请重试');
     }
   };
 
@@ -572,25 +578,31 @@ export function ImageModal({
   const cancelEdit = () => {
     if (image) {
       // 重置为编辑前的状态
-    setEditedTitle(image.title);
-    // 优先使用promptBlocks数组，如果没有则使用description作为后备
-    if (image.promptBlocks && image.promptBlocks.length > 0) {
-      setPrompts(image.promptBlocks);
-    } else if (image.description) {
-      setPrompts([
-        {
-          id: generateId(),
-          text: image.description,
-          sortOrder: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ]);
-    } else {
-      setPrompts([]);
-    }
+      setEditedTitle(image.title);
+      // 优先使用prompts数组，如果没有则使用description作为后备
+      if (
+        image.prompts &&
+        Array.isArray(image.prompts) &&
+        image.prompts.length > 0
+      ) {
+        setPrompts(image.prompts);
+      } else if (image.description) {
+        setPrompts([
+          {
+            id: generateId(),
+            text: image.description,
+            sortOrder: 0,
+            createdAt: new Date(),
+            title: '',
+            imageId: image?.id || '',
+            updatedAt: new Date(),
+          },
+        ]);
+      } else {
+        setPrompts([]);
+      }
       setEditedTagIds([...(image.tags || [])]);
-      toast.info("已取消编辑");
+      toast.info('已取消编辑');
     }
     setIsEditing(false);
   };
@@ -598,55 +610,55 @@ export function ImageModal({
   // 复制全部提示词
   const copyAllPrompts = async () => {
     if (prompts.length === 0) {
-      toast.error("没有提示词可复制");
+      toast.error('没有提示词可复制');
       return;
     }
 
     const allPromptsText = prompts
       .map((p) => p.text)
       .filter(Boolean)
-      .join("\n\n");
+      .join('\n\n');
 
     if (!allPromptsText.trim()) {
-      toast.error("没有有效的提示词内容");
+      toast.error('没有有效的提示词内容');
       return;
     }
 
     try {
-      setCopyAllStatus("success");
+      setCopyAllStatus('success');
       await copyToClipboard(allPromptsText);
-      toast.success("所有提示词已复制到剪贴板");
+      toast.success('所有提示词已复制到剪贴板');
 
       if (onCopyPrompt) {
         onCopyPrompt(allPromptsText);
       }
     } catch (error) {
-      setCopyAllStatus("error");
-      toast.error("复制失败，请重试");
+      setCopyAllStatus('error');
+      toast.error('复制失败，请重试');
     }
 
-    setTimeout(() => setCopyAllStatus("idle"), 2000);
+    setTimeout(() => setCopyAllStatus('idle'), 2000);
   };
 
   // 删除图片
   const handleDelete = async () => {
     if (!image || !onDelete) return;
 
-    if (deleteStatus === "idle") {
-      setDeleteStatus("confirming");
+    if (deleteStatus === 'idle') {
+      setDeleteStatus('confirming');
       return;
     }
 
-    if (deleteStatus === "confirming") {
+    if (deleteStatus === 'confirming') {
       try {
-        setDeleteStatus("deleting");
+        setDeleteStatus('deleting');
         await onDelete(image.id);
-        toast.success("图片已删除");
+        toast.success('图片已删除');
         onClose();
       } catch (error) {
-        console.error("删除失败:", error);
-        toast.error("删除失败，请重试");
-        setDeleteStatus("idle");
+        console.error('删除失败:', error);
+        toast.error('删除失败，请重试');
+        setDeleteStatus('idle');
       }
     }
   };
@@ -656,15 +668,15 @@ export function ImageModal({
     if (!image || !onDuplicate) return;
 
     try {
-      setDuplicateStatus("success");
+      setDuplicateStatus('success');
       await onDuplicate(image);
-      toast.success("图片已复制");
+      toast.success('图片已复制');
     } catch (error) {
-      setDuplicateStatus("error");
-      console.error("复制失败:", error);
-      toast.error("复制失败，请重试");
+      setDuplicateStatus('error');
+      console.error('复制失败:', error);
+      toast.error('复制失败，请重试');
     } finally {
-      setTimeout(() => setDuplicateStatus("idle"), 2000);
+      setTimeout(() => setDuplicateStatus('idle'), 2000);
     }
   };
 
@@ -674,7 +686,7 @@ export function ImageModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl w-[95vw] h-[85vh] max-h-[85vh] p-0 ">
         <DialogTitle className="sr-only">
-          {image.title || "图片详情"}
+          {image.title || '图片详情'}
         </DialogTitle>
         <div className="h-full flex">
           {/* 图片预览区域 */}
@@ -688,7 +700,7 @@ export function ImageModal({
             <div className="flex-shrink-0 px-6 py-4 border-b">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold truncate pr-4">
-                  {image.title || "未命名图片"}
+                  {image.title || '未命名图片'}
                 </h2>
                 <div className="flex-shrink-0">
                   <ImageActions
@@ -718,7 +730,9 @@ export function ImageModal({
                       onClick={() => {
                         const newPrompt: PromptBlockType = {
                           id: generateId(),
-                          text: "",
+                          text: '',
+                          title: '',
+                          imageId: image?.id || '',
                           sortOrder: prompts.length,
                           createdAt: new Date(),
                           updatedAt: new Date(),
@@ -744,21 +758,23 @@ export function ImageModal({
                       const { active, over } = event;
                       if (active.id !== over?.id) {
                         const oldIndex = prompts.findIndex(
-                          (item) => item.id === active.id,
+                          (item) => item.id === active.id
                         );
                         const newIndex = prompts.findIndex(
-                          (item) => item.id === over.id,
+                          (item) => item.id === over.id
                         );
                         const reorderedPrompts = arrayMove(
                           prompts,
                           oldIndex,
-                          newIndex,
+                          newIndex
                         );
                         // 更新排序字段
-                        const updatedPrompts = reorderedPrompts.map((item, index) => ({
-                          ...item,
-                          sortOrder: index,
-                        }));
+                        const updatedPrompts = reorderedPrompts.map(
+                          (item, index) => ({
+                            ...item,
+                            sortOrder: index,
+                          })
+                        );
                         setPrompts(updatedPrompts);
                       }
                       setActiveId(null);
@@ -773,17 +789,20 @@ export function ImageModal({
                           key={prompt.id}
                           prompt={prompt}
                           isEditing={isEditing}
-                          onUpdate={(id: string, updates: Partial<PromptBlockType>) => {
+                          onUpdate={(
+                            id: string,
+                            updates: Partial<PromptBlockType>
+                          ) => {
                             const updatedPrompts = prompts.map((prompt) =>
                               prompt.id === id
                                 ? { ...prompt, ...updates }
-                                : prompt,
+                                : prompt
                             );
                             setPrompts(updatedPrompts);
                           }}
                           onDelete={(id: string) => {
                             const updatedPrompts = prompts.filter(
-                              (prompt) => prompt.id !== id,
+                              (prompt) => prompt.id !== id
                             );
                             setPrompts(updatedPrompts);
                           }}
@@ -817,7 +836,9 @@ export function ImageModal({
                           onClick={() => {
                             const newPrompt: PromptBlockType = {
                               id: generateId(),
-                              text: "",
+                              text: '',
+                              title: '',
+                              imageId: image?.id || '',
                               sortOrder: prompts.length,
                               createdAt: new Date(),
                               updatedAt: new Date(),

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Database } from "@/lib/database";
+import { NextRequest, NextResponse } from 'next/server';
+import { Database } from '@/lib/database';
 import {
   convertToWebp,
   detectImageFormat,
   estimateImageSize,
-} from "@/lib/image-utils";
+} from '@/lib/image-utils';
 
 /**
  * 图片格式迁移API
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     };
 
     for (const image of images) {
-      if (!image.url || !image.url.startsWith("data:")) {
+      if (!image.url || !image.url.startsWith('data:')) {
         continue;
       }
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       const originalSize = estimateImageSize(image.url);
       migrationStats.sizeBefore += originalSize;
 
-      if (format !== "webp") {
+      if (format !== 'webp') {
         migrationStats.needsMigration++;
 
         if (!dryRun) {
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
             } else {
               migrationStats.failed++;
               migrationStats.errors.push(
-                `图片 ${image.id} 更新失败: ${updateResult.error}`,
+                `图片 ${image.id} 更新失败: ${updateResult.error}`
               );
             }
           } catch (error) {
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
               migrationStats.sizeBefore) *
             100
           ).toFixed(1)
-        : "0";
+        : '0';
 
     return NextResponse.json({
       success: true,
@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("图片迁移失败:", error);
-    return NextResponse.json({ error: "图片迁移失败" }, { status: 500 });
+    console.error('图片迁移失败:', error);
+    return NextResponse.json({ error: '图片迁移失败' }, { status: 500 });
   }
 }
 
@@ -128,23 +128,23 @@ export async function GET() {
     };
 
     for (const image of images) {
-      if (!image.url || !image.url.startsWith("data:")) {
+      if (!image.url || !image.url.startsWith('data:')) {
         stats.invalid++;
         continue;
       }
 
       const format = detectImageFormat(image.url);
       switch (format) {
-        case "webp":
+        case 'webp':
           stats.webp++;
           break;
-        case "jpeg":
+        case 'jpeg':
           stats.jpeg++;
           break;
-        case "png":
+        case 'png':
           stats.png++;
           break;
-        case "gif":
+        case 'gif':
           stats.gif++;
           break;
         default:
@@ -157,7 +157,7 @@ export async function GET() {
       stats,
     });
   } catch (error) {
-    console.error("获取迁移状态失败:", error);
-    return NextResponse.json({ error: "获取迁移状态失败" }, { status: 500 });
+    console.error('获取迁移状态失败:', error);
+    return NextResponse.json({ error: '获取迁移状态失败' }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { ImageData } from "@/types";
+import { useState, useEffect, useCallback } from 'react';
+import { ImageData } from '@/types';
 
 /**
  * 编辑模式状态管理 Hook
@@ -9,21 +9,21 @@ export function useEditMode() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSidebarEditMode, setIsSidebarEditMode] = useState(false);
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
 
   // ESC键退出编辑模式
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && isEditMode) {
+      if (event.key === 'Escape' && isEditMode) {
         setIsEditMode(false);
         setSelectedImageIds(new Set());
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isEditMode]);
 
@@ -49,7 +49,7 @@ export function useEditMode() {
         return newSet;
       });
     },
-    [],
+    []
   );
 
   // 处理全选/取消全选
@@ -63,7 +63,7 @@ export function useEditMode() {
         setSelectedImageIds(new Set(filteredImages.map((img) => img.id)));
       }
     },
-    [selectedImageIds.size],
+    [selectedImageIds.size]
   );
 
   // 切换边栏编辑模式

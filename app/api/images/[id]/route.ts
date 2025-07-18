@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Database } from "@/lib/database";
-import { DatabaseAdmin } from "@/lib/database-admin";
-import { ImageData } from "@/types";
+import { NextRequest, NextResponse } from 'next/server';
+import { Database } from '@/lib/database';
+import { DatabaseAdmin } from '@/lib/database-admin';
+import { ImageData } from '@/types';
 
 // PUT - 更新图片
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -24,7 +24,7 @@ export async function PUT(
 
         // 找出被移除的标签
         const removedTags = originalTags.filter(
-          (tag) => !newTags.includes(tag),
+          (tag) => !newTags.includes(tag)
         );
         // 找出新添加的标签
         const addedTags = newTags.filter((tag) => !originalTags.includes(tag));
@@ -32,7 +32,8 @@ export async function PUT(
         // 更新标签使用次数
         for (const tag of removedTags) {
           try {
-            const tagId = typeof tag === 'string' ? tag : (tag as any).id || tag;
+            const tagId =
+              typeof tag === 'string' ? tag : (tag as any).id || tag;
             await DatabaseAdmin.updateTagUsageCount(tagId, -1);
           } catch (error) {
             console.error(`更新标签 ${tag} 使用次数失败:`, error);
@@ -41,7 +42,8 @@ export async function PUT(
 
         for (const tag of addedTags) {
           try {
-            const tagId = typeof tag === 'string' ? tag : (tag as any).id || tag;
+            const tagId =
+              typeof tag === 'string' ? tag : (tag as any).id || tag;
             await DatabaseAdmin.updateTagUsageCount(tagId, 1);
           } catch (error) {
             console.error(`更新标签 ${tag} 使用次数失败:`, error);
@@ -57,14 +59,14 @@ export async function PUT(
     } else {
       return NextResponse.json(
         { success: false, error: result.error },
-        { status: 500 },
+        { status: 500 }
       );
     }
   } catch (error) {
-    console.error("更新图片失败:", error);
+    console.error('更新图片失败:', error);
     return NextResponse.json(
-      { success: false, error: "更新图片失败" },
-      { status: 500 },
+      { success: false, error: '更新图片失败' },
+      { status: 500 }
     );
   }
 }
@@ -72,7 +74,7 @@ export async function PUT(
 // GET - 获取单个图片
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -85,14 +87,14 @@ export async function GET(
     } else {
       return NextResponse.json(
         { success: false, error: result.error },
-        { status: result.error === "图片不存在" ? 404 : 500 },
+        { status: result.error === '图片不存在' ? 404 : 500 }
       );
     }
   } catch (error) {
-    console.error("获取图片失败:", error);
+    console.error('获取图片失败:', error);
     return NextResponse.json(
-      { success: false, error: "获取图片失败" },
-      { status: 500 },
+      { success: false, error: '获取图片失败' },
+      { status: 500 }
     );
   }
 }
@@ -100,7 +102,7 @@ export async function GET(
 // DELETE - 删除图片（包括存储中的文件）
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -131,14 +133,14 @@ export async function DELETE(
     } else {
       return NextResponse.json(
         { success: false, error: result.error },
-        { status: result.error === "图片不存在" ? 404 : 500 },
+        { status: result.error === '图片不存在' ? 404 : 500 }
       );
     }
   } catch (error) {
-    console.error("删除图片失败:", error);
+    console.error('删除图片失败:', error);
     return NextResponse.json(
-      { success: false, error: "删除图片失败" },
-      { status: 500 },
+      { success: false, error: '删除图片失败' },
+      { status: 500 }
     );
   }
 }

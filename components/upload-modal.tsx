@@ -1,34 +1,38 @@
-"use client";
+'use client';
 
-import React, { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, Image as ImageIcon, FileImage, Plus } from "lucide-react";
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Upload, X, Image as ImageIcon, FileImage, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ImageData, PromptBlock as PromptBlockType } from "@/types";
-import { PromptBlock } from "./prompt-block";
-import { toast } from "sonner";
-import { generateId } from "@/lib/utils";
-import { ImageStorageService } from "@/lib/image-storage";
-import { DndContext, useDroppable, DragEndEvent } from "@dnd-kit/core";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ImageData, PromptBlock as PromptBlockType } from '@/types';
+import { PromptBlock } from './prompt-block';
+import { toast } from 'sonner';
+import { generateId } from '@/lib/utils';
+import { ImageStorageService } from '@/lib/image-storage';
+import { DndContext, useDroppable, DragEndEvent } from '@dnd-kit/core';
 
 // 上传图片弹窗组件属性
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (file: File, imageName: string, prompts: PromptBlockType[]) => Promise<void>;
+  onUpload: (
+    file: File,
+    imageName: string,
+    prompts: PromptBlockType[]
+  ) => Promise<void>;
 }
 
 // 上传图片弹窗组件
 export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
-  const [imageName, setImageName] = useState("");
+  const [imageName, setImageName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<PromptBlockType[]>([]);
@@ -48,9 +52,9 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   // 使用 dnd-kit 的 droppable 区域
   const { setNodeRef, isOver } = useDroppable({
-    id: "file-upload-zone",
+    id: 'file-upload-zone',
     data: {
-      accepts: ["file"],
+      accepts: ['file'],
     },
   });
 
@@ -71,10 +75,10 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && over.id === "file-upload-zone") {
+    if (over && over.id === 'file-upload-zone') {
       // 这里可以处理文件拖拽到上传区域的逻辑
       // 由于我们主要是为了统一使用 dnd-kit，实际的文件处理仍然通过文件选择器
-      console.log("File dragged to upload zone");
+      console.log('File dragged to upload zone');
     }
   };
 
@@ -91,10 +95,10 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   // 创建默认提示词
   const createDefaultPrompts = (): PromptBlockType[] => {
     const now = new Date();
-    return ["风格", "主体", "场景"].map((text, index) => ({
+    return ['风格', '主体', '场景'].map((text, index) => ({
       id: generateId(),
       title: text,
-      content: "",
+      content: '',
       sortOrder: index,
       createdAt: now,
       updatedAt: now,
@@ -103,8 +107,8 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   // 处理文件
   const processFile = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      alert("请选择图片文件");
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
       return;
     }
 
@@ -112,14 +116,14 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       const base64 = await fileToBase64(file);
       setSelectedFile(file);
       setPreviewUrl(base64);
-      setImageName(file.name.split(".").slice(0, -1).join("."));
+      setImageName(file.name.split('.').slice(0, -1).join('.'));
 
       if (prompts.length === 0) {
         setPrompts(createDefaultPrompts());
       }
     } catch (error) {
-      console.error("文件处理失败:", error);
-      alert("文件处理失败，请重试");
+      console.error('文件处理失败:', error);
+      alert('文件处理失败，请重试');
     }
   };
 
@@ -132,18 +136,18 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const clearSelectedFile = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // 处理上传
   const handleUpload = async () => {
     if (!selectedFile) {
-      toast.error("请选择图片文件");
+      toast.error('请选择图片文件');
       return;
     }
 
     if (!imageName.trim()) {
-      toast.error("图片名称不能为空");
+      toast.error('图片名称不能为空');
       return;
     }
 
@@ -163,10 +167,10 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       // 开始后台上传，传递上传数据
       await onUpload(uploadData.file, uploadData.imageName, uploadData.prompts);
     } catch (error) {
-      console.error("上传失败:", error);
+      console.error('上传失败:', error);
       toast.error(
-        "上传失败: " +
-          (error instanceof Error ? error.message : "请检查网络连接后重试"),
+        '上传失败: ' +
+          (error instanceof Error ? error.message : '请检查网络连接后重试')
       );
     } finally {
       setIsUploading(false);
@@ -175,13 +179,13 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   // 重置表单
   const resetForm = () => {
-    setImageName("");
+    setImageName('');
     setSelectedFile(null);
     setPreviewUrl(null);
     setPrompts([]);
     setIsEditingPrompts(true);
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
   };
 
@@ -195,8 +199,8 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const addPrompt = () => {
     const newPrompt: PromptBlockType = {
       id: generateId(),
-      title: "新提示词",
-      content: "",
+      title: '新提示词',
+      content: '',
       sortOrder: prompts.length,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -210,8 +214,8 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       prompts.map((prompt) =>
         prompt.id === id
           ? { ...prompt, ...updates, updatedAt: new Date() }
-          : prompt,
-      ),
+          : prompt
+      )
     );
   };
 
@@ -223,7 +227,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   // 复制提示词内容
   const copyPromptContent = (content: string) => {
     // 这里可以添加复制成功的提示
-    console.log("复制提示词:", content);
+    console.log('复制提示词:', content);
   };
 
   return (
@@ -253,8 +257,8 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                 border-2 border-dashed rounded-lg p-8
                 flex flex-col items-center justify-center
                 transition-colors duration-200
-                ${dragActive ? "border-primary bg-primary/5" : "border-border"}
-                ${selectedFile ? "bg-background" : "bg-muted/30"}
+                ${dragActive ? 'border-primary bg-primary/5' : 'border-border'}
+                ${selectedFile ? 'bg-background' : 'bg-muted/30'}
               `}
               >
                 {selectedFile && previewUrl ? (
@@ -306,7 +310,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                   </label>
                   <div className="p-3 bg-muted/50 rounded-lg border">
                     <span className="text-sm font-medium">
-                      {imageName || "未选择文件"}
+                      {imageName || '未选择文件'}
                     </span>
                   </div>
                 </div>
@@ -356,7 +360,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                 onClick={handleUpload}
                 disabled={!selectedFile || !imageName.trim() || isUploading}
               >
-                {isUploading ? "上传中..." : "提交"}
+                {isUploading ? '上传中...' : '提交'}
               </Button>
             </div>
           </div>

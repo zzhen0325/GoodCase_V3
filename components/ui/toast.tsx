@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle, AlertCircle, Info, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, CheckCircle, AlertCircle, Info, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface ToastProps {
   id: string;
-  type: "loading" | "success" | "error" | "info";
+  type: 'loading' | 'success' | 'error' | 'info';
   title: string;
   description?: string;
   progress?: number; // 0-100
@@ -29,24 +29,24 @@ const iconMap = {
 };
 
 const colorMap = {
-  loading: "border-blue-200 bg-blue-50 text-blue-900",
-  success: "border-green-200 bg-green-50 text-green-900",
-  error: "border-red-200 bg-red-50 text-red-900",
-  info: "border-gray-200 bg-gray-50 text-gray-900",
+  loading: 'border-blue-200 bg-blue-50 text-blue-900',
+  success: 'border-green-200 bg-green-50 text-green-900',
+  error: 'border-red-200 bg-red-50 text-red-900',
+  info: 'border-gray-200 bg-gray-50 text-gray-900',
 };
 
 const iconColorMap = {
-  loading: "text-blue-500",
-  success: "text-green-500",
-  error: "text-red-500",
-  info: "text-gray-500",
+  loading: 'text-blue-500',
+  success: 'text-green-500',
+  error: 'text-red-500',
+  info: 'text-gray-500',
 };
 
 const progressColorMap = {
-  loading: "bg-blue-500",
-  success: "bg-green-500",
-  error: "bg-red-500",
-  info: "bg-gray-500",
+  loading: 'bg-blue-500',
+  success: 'bg-green-500',
+  error: 'bg-red-500',
+  info: 'bg-gray-500',
 };
 
 export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
@@ -61,10 +61,10 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
         initial="initial"
         animate="animate"
         exit="exit"
-        transition={{ duration: 0.2, ease: "easeOut" }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className={cn(
-          "relative w-80 rounded-lg border p-4 shadow-lg backdrop-blur-sm",
-          colorMap[type],
+          'relative w-80 rounded-lg border p-4 shadow-lg backdrop-blur-sm',
+          colorMap[type]
         )}
       >
         {/* 关闭按钮 */}
@@ -78,9 +78,9 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
         {/* 内容区域 */}
         <div className="flex items-start gap-3 pr-6">
           {/* 图标 */}
-          <div className={cn("flex-shrink-0 mt-0.5", iconColorMap[type])}>
+          <div className={cn('flex-shrink-0 mt-0.5', iconColorMap[type])}>
             <Icon
-              className={cn("h-5 w-5", type === "loading" && "animate-spin")}
+              className={cn('h-5 w-5', type === 'loading' && 'animate-spin')}
             />
           </div>
 
@@ -94,7 +94,7 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
         </div>
 
         {/* 进度条 */}
-        {typeof progress === "number" && (
+        {typeof progress === 'number' && (
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="opacity-70">进度</span>
@@ -102,20 +102,20 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
             </div>
             <div className="w-full bg-black/10 rounded-full h-1.5">
               <motion.div
-                className={cn("h-1.5 rounded-full", progressColorMap[type])}
+                className={cn('h-1.5 rounded-full', progressColorMap[type])}
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
               />
             </div>
           </div>
         )}
       </motion.div>
     );
-  },
+  }
 );
 
-Toast.displayName = "Toast";
+Toast.displayName = 'Toast';
 
 export function ToastContainer({ children }: { children: React.ReactNode }) {
   return (

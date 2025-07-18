@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback, useMemo } from "react";
-import { Search, X, Tags, Filter } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useCallback, useMemo } from 'react';
+import { Search, X, Tags, Filter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { SearchFilters, DEFAULT_SEARCH_FILTERS } from "@/types";
-import { debounce } from "@/lib/utils";
-import { TagSelector } from "@/components/tags/tag-selector";
-import { TagManagementPanel } from "@/components/tags/tag-management-panel";
-import { useTagOperations } from "@/hooks/use-tag-operations";
+} from '@/components/ui/popover';
+import { SearchFilters, DEFAULT_SEARCH_FILTERS } from '@/types';
+import { debounce } from '@/lib/utils';
+import { TagSelector } from '@/components/tags/tag-selector';
+import { TagManagementPanel } from '@/components/tags/tag-management-panel';
+import { useTagOperations } from '@/hooks/use-tag-operations';
 
 // 搜索框组件属性
 interface SearchBarProps {
@@ -26,10 +26,10 @@ export function SearchBar({
   onSearch,
   currentFilters = DEFAULT_SEARCH_FILTERS,
 }: SearchBarProps) {
-  const [query, setQuery] = useState(currentFilters.query || "");
+  const [query, setQuery] = useState(currentFilters.query || '');
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [showTagManagement, setShowTagManagement] = useState(false);
-  
+
   // 获取标签数据
   const { tags, tagGroups } = useTagOperations();
 
@@ -43,7 +43,7 @@ export function SearchBar({
           tags: tagIds || currentFilters.tags,
         });
       }, 300),
-    [onSearch, currentFilters],
+    [onSearch, currentFilters]
   );
 
   // 处理搜索输入变化
@@ -52,7 +52,7 @@ export function SearchBar({
       setQuery(value);
       debouncedSearch(value);
     },
-    [debouncedSearch],
+    [debouncedSearch]
   );
 
   // 处理标签选择
@@ -64,15 +64,15 @@ export function SearchBar({
         tags: tagIds,
       });
     },
-    [onSearch, currentFilters, query],
+    [onSearch, currentFilters, query]
   );
 
   // 清空搜索
   const clearSearch = useCallback(() => {
-    setQuery("");
+    setQuery('');
     onSearch({
       ...currentFilters,
-      query: "",
+      query: '',
       tags: [],
     });
   }, [onSearch, currentFilters]);
@@ -90,7 +90,7 @@ export function SearchBar({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       handleSearchChange(e.target.value);
     },
-    [handleSearchChange],
+    [handleSearchChange]
   );
 
   const selectedTagsCount = currentFilters.tags?.length || 0;
@@ -124,7 +124,7 @@ export function SearchBar({
         <Popover open={showTagSelector} onOpenChange={setShowTagSelector}>
           <PopoverTrigger asChild>
             <Button
-              variant={selectedTagsCount > 0 ? "default" : "outline"}
+              variant={selectedTagsCount > 0 ? 'default' : 'outline'}
               size="icon"
               className="h-12 w-12 rounded-xl"
             >

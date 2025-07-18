@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { ImageData } from "@/types";
+import { useState, useCallback } from 'react';
+import { ImageData } from '@/types';
 
 /**
  * 无限滚动加载 Hook
@@ -7,7 +7,7 @@ import { ImageData } from "@/types";
  */
 export function useInfiniteScroll(
   allImages: ImageData[],
-  pageSize: number = 20,
+  pageSize: number = 20
 ) {
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);

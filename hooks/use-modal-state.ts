@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { ImageData } from "@/types";
+import { useState, useCallback } from 'react';
+import { ImageData } from '@/types';
 
 /**
  * 模态框状态管理 Hook
@@ -12,7 +12,7 @@ export function useModalState() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // 视图状态
-  const [activeView, setActiveView] = useState("grid");
+  const [activeView, setActiveView] = useState('grid');
 
   // 处理图片点击
   const handleImageClick = useCallback((image: ImageData) => {

@@ -1,10 +1,20 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import React, { useState } from 'react';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { getDb } from '@/lib/firebase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+
+// 数组移动工具函数
+function arrayMove<T>(array: T[], from: number, to: number): T[] {
+  const newArray = [...array];
+  const item = newArray.splice(from, 1)[0];
+  newArray.splice(to, 0, item);
+  return newArray;
+}
 import {
   Dialog,
   DialogContent,
@@ -12,7 +22,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 import {
   Plus,
   Search,
@@ -33,11 +43,24 @@ import {
   BarChart3,
   Move,
   RefreshCw,
-} from "lucide-react";
-import { TagGroup, Tag } from "@/types";
-import { TagGroupItem } from "./tag-group-item";
-import { useTagOperations } from "@/hooks/use-tag-operations";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { TagGroup, Tag } from '@/types';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { createPortal } from 'react-dom';
+import { TagGroupItem } from './tag-group-item';
+import { useTagOperations } from '@/hooks/use-tag-operations';
+import { cn } from '@/lib/utils';
 
 interface TagManagementPanelProps {
   open: boolean;
@@ -84,26 +107,26 @@ interface MoveTagDialogProps {
 
 // 颜色选项
 const COLOR_OPTIONS = [
-  "#ef4444",
-  "#f97316",
-  "#f59e0b",
-  "#eab308",
-  "#84cc16",
-  "#22c55e",
-  "#10b981",
-  "#14b8a6",
-  "#06b6d4",
-  "#0ea5e9",
-  "#3b82f6",
-  "#6366f1",
-  "#8b5cf6",
-  "#a855f7",
-  "#d946ef",
-  "#ec4899",
-  "#f43f5e",
-  "#64748b",
-  "#6b7280",
-  "#374151",
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#eab308',
+  '#84cc16',
+  '#22c55e',
+  '#10b981',
+  '#14b8a6',
+  '#06b6d4',
+  '#0ea5e9',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#a855f7',
+  '#d946ef',
+  '#ec4899',
+  '#f43f5e',
+  '#64748b',
+  '#6b7280',
+  '#374151',
 ];
 
 // 创建分组对话框
@@ -112,13 +135,13 @@ function CreateGroupDialog({
   onOpenChange,
   onConfirm,
 }: CreateGroupDialogProps) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState('');
   const [color, setColor] = useState(COLOR_OPTIONS[0]);
 
   const handleSubmit = () => {
     if (name.trim()) {
       onConfirm({ name: name.trim(), color });
-      setName("");
+      setName('');
       setColor(COLOR_OPTIONS[0]);
       onOpenChange(false);
     }
@@ -142,7 +165,7 @@ function CreateGroupDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="输入分组名称"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
           </div>
 
@@ -153,10 +176,10 @@ function CreateGroupDialog({
                 <button
                   key={colorOption}
                   className={cn(
-                    "w-6 h-6 rounded-full border-2 transition-all",
+                    'w-6 h-6 rounded-full border-2 transition-all',
                     color === colorOption
-                      ? "border-foreground scale-110"
-                      : "border-transparent",
+                      ? 'border-foreground scale-110'
+                      : 'border-transparent'
                   )}
                   style={{ backgroundColor: colorOption }}
                   onClick={() => setColor(colorOption)}
@@ -187,8 +210,8 @@ function CreateTagDialog({
   tagGroups,
   defaultGroupId,
 }: CreateTagDialogProps) {
-  const [name, setName] = useState("");
-  const [groupId, setGroupId] = useState("");
+  const [name, setName] = useState('');
+  const [groupId, setGroupId] = useState('');
 
   // 确保groupId在tagGroups变化时正确初始化
   React.useEffect(() => {
@@ -200,7 +223,7 @@ function CreateTagDialog({
   // 重置表单状态当对话框打开时
   React.useEffect(() => {
     if (open) {
-      setName("");
+      setName('');
       if (tagGroups.length > 0) {
         setGroupId(defaultGroupId || tagGroups[0].id);
       }
@@ -210,7 +233,7 @@ function CreateTagDialog({
   const handleSubmit = () => {
     if (name.trim() && groupId) {
       onConfirm({ name: name.trim(), groupId });
-      setName("");
+      setName('');
       onOpenChange(false);
     }
   };
@@ -231,7 +254,7 @@ function CreateTagDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="输入标签名称"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
           </div>
 
@@ -272,7 +295,7 @@ function EditGroupDialog({
   onConfirm,
   group,
 }: EditGroupDialogProps) {
-  const [name, setName] = useState(group?.name || "");
+  const [name, setName] = useState(group?.name || '');
   const [color, setColor] = useState(group?.color || COLOR_OPTIONS[0]);
 
   React.useEffect(() => {
@@ -305,7 +328,7 @@ function EditGroupDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="输入分组名称"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
           </div>
 
@@ -316,10 +339,10 @@ function EditGroupDialog({
                 <button
                   key={colorOption}
                   className={cn(
-                    "w-6 h-6 rounded-full border-2 transition-all",
+                    'w-6 h-6 rounded-full border-2 transition-all',
                     color === colorOption
-                      ? "border-foreground scale-110"
-                      : "border-transparent",
+                      ? 'border-foreground scale-110'
+                      : 'border-transparent'
                   )}
                   style={{ backgroundColor: colorOption }}
                   onClick={() => setColor(colorOption)}
@@ -350,13 +373,13 @@ function EditTagDialog({
   tagGroups,
   tag,
 }: EditTagDialogProps) {
-  const [name, setName] = useState("");
-  const [groupId, setGroupId] = useState("");
+  const [name, setName] = useState('');
+  const [groupId, setGroupId] = useState('');
 
   React.useEffect(() => {
     if (tag) {
       setName(tag.name);
-      setGroupId(tag.groupId || "");
+      setGroupId(tag.groupId || '');
     }
   }, [tag]);
 
@@ -383,7 +406,7 @@ function EditTagDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="输入标签名称"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
           </div>
 
@@ -425,12 +448,12 @@ function MoveTagDialog({
   tagGroups,
   selectedTags,
 }: MoveTagDialogProps) {
-  const [groupId, setGroupId] = useState("");
+  const [groupId, setGroupId] = useState('');
 
   const handleSubmit = () => {
     if (groupId) {
       onConfirm(groupId);
-      setGroupId("");
+      setGroupId('');
       onOpenChange(false);
     }
   };
@@ -500,9 +523,6 @@ export function TagManagementPanel({
     searchQuery,
     loading,
     error,
-    createTagGroup,
-    updateTagGroup,
-    deleteTagGroup,
     createTag,
     updateTag,
     deleteTag,
@@ -516,10 +536,13 @@ export function TagManagementPanel({
     refreshAll,
   } = useTagOperations();
 
+  const [localTagGroups, setLocalTagGroups] = useState<TagGroup[]>([]);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [activeTag, setActiveTag] = useState<Tag | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showCreateTag, setShowCreateTag] = useState(false);
-  const [createTagGroupId, setCreateTagGroupId] = useState<string>("");
+  const [createTagGroupId, setCreateTagGroupId] = useState<string>('');
   const [showEditGroup, setShowEditGroup] = useState(false);
   const [editingGroup, setEditingGroup] = useState<TagGroup | null>(null);
   const [showEditTag, setShowEditTag] = useState(false);
@@ -527,9 +550,9 @@ export function TagManagementPanel({
   const [showMoveTag, setShowMoveTag] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: "group" | "tag" | "selected";
+    type: 'group' | 'tag' | 'selected';
     data?: any;
-  }>({ type: "tag" });
+  }>({ type: 'tag' });
   const [recalculatingUsage, setRecalculatingUsage] = useState(false);
 
   // 切换分组展开状态
@@ -543,21 +566,55 @@ export function TagManagementPanel({
     setExpandedGroups(newExpanded);
   };
 
+  // 创建分组方法
+  const createTagGroup = async (data: { name: string; color: string }) => {
+    const db = getDb();
+    if (!db) {
+      throw new Error('数据库连接失败');
+    }
+    const currentGroups = tagGroups.length > 0 ? tagGroups : localTagGroups;
+    const maxOrder = currentGroups.length > 0 ? Math.max(...currentGroups.map((g: TagGroup) => g.order ?? 0)) : 0;
+    const newGroup: Omit<TagGroup, 'id'> = {
+      name: data.name,
+      color: data.color,
+      order: maxOrder + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tagCount: 0,
+    };
+    const docRef = await addDoc(collection(db, 'tagGroups'), { ...newGroup, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    const newGroupWithId = { ...newGroup, id: docRef.id };
+    setLocalTagGroups([...currentGroups, newGroupWithId]);
+    return { success: true };
+  };
+
+  // 更新分组方法
+  const updateTagGroup = async (id: string, data: { name: string; color: string }) => {
+    console.warn('标签分组功能已简化，暂不支持更新');
+    return { success: false };
+  };
+
+  // 删除分组方法
+  const deleteTagGroup = async (id: string) => {
+    console.warn('标签分组功能已简化，暂不支持删除');
+    return { success: false };
+  };
+
   // 处理创建分组
   const handleCreateGroup = async (data: { name: string; color: string }) => {
     try {
-      await createTagGroup({ ...data, tagCount: 0 });
+      await createTagGroup(data);
     } catch (error) {
-      console.error("创建分组失败:", error);
+      console.error('创建分组失败:', error);
     }
   };
 
   // 处理创建标签
   const handleCreateTag = async (data: { name: string; groupId: string }) => {
     try {
-      await createTag({ ...data, usageCount: 0, color: "#64748b" });
+      await createTag({ ...data, usageCount: 0, color: '#64748b' });
     } catch (error) {
-      console.error("创建标签失败:", error);
+      console.error('创建标签失败:', error);
     }
   };
 
@@ -572,7 +629,7 @@ export function TagManagementPanel({
       try {
         await updateTagGroup(editingGroup.id, data);
       } catch (error) {
-        console.error("更新分组失败:", error);
+        console.error('更新分组失败:', error);
       }
     }
   };
@@ -588,7 +645,7 @@ export function TagManagementPanel({
       try {
         await updateTag(editingTag.id, data);
       } catch (error) {
-        console.error("更新标签失败:", error);
+        console.error('更新标签失败:', error);
       }
     }
   };
@@ -609,27 +666,27 @@ export function TagManagementPanel({
             return updateTag(tagId, { name: tag.name, groupId });
           }
           return Promise.resolve();
-        }),
+        })
       );
       clearTagSelection();
     } catch (error) {
-      console.error("移动标签失败:", error);
+      console.error('移动标签失败:', error);
     }
   };
 
   // 处理删除确认
   const handleDeleteConfirm = async () => {
     try {
-      if (deleteTarget.type === "group") {
+      if (deleteTarget.type === 'group') {
         await deleteTagGroup(deleteTarget.data.id);
-      } else if (deleteTarget.type === "tag") {
+      } else if (deleteTarget.type === 'tag') {
         await deleteTag(deleteTarget.data.id);
-      } else if (deleteTarget.type === "selected") {
+      } else if (deleteTarget.type === 'selected') {
         await deleteSelectedTags();
       }
       setShowDeleteConfirm(false);
     } catch (error) {
-      console.error("删除失败:", error);
+      console.error('删除失败:', error);
     }
   };
 
@@ -637,22 +694,22 @@ export function TagManagementPanel({
   const handleRecalculateUsage = async () => {
     setRecalculatingUsage(true);
     try {
-      const response = await fetch("/api/tags/recalculate-usage", {
-        method: "POST",
+      const response = await fetch('/api/tags/recalculate-usage', {
+        method: 'POST',
       });
 
       if (!response.ok) {
-        throw new Error("重新计算失败");
+        throw new Error('重新计算失败');
       }
 
       const result = await response.json();
-      console.log("重新计算完成:", result);
+      console.log('重新计算完成:', result);
 
       // 刷新标签数据以显示最新的使用次数
       refreshAll();
     } catch (error) {
-      console.error("重新计算使用次数失败:", error);
-      alert("重新计算失败，请稍后重试");
+      console.error('重新计算使用次数失败:', error);
+      alert('重新计算失败，请稍后重试');
     } finally {
       setRecalculatingUsage(false);
     }
@@ -667,10 +724,79 @@ export function TagManagementPanel({
   const groupedTags = getTagsByGroup();
   const filteredGroups = getFilteredTagGroups();
 
+  // 拖拽state
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  // 更新分组顺序方法
+  const updateGroupOrder = (newGroups: TagGroup[]) => {
+    console.warn('标签分组功能已简化，暂不支持排序');
+  };
+
+  // 更新标签在分组内的顺序
+  const updateTagOrderInGroup = (groupId: string, newTags: Tag[]) => {
+    console.warn('标签分组功能已简化，暂不支持排序');
+  };
+
+  // 移动标签到其他分组
+  const moveTagToGroup = (tagId: string, toGroupId: string) => {
+    console.warn('标签分组功能已简化，暂不支持跨分组移动');
+  };
+
+  // 分组顺序更新
+  const handleGroupDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = tagGroups.findIndex((g: TagGroup) => g.id === active.id);
+      const newIndex = tagGroups.findIndex((g: TagGroup) => g.id === over.id);
+      // 这里应调用重排分组顺序的 handler
+      if (oldIndex !== -1 && newIndex !== -1) {
+        updateGroupOrder(arrayMove(tagGroups, oldIndex, newIndex));
+      }
+    }
+    setActiveGroupId(null);
+  };
+
+  // 获取分组标签数据 - 暂时使用空对象，因为标签分组功能已简化
+  const groupedTagsData: Record<string, { tags: Tag[] }> = {};
+
+  // 标签拖拽排序、跨分组移动
+  const handleTagDragEnd = (event: any, groupId: string) => {
+    const { active, over } = event;
+    if (!active.data.current) return;
+    const fromGroupId = active.data.current.groupId;
+    const tagId = active.id;
+    if (!fromGroupId) return;
+    // 源数据查找
+    const fromTags = groupedTagsData[fromGroupId]?.tags || [];
+    let toGroupId = groupId;
+    if (!over || !over.data?.current) {
+      setActiveTag(null);
+      return;
+    }
+    // 目标分组 id
+    if (over.data.current.groupId) {
+      toGroupId = over.data.current.groupId;
+    }
+    if (fromGroupId === toGroupId) {
+      // 同组内排序逻辑（可调用后端/状态）
+      const oldIdx = fromTags.findIndex((t: Tag) => t.id === tagId);
+      const newIdx = fromTags.findIndex((t: Tag) => t.id === over.id);
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        updateTagOrderInGroup(fromGroupId, arrayMove(fromTags, oldIdx, newIdx));
+      }
+    } else {
+      // 跨分组移动
+      moveTagToGroup(tagId, toGroupId);
+    }
+    setActiveTag(null);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className={cn("max-w-4xl max-h-[80vh]", className)}>
+        <DialogContent className={cn('max-w-4xl max-h-[80vh]', className)}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TagsIcon className="w-5 h-5" />
@@ -718,7 +844,7 @@ export function TagManagementPanel({
                     variant="destructive"
                     size="sm"
                     onClick={() => {
-                      setDeleteTarget({ type: "selected" });
+                      setDeleteTarget({ type: 'selected' });
                       setShowDeleteConfirm(true);
                     }}
                   >
@@ -735,7 +861,7 @@ export function TagManagementPanel({
                 size="sm"
                 onClick={() => setShowCreateTag(true)}
                 disabled={tagGroups.length === 0}
-                title={tagGroups.length === 0 ? "请先创建标签分组" : ""}
+                title={tagGroups.length === 0 ? '请先创建标签分组' : ''}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 新建标签
@@ -765,7 +891,7 @@ export function TagManagementPanel({
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">
-                {tags.reduce((sum, tag) => sum + tag.usageCount, 0)}
+                {tags.reduce((sum, tag) => sum + (tag.usageCount || 0), 0)}
               </div>
               <div className="text-sm text-muted-foreground">总使用次数</div>
             </div>
@@ -782,11 +908,11 @@ export function TagManagementPanel({
             >
               <RefreshCw
                 className={cn(
-                  "w-3 h-3 mr-1",
-                  recalculatingUsage && "animate-spin",
+                  'w-3 h-3 mr-1',
+                  recalculatingUsage && 'animate-spin'
                 )}
               />
-              {recalculatingUsage ? "重新计算中..." : "重新计算使用次数"}
+              {recalculatingUsage ? '重新计算中...' : '重新计算使用次数'}
             </Button>
           </div>
 
@@ -801,12 +927,12 @@ export function TagManagementPanel({
                 </div>
               ) : error ? (
                 <div className="text-center py-8 text-red-500">{error}</div>
-              ) : filteredGroups.length === 0 ? (
+              ) : getFilteredTagGroups().length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? "未找到匹配的分组或标签" : "暂无标签分组"}
+                  {searchQuery ? '未找到匹配的分组或标签' : '暂无标签分组'}
                 </div>
               ) : (
-                filteredGroups.map((group) => (
+                getFilteredTagGroups().map((group: TagGroup) => (
                   <TagGroupItem
                     key={group.id}
                     group={group}
@@ -817,13 +943,13 @@ export function TagManagementPanel({
                     onToggleExpand={toggleGroupExpand}
                     onTagClick={(tag) => toggleTagSelection(tag.id)}
                     onTagRemove={(tag) => {
-                      setDeleteTarget({ type: "tag", data: tag });
+                      setDeleteTarget({ type: 'tag', data: tag });
                       setShowDeleteConfirm(true);
                     }}
                     onTagEdit={handleEditTag}
                     onGroupEdit={handleEditGroup}
                     onGroupDelete={(group) => {
-                      setDeleteTarget({ type: "group", data: group });
+                      setDeleteTarget({ type: 'group', data: group });
                       setShowDeleteConfirm(true);
                     }}
                     onAddTag={handleAddTag}
@@ -891,11 +1017,11 @@ export function TagManagementPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget.type === "group" &&
+              {deleteTarget.type === 'group' &&
                 `确定要删除分组 "${deleteTarget.data?.name}" 吗？此操作将同时删除该分组下的所有标签。`}
-              {deleteTarget.type === "tag" &&
+              {deleteTarget.type === 'tag' &&
                 `确定要删除标签 "${deleteTarget.data?.name}" 吗？`}
-              {deleteTarget.type === "selected" &&
+              {deleteTarget.type === 'selected' &&
                 `确定要删除选中的 ${selectedTags.length} 个标签吗？`}
               此操作不可撤销。
             </AlertDialogDescription>

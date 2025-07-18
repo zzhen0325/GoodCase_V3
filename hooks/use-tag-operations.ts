@@ -1,21 +1,15 @@
-import { useState } from "react";
-import { TagGroup, Tag } from "@/types";
-import { useTagGroups } from "./use-tag-groups";
-import { useTags } from "./use-tags";
+import { useState } from 'react';
+import { Tag } from '@/types';
+import { useTags } from './use-tags';
 
 export function useTagOperations() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const {
-    tagGroups,
-    isLoading: groupsLoading,
-    error: groupsError,
-    createTagGroup: _createTagGroup,
-    updateTagGroup: _updateTagGroup,
-    deleteTagGroup: _deleteTagGroup,
-    refetch: refreshGroups,
-  } = useTagGroups();
+  // 标签分组功能已简化，不再需要独立管理
+  const tagGroups: any[] = [];
+  const groupsLoading = false;
+  const groupsError = null;
 
   const {
     tags,
@@ -27,55 +21,25 @@ export function useTagOperations() {
     refetch: refreshTags,
   } = useTags();
 
-  // 包装操作函数以自动刷新数据
-  const createTagGroup = async (data: any) => {
-    const result = await _createTagGroup(data);
-    refreshAll(); // 刷新所有数据
-    return result;
-  };
-
-  const updateTagGroup = async (id: string, data: any) => {
-    const result = await _updateTagGroup(id, data);
-    refreshAll(); // 刷新所有数据
-    return result;
-  };
-
-  const deleteTagGroup = async (id: string) => {
-    const result = await _deleteTagGroup(id);
-    refreshAll(); // 刷新所有数据
-    return result;
-  };
-
+  // 标签操作现在通过图片数据自动管理
   const createTag = async (data: any) => {
-    const result = await _createTag(data);
-    refreshAll(); // 刷新所有数据
-    return result;
+    console.warn('标签现在从图片数据中自动提取和管理，不支持独立创建');
+    return { success: false, error: '标签现在从图片数据中自动提取和管理' };
   };
 
   const updateTag = async (id: string, data: any) => {
-    const result = await _updateTag(id, data);
-    refreshAll(); // 刷新所有数据
-    return result;
+    console.warn('标签现在从图片数据中自动提取和管理，不支持独立更新');
+    return { success: false, error: '标签现在从图片数据中自动提取和管理' };
   };
 
   const deleteTag = async (id: string) => {
-    const result = await _deleteTag(id);
-    refreshAll(); // 刷新所有数据
-    return result;
+    console.warn('标签现在从图片数据中自动提取和管理，不支持独立删除');
+    return { success: false, error: '标签现在从图片数据中自动提取和管理' };
   };
 
-  // 根据分组组织标签
+  // 标签分组功能已简化
   const getTagsByGroup = () => {
-    const groupedTags: Record<string, { group: TagGroup; tags: Tag[] }> = {};
-
-    tagGroups.forEach((group) => {
-      groupedTags[group.id] = {
-        group,
-        tags: tags.filter((tag) => tag.groupId === group.id),
-      };
-    });
-
-    return groupedTags;
+    return {};
   };
 
   // 过滤标签（根据搜索查询）
@@ -83,23 +47,13 @@ export function useTagOperations() {
     if (!searchQuery) return tags;
 
     return tags.filter((tag) =>
-      tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      tag.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
 
-  // 过滤标签分组（根据搜索查询）
+  // 标签分组功能已简化
   const getFilteredTagGroups = () => {
-    if (!searchQuery) return tagGroups;
-
-    return tagGroups.filter(
-      (group) =>
-        group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tags.some(
-          (tag) =>
-            tag.groupId === group.id &&
-            tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
-        ),
-    );
+    return [];
   };
 
   // 切换标签选择状态
@@ -107,7 +61,7 @@ export function useTagOperations() {
     setSelectedTags((prev) =>
       prev.includes(tagId)
         ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId],
+        : [...prev, tagId]
     );
   };
 
@@ -121,27 +75,9 @@ export function useTagOperations() {
     setSelectedTags(tags.map((tag) => tag.id));
   };
 
-  // 根据分组选择标签
+  // 标签分组功能已简化
   const selectTagsByGroup = (groupId: string) => {
-    const groupTags = tags.filter((tag) => tag.groupId === groupId);
-    const groupTagIds = groupTags.map((tag) => tag.id);
-
-    // 如果该分组的所有标签都已选中，则取消选择
-    const allSelected = groupTagIds.every((id) => selectedTags.includes(id));
-
-    if (allSelected) {
-      setSelectedTags((prev) => prev.filter((id) => !groupTagIds.includes(id)));
-    } else {
-      setSelectedTags((prev) => {
-        const newSelection = [...prev];
-        groupTagIds.forEach((id) => {
-          if (!newSelection.includes(id)) {
-            newSelection.push(id);
-          }
-        });
-        return newSelection;
-      });
-    }
+    console.warn('标签分组功能已简化');
   };
 
   // 获取选中的标签对象
@@ -151,20 +87,13 @@ export function useTagOperations() {
 
   // 批量删除选中的标签
   const deleteSelectedTags = async () => {
-    try {
-      await Promise.all(selectedTags.map((tagId) => deleteTag(tagId)));
-      setSelectedTags([]);
-      // deleteTag 已经包含了刷新逻辑，无需重复调用
-    } catch (error) {
-      console.error("批量删除标签失败:", error);
-      throw error;
-    }
+    console.warn('标签现在从图片数据中自动提取和管理，不支持独立删除');
+    setSelectedTags([]);
   };
 
-  // 刷新所有数据
+  // 刷新数据
   const refreshAll = () => {
-    refreshGroups();
-    refreshTags();
+    // 标签数据通过实时监听自动更新
   };
 
   // 根据标签ID获取标签对象
@@ -172,14 +101,14 @@ export function useTagOperations() {
     return tags.find((tag) => tag.id === id);
   };
 
-  // 根据分组ID获取分组对象
+  // 标签分组功能已简化
   const getTagGroupById = (id: string) => {
-    return tagGroups.find((group) => group.id === id);
+    return undefined;
   };
 
-  // 获取标签的分组信息
+  // 标签分组功能已简化
   const getTagGroup = (tag: Tag) => {
-    return tagGroups.find((group) => group.id === tag.groupId);
+    return undefined;
   };
 
   return {
@@ -199,10 +128,7 @@ export function useTagOperations() {
     groupsError,
     tagsError,
 
-    // 标签分组操作
-    createTagGroup,
-    updateTagGroup,
-    deleteTagGroup,
+    // 标签分组功能已简化
 
     // 标签操作
     createTag,
@@ -230,7 +156,5 @@ export function useTagOperations() {
 
     // 刷新
     refreshAll,
-    refreshGroups,
-    refreshTags,
   };
 }

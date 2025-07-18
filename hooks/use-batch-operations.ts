@@ -1,6 +1,6 @@
-import { useCallback } from "react";
-import { ImageData } from "@/types";
-import { dataService } from "@/lib/data-service";
+import { useCallback } from 'react';
+import { ImageData } from '@/types';
+import { database } from '@/lib/database';
 
 interface UseBatchOperationsProps {
   selectedImageIds: Set<string>;
@@ -35,20 +35,24 @@ export function useBatchOperations({
     if (selectedImageIds.size === 0) return;
 
     const confirmed = confirm(
-      `确定要删除选中的 ${selectedImageIds.size} 张图片吗？`,
+      `确定要删除选中的 ${selectedImageIds.size} 张图片吗？`
     );
     if (!confirmed) return;
 
     try {
-      const deletePromises = Array.from(selectedImageIds).map((id) =>
-        dataService.deleteImage(id),
-      );
+      const deletePromises = Array.from(selectedImageIds).map(async (id) => {
+        const result = await database.deleteImage(id);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+        return result;
+      });
       await Promise.all(deletePromises);
       setSelectedImageIds(new Set());
-      console.log("✅ 批量删除成功");
+      console.log('✅ 批量删除成功');
     } catch (error) {
-      console.error("❌ 批量删除失败:", error);
-      alert("批量删除失败: " + (error as Error).message);
+      console.error('❌ 批量删除失败:', error);
+      alert('批量删除失败: ' + (error as Error).message);
     }
   }, [selectedImageIds, setSelectedImageIds]);
 
@@ -58,7 +62,7 @@ export function useBatchOperations({
 
     try {
       const selectedImages = filteredImages.filter((img) =>
-        selectedImageIds.has(img.id),
+        selectedImageIds.has(img.id)
       );
 
       // 导出图片
@@ -67,7 +71,7 @@ export function useBatchOperations({
         if (!image.url) continue;
 
         try {
-          const imgElements = document.querySelectorAll("img");
+          const imgElements = document.querySelectorAll('img');
           let cachedImg: HTMLImageElement | null = null;
 
           for (let j = 0; j < imgElements.length; j++) {
@@ -81,15 +85,15 @@ export function useBatchOperations({
           let blob: Blob;
 
           if (cachedImg && cachedImg.complete) {
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
             canvas.width = cachedImg.naturalWidth;
             canvas.height = cachedImg.naturalHeight;
             ctx?.drawImage(cachedImg, 0, 0);
             blob = await new Promise<Blob>((resolve) => {
               canvas.toBlob((blob) => {
                 resolve(blob!);
-              }, "image/png");
+              }, 'image/png');
             });
           } else {
             const response = await fetch(image.url);
@@ -102,7 +106,7 @@ export function useBatchOperations({
           const filename = `${image.title || `image-${image.id}`}.${extension}`;
 
           const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
+          const a = document.createElement('a');
           a.href = url;
           a.download = filename;
           document.body.appendChild(a);
@@ -127,12 +131,12 @@ export function useBatchOperations({
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: "application/json",
+        type: 'application/json',
       });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `selected-images-${new Date().toISOString().split("T")[0]}.json`;
+      a.download = `selected-images-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -140,8 +144,8 @@ export function useBatchOperations({
 
       alert(`已开始下载 ${selectedImages.length} 张图片并导出JSON数据`);
     } catch (error) {
-      console.error("❌ 批量导出失败:", error);
-      alert("批量导出失败: " + (error as Error).message);
+      console.error('❌ 批量导出失败:', error);
+      alert('批量导出失败: ' + (error as Error).message);
     }
   }, [selectedImageIds, filteredImages, getFileExtensionFromUrl]);
 

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { FirebaseHealthCheck } from "@/lib/firebase-health-check";
+import { NextRequest, NextResponse } from 'next/server';
+import { FirebaseHealthCheck } from '@/lib/firebase-health-check';
 
 // GET - Firebase健康检查
 export async function GET(request: NextRequest) {
   try {
-    console.log("🔍 执行Firebase健康检查...");
+    console.log('🔍 执行Firebase健康检查...');
 
     const report = await FirebaseHealthCheck.generateReport();
     const clientCheck = FirebaseHealthCheck.checkClientConfig();
@@ -15,14 +15,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        overall: overallHealth ? "healthy" : "unhealthy",
+        overall: overallHealth ? 'healthy' : 'unhealthy',
         client: {
-          status: clientCheck.success ? "healthy" : "unhealthy",
+          status: clientCheck.success ? 'healthy' : 'unhealthy',
           errors: clientCheck.errors,
           warnings: clientCheck.warnings,
         },
         admin: {
-          status: adminCheck.success ? "healthy" : "unhealthy",
+          status: adminCheck.success ? 'healthy' : 'unhealthy',
           errors: adminCheck.errors,
           warnings: adminCheck.warnings,
         },
@@ -30,14 +30,14 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("❌ Firebase健康检查失败:", error);
+    console.error('❌ Firebase健康检查失败:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Firebase健康检查失败",
+        error: 'Firebase健康检查失败',
         details: error.message,
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

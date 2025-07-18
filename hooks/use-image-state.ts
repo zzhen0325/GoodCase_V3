@@ -1,17 +1,16 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { ImageData, SearchFilters, DEFAULT_SEARCH_FILTERS } from "@/types";
-import { dataService } from "@/lib/data-service";
-import { listenerManager } from "@/lib/listeners";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ImageData, SearchFilters, DEFAULT_SEARCH_FILTERS } from '@/types';
+import { database } from '@/lib/database';
 
 interface ImageState {
   images: ImageData[];
   filteredImages: ImageData[];
   isLoading: boolean;
   searchFilters: SearchFilters;
-  connectionStatus: "connected" | "disconnected" | "reconnecting";
-  cacheStatus: "hit" | "miss" | "loading";
+  connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
+  cacheStatus: 'hit' | 'miss' | 'loading';
 }
 
 interface ImageActions {
@@ -20,7 +19,9 @@ interface ImageActions {
   clearSearch: () => void;
   clearCache: () => void;
   setImages: React.Dispatch<React.SetStateAction<ImageData[]>>;
-  setConnectionStatus: React.Dispatch<React.SetStateAction<"connected" | "disconnected" | "reconnecting">>;
+  setConnectionStatus: React.Dispatch<
+    React.SetStateAction<'connected' | 'disconnected' | 'reconnecting'>
+  >;
 }
 
 export function useImageState(): ImageState & ImageActions {
@@ -28,28 +29,28 @@ export function useImageState(): ImageState & ImageActions {
   const [filteredImages, setFilteredImages] = useState<ImageData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<
-    "connected" | "disconnected" | "reconnecting"
-  >("disconnected");
-  const [cacheStatus, setCacheStatus] = useState<"hit" | "miss" | "loading">(
-    "loading",
+    'connected' | 'disconnected' | 'reconnecting'
+  >('disconnected');
+  const [cacheStatus, setCacheStatus] = useState<'hit' | 'miss' | 'loading'>(
+    'loading'
   );
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(
-    DEFAULT_SEARCH_FILTERS,
+    DEFAULT_SEARCH_FILTERS
   );
 
   // 监听网络状态
   useEffect(() => {
-    const handleOnline = () => setConnectionStatus("connected");
-    const handleOffline = () => setConnectionStatus("disconnected");
+    const handleOnline = () => setConnectionStatus('connected');
+    const handleOffline = () => setConnectionStatus('disconnected');
 
-    if (typeof window !== "undefined") {
-      window.addEventListener("online", handleOnline);
-      window.addEventListener("offline", handleOffline);
-      setConnectionStatus(navigator.onLine ? "connected" : "disconnected");
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      setConnectionStatus(navigator.onLine ? 'connected' : 'disconnected');
 
       return () => {
-        window.removeEventListener("online", handleOnline);
-        window.removeEventListener("offline", handleOffline);
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
       };
     }
   }, []);
@@ -58,38 +59,50 @@ export function useImageState(): ImageState & ImageActions {
   const loadImages = useCallback(async () => {
     try {
       setIsLoading(true);
-      setCacheStatus("loading");
+      setCacheStatus('loading');
 
       const startTime = Date.now();
-      const imageData = await dataService.getImages();
+      const result = await database.getAllImages();
       const loadTime = Date.now() - startTime;
 
-      setImages(imageData);
-      setConnectionStatus("connected");
+      if (result.success) {
+        setImages(result.data);
+        setConnectionStatus('connected');
+        console.log(
+          `📸 加载了 ${result.data.length} 张图片，耗时 ${loadTime}ms`
+        );
+      } else {
+        throw new Error(result.error);
+      }
 
       // 判断是否来自缓存（简单的时间判断）
-      setCacheStatus(loadTime < 50 ? "hit" : "miss");
-
-      console.log(`📸 加载了 ${imageData.length} 张图片，耗时 ${loadTime}ms`);
+      setCacheStatus(loadTime < 50 ? 'hit' : 'miss');
     } catch (error) {
-      console.error("❌ 加载图片失败:", error);
-      setConnectionStatus("disconnected");
-      setCacheStatus("miss");
+      console.error('❌ 加载图片失败:', error);
+      setConnectionStatus('disconnected');
+      setCacheStatus('miss');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // 初始化数据加载
+  // 订阅实时数据变化
   useEffect(() => {
-    loadImages();
-  }, [loadImages]);
+    console.log('🔄 开始监听图片数据变化');
+    setIsLoading(true);
 
-  // 订阅实时数据变化（暂时移除，因为新的数据服务层不需要实时订阅）
-  // useEffect(() => {
-  //   console.log("🔄 开始监听图片数据变化");
-  //   // 实时订阅逻辑已移除，改为手动刷新
-  // }, []);
+    const unsubscribe = database.subscribeToImages((images) => {
+      setImages(images);
+      setConnectionStatus('connected');
+      setIsLoading(false);
+      console.log(`📸 实时更新: 收到 ${images.length} 张图片`);
+    });
+
+    return () => {
+      console.log('🔄 停止监听图片数据变化');
+      unsubscribe();
+    };
+  }, []);
 
   // 执行搜索和筛选
   const performSearch = useCallback(async () => {
@@ -99,19 +112,34 @@ export function useImageState(): ImageState & ImageActions {
       return;
     }
 
-    try {
-      const searchResult = await dataService.searchImages(searchFilters, {
-        page: 1,
-        limit: 1000,
-      });
-      setFilteredImages(searchResult.images);
-      console.log(
-        `🔍 搜索完成: 找到 ${searchResult.total} 个结果，耗时 ${searchResult.searchTime}ms`,
-      );
-    } catch (error) {
-      console.error("❌ 搜索失败:", error);
-      setFilteredImages([]);
-    }
+    // 简化搜索逻辑，直接在前端过滤
+    const filtered = images.filter((image) => {
+      // 文本搜索
+      if (searchFilters.query) {
+        const query = searchFilters.query.toLowerCase();
+        const matchesTitle = image.title?.toLowerCase().includes(query);
+        const matchesPrompts = image.prompts?.some(
+          (prompt) =>
+            prompt.title?.toLowerCase().includes(query) ||
+            prompt.content?.toLowerCase().includes(query)
+        );
+        if (!matchesTitle && !matchesPrompts) return false;
+      }
+
+      // 标签过滤
+      if (searchFilters.tags.length > 0) {
+        const imageTags = image.tags?.map((tag) => tag.name) || [];
+        const hasAllTags = searchFilters.tags.every((tag) =>
+          imageTags.includes(tag)
+        );
+        if (!hasAllTags) return false;
+      }
+
+      return true;
+    });
+
+    setFilteredImages(filtered);
+    console.log(`🔍 搜索完成: 找到 ${filtered.length} 个结果`);
   }, [images, searchFilters]);
 
   // 当图片数据或搜索条件变化时执行搜索
@@ -124,16 +152,13 @@ export function useImageState(): ImageState & ImageActions {
     (newFilters: Partial<SearchFilters>) => {
       setSearchFilters((prev) => ({ ...prev, ...newFilters }));
     },
-    [],
+    []
   );
 
   // 刷新图片数据
-  const refetch = useCallback(
-    async () => {
-      await loadImages();
-    },
-    [loadImages],
-  );
+  const refetch = useCallback(async () => {
+    await loadImages();
+  }, [loadImages]);
 
   // 清除搜索
   const clearSearch = useCallback(() => {
@@ -143,7 +168,7 @@ export function useImageState(): ImageState & ImageActions {
   // 清除缓存
   const clearCache = useCallback(async () => {
     // 清除缓存逻辑已简化
-    setCacheStatus("miss");
+    setCacheStatus('miss');
   }, []);
 
   return {

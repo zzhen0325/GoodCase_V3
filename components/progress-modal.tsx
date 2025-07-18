@@ -1,29 +1,29 @@
-"use client";
+'use client';
 
-import React from "react";
-import { motion } from "framer-motion";
-import { X, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 // 进度状态类型
 export type ProgressStatus =
-  | "idle"
-  | "reading"
-  | "parsing"
-  | "uploading"
-  | "processing"
-  | "downloading"
-  | "preparing"
-  | "success"
-  | "error"
-  | "cancelled";
+  | 'idle'
+  | 'reading'
+  | 'parsing'
+  | 'uploading'
+  | 'processing'
+  | 'downloading'
+  | 'preparing'
+  | 'success'
+  | 'error'
+  | 'cancelled';
 
 // 进度信息接口
 export interface ProgressInfo {
@@ -46,27 +46,27 @@ interface ProgressModalProps {
 
 // 状态配置
 const statusConfig = {
-  idle: { icon: Loader2, color: "text-muted-foreground", bgColor: "bg-muted" },
-  reading: { icon: Loader2, color: "text-blue-500", bgColor: "bg-blue-100" },
-  parsing: { icon: Loader2, color: "text-blue-500", bgColor: "bg-blue-100" },
-  uploading: { icon: Loader2, color: "text-blue-500", bgColor: "bg-blue-100" },
-  processing: { icon: Loader2, color: "text-blue-500", bgColor: "bg-blue-100" },
+  idle: { icon: Loader2, color: 'text-muted-foreground', bgColor: 'bg-muted' },
+  reading: { icon: Loader2, color: 'text-blue-500', bgColor: 'bg-blue-100' },
+  parsing: { icon: Loader2, color: 'text-blue-500', bgColor: 'bg-blue-100' },
+  uploading: { icon: Loader2, color: 'text-blue-500', bgColor: 'bg-blue-100' },
+  processing: { icon: Loader2, color: 'text-blue-500', bgColor: 'bg-blue-100' },
   downloading: {
     icon: Loader2,
-    color: "text-blue-500",
-    bgColor: "bg-blue-100",
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-100',
   },
-  preparing: { icon: Loader2, color: "text-blue-500", bgColor: "bg-blue-100" },
+  preparing: { icon: Loader2, color: 'text-blue-500', bgColor: 'bg-blue-100' },
   success: {
     icon: CheckCircle,
-    color: "text-green-500",
-    bgColor: "bg-green-100",
+    color: 'text-green-500',
+    bgColor: 'bg-green-100',
   },
-  error: { icon: AlertCircle, color: "text-red-500", bgColor: "bg-red-100" },
+  error: { icon: AlertCircle, color: 'text-red-500', bgColor: 'bg-red-100' },
   cancelled: {
     icon: AlertCircle,
-    color: "text-orange-500",
-    bgColor: "bg-orange-100",
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-100',
   },
 };
 
@@ -83,8 +83,8 @@ export function ProgressModal({
   const Icon = config.icon;
 
   const isCompleted =
-    status === "success" || status === "error" || status === "cancelled";
-  const isLoading = !isCompleted && status !== "idle";
+    status === 'success' || status === 'error' || status === 'cancelled';
+  const isLoading = !isCompleted && status !== 'idle';
 
   return (
     <Dialog open={isOpen} onOpenChange={isCompleted ? onClose : undefined}>
@@ -92,7 +92,7 @@ export function ProgressModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon
-              className={`w-5 h-5 ${config.color} ${isLoading ? "animate-spin" : ""}`}
+              className={`w-5 h-5 ${config.color} ${isLoading ? 'animate-spin' : ''}`}
             />
             {title}
           </DialogTitle>
@@ -131,7 +131,7 @@ export function ProgressModal({
               <Button
                 variant="outline"
                 onClick={onCancel}
-                disabled={status === "idle"}
+                disabled={status === 'idle'}
               >
                 取消
               </Button>
@@ -139,7 +139,7 @@ export function ProgressModal({
 
             {isCompleted && (
               <Button onClick={onClose}>
-                {status === "success" ? "完成" : "关闭"}
+                {status === 'success' ? '完成' : '关闭'}
               </Button>
             )}
           </div>
@@ -152,9 +152,9 @@ export function ProgressModal({
 // 进度管理 Hook
 export function useProgress() {
   const [progressInfo, setProgressInfo] = React.useState<ProgressInfo>({
-    status: "idle",
+    status: 'idle',
     progress: 0,
-    message: "准备中...",
+    message: '准备中...',
   });
 
   const updateProgress = React.useCallback((updates: Partial<ProgressInfo>) => {
@@ -163,9 +163,9 @@ export function useProgress() {
 
   const resetProgress = React.useCallback(() => {
     setProgressInfo({
-      status: "idle",
+      status: 'idle',
       progress: 0,
-      message: "准备中...",
+      message: '准备中...',
     });
   }, []);
 

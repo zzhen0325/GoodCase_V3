@@ -1,14 +1,16 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   ChevronDown,
   ChevronRight,
@@ -18,10 +20,10 @@ import {
   Plus,
   Folder,
   FolderOpen,
-} from "lucide-react";
-import { TagGroup, Tag } from "@/types";
-import { TagItem } from "./tag-item";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { TagGroup, Tag } from '@/types';
+import { TagItem } from './tag-item';
+import { cn } from '@/lib/utils';
 
 interface TagGroupItemProps {
   group: TagGroup;
@@ -88,15 +90,15 @@ export function TagGroupItem({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       handleSaveEdit();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       handleCancelEdit();
     }
   };
 
   const selectedTagsInGroup = tags.filter((tag) =>
-    selectedTags.includes(tag.id),
+    selectedTags.includes(tag.id)
   ).length;
   const allTagsSelected =
     tags.length > 0 && selectedTagsInGroup === tags.length;
@@ -104,7 +106,7 @@ export function TagGroupItem({
     selectedTagsInGroup > 0 && selectedTagsInGroup < tags.length;
 
   return (
-    <div className={cn("border rounded-lg bg-card", className)}>
+    <div className={cn('border rounded-lg bg-card', className)}>
       {/* 分组头部 */}
       <div className="flex items-center justify-between p-3 border-b">
         <div className="flex items-center gap-2 flex-1">
@@ -150,7 +152,7 @@ export function TagGroupItem({
               variant="secondary"
               className="text-xs"
               style={{
-                backgroundColor: group.color + "20",
+                backgroundColor: group.color + '20',
                 color: group.color,
               }}
             >
@@ -186,7 +188,7 @@ export function TagGroupItem({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleGroupSelect}>
-                {allTagsSelected ? "取消全选" : "全选标签"}
+                {allTagsSelected ? '取消全选' : '全选标签'}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleEdit}>
@@ -213,22 +215,24 @@ export function TagGroupItem({
               暂无标签
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <TagItem
-                  key={tag.id}
-                  tag={tag}
-                  group={group}
-                  selected={selectedTags.includes(tag.id)}
-                  showUsageCount={showUsageCount}
-                  showRemove
-                  showEdit
-                  onClick={onTagClick}
-                  onRemove={onTagRemove}
-                  onEdit={onTagEdit}
-                />
-              ))}
-            </div>
+            <SortableContext id={group.id} items={tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <TagItem
+                    key={tag.id}
+                    tag={tag}
+                    group={group}
+                    selected={selectedTags.includes(tag.id)}
+                    showUsageCount={showUsageCount}
+                    showRemove
+                    showEdit
+                    onClick={onTagClick}
+                    onRemove={onTagRemove}
+                    onEdit={onTagEdit}
+                  />
+                ))}
+              </div>
+            </SortableContext>
           )}
         </div>
       )}

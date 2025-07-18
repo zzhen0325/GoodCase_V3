@@ -1,99 +1,62 @@
-import { useState, useEffect } from "react";
-import { dataService } from "@/lib/data-service";
-import { Tag } from "@/types";
+import { useState, useEffect } from 'react';
+import { database } from '@/lib/database';
+import { Tag } from '@/types';
 
 export function useTags() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 获取所有标签
-  const fetchTags = async (groupId?: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const tags = await dataService.getTags(groupId);
-      setTags(tags);
-    } catch (err) {
-      console.error("获取标签失败:", err);
-      setError("获取标签失败");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 创建标签
-  const createTag = async (
-    tagData: Omit<Tag, "id" | "createdAt" | "updatedAt" | "sortOrder">,
-  ) => {
-    try {
-      setError(null);
-      
-      const newTag = await dataService.addTag(tagData);
-      setTags((prev) => [...prev, newTag]);
-      return newTag;
-    } catch (err) {
-      console.error("创建标签失败:", err);
-      const errorMsg = err instanceof Error ? err.message : "创建标签失败";
-      setError(errorMsg);
-      throw err;
-    }
-  };
-
-  // 更新标签
-  const updateTag = async (
-    id: string,
-    updates: Partial<Omit<Tag, "id" | "createdAt" | "updatedAt">>,
-  ) => {
-    try {
-      setError(null);
-      
-      await dataService.updateTag(id, updates);
-      setTags((prev) =>
-        prev.map((tag) => (tag.id === id ? { ...tag, ...updates } : tag)),
-      );
-    } catch (err) {
-      console.error("更新标签失败:", err);
-      const errorMsg = err instanceof Error ? err.message : "更新标签失败";
-      setError(errorMsg);
-      throw err;
-    }
-  };
-
-  // 删除标签
-  const deleteTag = async (id: string) => {
-    try {
-      setError(null);
-      
-      await dataService.deleteTag(id);
-      setTags((prev) => prev.filter((tag) => tag.id !== id));
-    } catch (err) {
-      console.error("删除标签失败:", err);
-      const errorMsg = err instanceof Error ? err.message : "删除标签失败";
-      setError(errorMsg);
-      throw err;
-    }
-  };
-
+  // 实时监听标签变化
   useEffect(() => {
-    fetchTags();
+    const unsubscribe = database.subscribeToTags(
+      (newTags) => {
+        setTags(newTags);
+        setIsLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('获取标签失败:', err);
+        setError('获取标签失败');
+        setIsLoading(false);
+      }
+    );
+
+    return unsubscribe;
   }, []);
 
-  // 重新排序标签
+  // 创建标签（标签现在从图片数据中自动提取，不需要单独创建）
+  const createTag = async (
+    tagData: Omit<Tag, 'id' | 'createdAt' | 'updatedAt' | 'order'>
+  ) => {
+    // 标签现在是从图片数据中提取的，不需要单独创建
+    // 这个方法保留是为了兼容性，但实际上标签会在更新图片时自动创建
+    console.warn('标签现在从图片数据中自动提取，不需要单独创建');
+    return Promise.resolve({} as Tag);
+  };
+
+  // 更新标签（标签现在从图片数据中自动提取，需要通过更新图片来更新标签）
+  const updateTag = async (
+    id: string,
+    updates: Partial<Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>>
+  ) => {
+    // 标签现在是从图片数据中提取的，需要通过更新相关图片来更新标签
+    console.warn('标签现在从图片数据中自动提取，需要通过更新图片来更新标签');
+    return Promise.resolve();
+  };
+
+  // 删除标签（标签现在从图片数据中自动提取，需要通过更新图片来删除标签）
+  const deleteTag = async (id: string) => {
+    // 标签现在是从图片数据中提取的，需要通过更新相关图片来删除标签
+    console.warn('标签现在从图片数据中自动提取，需要通过更新图片来删除标签');
+    return Promise.resolve();
+  };
+
+  // 重新排序标签（标签现在从图片数据中自动提取，排序由使用次数决定）
   const reorderTags = async (tagIds: string[]) => {
-    try {
-      setError(null);
-      
-      await dataService.reorderTags(tagIds);
-      // 重新获取标签以更新排序
-      await fetchTags();
-    } catch (err) {
-      console.error("重新排序标签失败:", err);
-      const errorMsg = err instanceof Error ? err.message : "重新排序标签失败";
-      setError(errorMsg);
-      throw err;
-    }
+    // 标签现在是从图片数据中提取的，排序由使用次数自动决定
+    console.warn('标签现在从图片数据中自动提取，排序由使用次数决定');
+    return Promise.resolve();
   };
 
   return {
@@ -104,6 +67,6 @@ export function useTags() {
     updateTag,
     deleteTag,
     reorderTags,
-    refetch: fetchTags,
+    refetch: () => Promise.resolve(), // 不需要手动刷新，实时监听会自动更新
   };
 }

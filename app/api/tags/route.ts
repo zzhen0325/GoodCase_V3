@@ -1,22 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { dataService, ensureDataServiceInitialized } from "@/lib/data-service";
-import { Tag } from "@/types";
+import { NextRequest, NextResponse } from 'next/server';
+import { database } from '@/lib/database';
+import { Tag } from '@/types';
 
 // 获取所有标签
 export async function GET(request: NextRequest) {
   try {
-    await ensureDataServiceInitialized();
-    const { searchParams } = new URL(request.url);
-    const groupId = searchParams.get("groupId");
-
-    const tags = await dataService.getAllTags(groupId || undefined, false); // 不使用缓存确保数据最新
-
-    return NextResponse.json({ success: true, data: tags });
-  } catch (error) {
-    console.error("获取标签失败:", error);
+    // 标签现在从图片数据中自动提取，返回警告信息
     return NextResponse.json(
-      { success: false, error: "获取标签失败" },
-      { status: 500 },
+      {
+        success: false,
+        error: '标签现在从图片数据中自动提取，请使用实时监听获取标签数据',
+      },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('获取标签失败:', error);
+    return NextResponse.json(
+      { success: false, error: '获取标签失败' },
+      { status: 500 }
     );
   }
 }
@@ -24,37 +25,19 @@ export async function GET(request: NextRequest) {
 // 创建标签
 export async function POST(request: NextRequest) {
   try {
-    await ensureDataServiceInitialized();
-    const { name, color, groupId } = await request.json();
-
-    if (!name || !color || !groupId) {
-      return NextResponse.json(
-        { success: false, error: "标签名称、颜色和分组ID不能为空" },
-        { status: 400 },
-      );
-    }
-
-    // 检查分组是否存在
-    const tagGroups = await dataService.getAllTagGroups(false); // 不使用缓存确保数据最新
-    const tagGroup = tagGroups.find(group => group.id === groupId);
-    if (!tagGroup) {
-      return NextResponse.json(
-        { success: false, error: "指定的分组不存在" },
-        { status: 400 },
-      );
-    }
-
-    const result = await dataService.createTag({ name, color, groupId, usageCount: 0 });
-    if (result.success && result.data) {
-      return NextResponse.json({ success: true, data: result.data });
-    } else {
-      throw new Error(result.error || "创建标签失败");
-    }
-  } catch (error) {
-    console.error("创建标签失败:", error);
+    // 标签现在从图片数据中自动管理，不支持独立创建
     return NextResponse.json(
-      { success: false, error: "创建标签失败" },
-      { status: 500 },
+      {
+        success: false,
+        error: '标签现在从图片数据中自动管理，请通过编辑图片来添加标签',
+      },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('创建标签失败:', error);
+    return NextResponse.json(
+      { success: false, error: '创建标签失败' },
+      { status: 500 }
     );
   }
 }

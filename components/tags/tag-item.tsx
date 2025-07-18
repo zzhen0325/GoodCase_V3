@@ -1,9 +1,11 @@
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { X, Hash, Edit } from "lucide-react";
-import { Tag, TagGroup } from "@/types";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Button } from '@/components/ui/button';
+import { X, Hash, Edit } from 'lucide-react';
+import { Tag, TagGroup } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface TagItemProps {
   tag: Tag;
@@ -12,8 +14,8 @@ interface TagItemProps {
   showUsageCount?: boolean;
   showRemove?: boolean;
   showEdit?: boolean;
-  size?: "sm" | "md" | "lg";
-  variant?: "default" | "outline" | "secondary";
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'outline' | 'secondary';
   onClick?: (tag: Tag) => void;
   onRemove?: (tag: Tag) => void;
   onEdit?: (tag: Tag) => void;
@@ -27,8 +29,8 @@ export function TagItem({
   showUsageCount = false,
   showRemove = false,
   showEdit = false,
-  size = "md",
-  variant = "default",
+  size = 'md',
+  variant = 'default',
   onClick,
   onRemove,
   onEdit,
@@ -49,31 +51,41 @@ export function TagItem({
   };
 
   const sizeClasses = {
-    sm: "text-xs px-2 py-1",
-    md: "text-sm px-3 py-1.5",
-    lg: "text-base px-4 py-2",
+    sm: 'text-xs px-2 py-1',
+    md: 'text-sm px-3 py-1.5',
+    lg: 'text-base px-4 py-2',
   };
 
-  const badgeVariant = selected ? "default" : variant;
+  const badgeVariant = selected ? 'default' : variant;
 
-  return (
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tag.id });
+const style = {
+  transform: CSS.Transform.toString(transform),
+  transition,
+  opacity: isDragging ? 0.7 : 1,
+};
+return (
     <Badge
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
       variant={badgeVariant}
       className={cn(
-        "inline-flex items-center gap-1.5 cursor-pointer transition-all duration-200",
-        "hover:shadow-sm hover:scale-105",
-        selected && "ring-2 ring-primary ring-offset-1",
+        'inline-flex items-center gap-1.5 cursor-pointer transition-all duration-200',
+        'hover:shadow-sm hover:scale-105',
+        selected && 'ring-2 ring-primary ring-offset-1',
         sizeClasses[size],
-        className,
+        className
       )}
       style={{
         backgroundColor: selected
           ? group?.color
-          : variant === "outline"
-            ? "transparent"
-            : group?.color + "20",
+          : variant === 'outline'
+            ? 'transparent'
+            : group?.color + '20',
         borderColor: group?.color,
-        color: selected ? "white" : group?.color,
+        color: selected ? 'white' : group?.color,
       }}
       onClick={handleClick}
     >

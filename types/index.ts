@@ -5,65 +5,41 @@ export interface BaseEntity {
   updatedAt: Date;
 }
 
-// 图片数据接口 - 精简版
-export interface ImageData extends BaseEntity {
+// 图片数据类型
+export interface ImageData {
+  id: string;
   url: string;
-  thumbnailUrl?: string;
   title: string;
-  description?: string;
-  tags: string[]; // 简化为字符串数组
-  prompt?: string; // 保留向后兼容
-  prompts: PromptBlock[]; // 提示词块数组
-  sortOrder: number; // 手动排序字段
-  size: {
-    width: number;
-    height: number;
-    fileSize: number;
-  };
-  metadata?: {
-    format: string;
-    colorSpace?: string;
-    hasTransparency?: boolean;
-  };
+  prompts: Prompt[];
+  tags: Tag[];
+  createdAt: string;
+  updatedAt: string;
+  usageCount?: number;
+  isLocal?: boolean;
+  isUploading?: boolean;
 }
 
-// 标签接口 - 精简版
-export interface Tag extends BaseEntity {
+// 标签类型
+export interface Tag {
+  id: string;
   name: string;
   color: string;
-  groupId?: string;
-  usageCount: number; // 使用次数，用于排序和清理
-  sortOrder: number; // 手动排序字段
+  groupId: string; // 所属分组的唯一ID，必填
+  order?: number; // 在分组内的排序位置
+  usageCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// 标签分组接口 - 精简版
-export interface TagGroup extends BaseEntity {
-  name: string;
+// 提示词类型
+export interface Prompt {
+  id: string;
+  title: string;
+  content: string;
   color: string;
-  description?: string;
-  tagCount: number; // 包含的标签数量
-  sortOrder: number; // 手动排序字段
-}
-
-// 提示词块接口 - 重新设计
-export interface PromptBlock extends BaseEntity {
-  title: string; // 提示词块标题
-  text: string; // 提示词内容
-  imageId: string; // 关联的图片ID
-  sortOrder: number; // 手动排序字段
-  color?: string;
-}
-
-// 提示词接口 - 精简版（保留兼容性，已废弃，请使用 PromptBlock）
-// @deprecated 请使用 PromptBlock 接口
-export interface Prompt extends BaseEntity {
-  text: string;
-  category?: string;
-  tags: string[];
-  usageCount: number;
-  isTemplate: boolean;
-  color?: string;
-  sortOrder: number; // 手动排序字段
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // 搜索过滤器 - 优化版
@@ -80,8 +56,8 @@ export interface SearchFilters {
     minHeight?: number;
     maxHeight?: number;
   };
-  sortBy: "createdAt" | "updatedAt" | "title" | "size";
-  sortOrder: "asc" | "desc";
+  sortBy: 'createdAt' | 'updatedAt' | 'title' | 'size';
+  sortOrder: 'asc' | 'desc';
 }
 
 // 分页接口
@@ -125,12 +101,9 @@ export interface ExportData {
   exportDate: Date;
   images: ImageData[];
   tags: Tag[];
-  tagGroups: TagGroup[];
-  prompts: PromptBlock[];
   metadata: {
     totalImages: number;
     totalTags: number;
-    totalPrompts: number;
   };
 }
 
@@ -198,60 +171,60 @@ export interface ColorTheme {
 
 // 预定义颜色和主题
 export const AVAILABLE_COLORS = [
-  "#ef4444",
-  "#f97316",
-  "#f59e0b",
-  "#eab308",
-  "#84cc16",
-  "#22c55e",
-  "#10b981",
-  "#14b8a6",
-  "#06b6d4",
-  "#0ea5e9",
-  "#3b82f6",
-  "#6366f1",
-  "#8b5cf6",
-  "#a855f7",
-  "#d946ef",
-  "#ec4899",
-  "#f43f5e",
-  "#64748b",
-  "#6b7280",
-  "#374151",
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#eab308',
+  '#84cc16',
+  '#22c55e',
+  '#10b981',
+  '#14b8a6',
+  '#06b6d4',
+  '#0ea5e9',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#a855f7',
+  '#d946ef',
+  '#ec4899',
+  '#f43f5e',
+  '#64748b',
+  '#6b7280',
+  '#374151',
 ] as const;
 
 export const COLOR_THEMES: ColorTheme[] = [
   {
-    name: "default",
-    primary: "#3b82f6",
-    secondary: "#64748b",
-    accent: "#f59e0b",
-    bg: "#dbeafe",
-    text: "#1e40af",
+    name: 'default',
+    primary: '#3b82f6',
+    secondary: '#64748b',
+    accent: '#f59e0b',
+    bg: '#dbeafe',
+    text: '#1e40af',
   },
   {
-    name: "warm",
-    primary: "#f97316",
-    secondary: "#78716c",
-    accent: "#eab308",
-    bg: "#fed7aa",
-    text: "#c2410c",
+    name: 'warm',
+    primary: '#f97316',
+    secondary: '#78716c',
+    accent: '#eab308',
+    bg: '#fed7aa',
+    text: '#c2410c',
   },
   {
-    name: "cool",
-    primary: "#06b6d4",
-    secondary: "#64748b",
-    accent: "#8b5cf6",
-    bg: "#cffafe",
-    text: "#0891b2",
+    name: 'cool',
+    primary: '#06b6d4',
+    secondary: '#64748b',
+    accent: '#8b5cf6',
+    bg: '#cffafe',
+    text: '#0891b2',
   },
   {
-    name: "nature",
-    primary: "#22c55e",
-    secondary: "#6b7280",
-    accent: "#f59e0b",
-    bg: "#dcfce7",
-    text: "#166534",
+    name: 'nature',
+    primary: '#22c55e',
+    secondary: '#6b7280',
+    accent: '#f59e0b',
+    bg: '#dcfce7',
+    text: '#166534',
   },
 ];
 
@@ -267,19 +240,17 @@ export interface AppState {
   images: ImageData[];
   filteredImages: ImageData[];
   tags: Tag[];
-  tagGroups: TagGroup[];
-  prompts: Prompt[];
   searchFilters: SearchFilters;
   isLoading: boolean;
   error: string | null;
-  connectionStatus: "connected" | "disconnected" | "reconnecting";
+  connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
 }
 
 // 缓存状态接口
 export interface CacheState {
   lastUpdated: Date;
   isValid: boolean;
-  source: "memory" | "localStorage" | "network";
+  source: 'memory' | 'localStorage' | 'network';
 }
 
 // 性能监控接口
@@ -302,8 +273,8 @@ export interface UserPreferences {
   theme: string;
   language: string;
   itemsPerPage: number;
-  defaultSortBy: SearchFilters["sortBy"];
-  defaultSortOrder: SearchFilters["sortOrder"];
+  defaultSortBy: SearchFilters['sortBy'];
+  defaultSortOrder: SearchFilters['sortOrder'];
   autoSave: boolean;
   cacheEnabled: boolean;
 }
@@ -312,45 +283,44 @@ export interface UserPreferences {
 export function isImageData(obj: any): obj is ImageData {
   return (
     obj &&
-    typeof obj.id === "string" &&
-    typeof obj.url === "string" &&
-    typeof obj.title === "string"
+    typeof obj.id === 'string' &&
+    typeof obj.url === 'string' &&
+    typeof obj.title === 'string'
   );
 }
 
 export function isTag(obj: any): obj is Tag {
   return (
     obj &&
-    typeof obj.id === "string" &&
-    typeof obj.name === "string" &&
-    typeof obj.color === "string"
+    typeof obj.id === 'string' &&
+    typeof obj.name === 'string' &&
+    typeof obj.color === 'string'
   );
 }
 
-export function isTagGroup(obj: any): obj is TagGroup {
-  return (
-    obj &&
-    typeof obj.id === "string" &&
-    typeof obj.name === "string" &&
-    typeof obj.color === "string"
-  );
+export interface TagGroup {
+  id: string;
+  name: string;
+  color: string;
+  order?: number; // 自定义排序字段，数值越小排序越靠前
+  tagCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
+// TagGroup 功能已简化，不再需要类型检查函数
 
 // 工具类型
 export type SortableFields = keyof Pick<
   ImageData,
-  "createdAt" | "updatedAt" | "title"
+  'createdAt' | 'updatedAt' | 'title'
 >;
-export type FilterableFields = keyof Pick<
-  ImageData,
-  "title" | "description" | "tags"
->;
-export type SearchableEntities = ImageData | Tag | TagGroup | PromptBlock;
+export type FilterableFields = keyof Pick<ImageData, 'title' | 'tags'>;
+export type SearchableEntities = ImageData | Tag;
 
 // 事件类型
 export type DataChangeEvent = {
-  type: "create" | "update" | "delete";
-  entity: "image" | "tag" | "tagGroup" | "promptBlock";
+  type: 'create' | 'update' | 'delete';
+  entity: 'image' | 'tag';
   id: string;
   data?: any;
 };
@@ -390,29 +360,29 @@ export interface UploadResult {
 export const DEFAULT_PAGINATION_LIMIT = 20;
 export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
 export const SUPPORTED_IMAGE_FORMATS = [
-  "jpg",
-  "jpeg",
-  "png",
-  "gif",
-  "webp",
-  "svg",
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'svg',
 ] as const;
 export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
-  query: "",
+  query: '',
   tags: [], // 修改为 tags
-  sortBy: "createdAt",
-  sortOrder: "desc",
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
 };
 
 // 默认提示词块模板
 export const DEFAULT_PROMPT_BLOCKS = [
-  { title: "风格", text: "" },
-  { title: "主体", text: "" },
-  { title: "场景", text: "" },
+  { title: '风格', text: '' },
+  { title: '主体', text: '' },
+  { title: '场景', text: '' },
 ] as const;
 
 // 连接状态类型
-export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
+export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 
 // 文件上传相关接口
 export interface UploadValidationResult {
@@ -439,30 +409,30 @@ export class AppError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any,
+    public details?: any
   ) {
     super(message);
-    this.name = "AppError";
+    this.name = 'AppError';
   }
 }
 
 export class ValidationError extends AppError {
   constructor(message: string, details?: any) {
-    super(message, "VALIDATION_ERROR", details);
-    this.name = "ValidationError";
+    super(message, 'VALIDATION_ERROR', details);
+    this.name = 'ValidationError';
   }
 }
 
 export class NetworkError extends AppError {
   constructor(message: string, details?: any) {
-    super(message, "NETWORK_ERROR", details);
-    this.name = "NetworkError";
+    super(message, 'NETWORK_ERROR', details);
+    this.name = 'NetworkError';
   }
 }
 
 export class CacheError extends AppError {
   constructor(message: string, details?: any) {
-    super(message, "CACHE_ERROR", details);
-    this.name = "CacheError";
+    super(message, 'CACHE_ERROR', details);
+    this.name = 'CacheError';
   }
 }

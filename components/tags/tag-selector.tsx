@@ -1,18 +1,18 @@
-import React, { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Search, Tags, X, ChevronDown, Plus } from "lucide-react";
-import { Tag, TagGroup } from "@/types";
-import { TagItem } from "./tag-item";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/popover';
+import { Search, Tags, X, ChevronDown, Plus } from 'lucide-react';
+import { Tag, TagGroup } from '@/types';
+import { TagItem } from './tag-item';
+import { cn } from '@/lib/utils';
 
 interface TagSelectorProps {
   tags: Tag[];
@@ -32,13 +32,13 @@ export function TagSelector({
   selectedTagIds,
   onTagsChange,
   onCreateTag,
-  placeholder = "选择标签...",
+  placeholder = '选择标签...',
   maxSelectedTags,
   disabled = false,
   className,
 }: TagSelectorProps) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // 获取选中的标签对象
@@ -50,7 +50,7 @@ export function TagSelector({
   const filteredTags = useMemo(() => {
     if (!searchQuery) return tags;
     return tags.filter((tag) =>
-      tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      tag.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [tags, searchQuery]);
 
@@ -107,12 +107,12 @@ export function TagSelector({
   const handleCreateTag = (groupId: string) => {
     if (searchQuery.trim() && onCreateTag) {
       onCreateTag(searchQuery.trim(), groupId);
-      setSearchQuery("");
+      setSearchQuery('');
     }
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn('w-full', className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -137,7 +137,7 @@ export function TagSelector({
                         variant="secondary"
                         className="text-xs"
                         style={{
-                          backgroundColor: group?.color + "20",
+                          backgroundColor: group?.color + '20',
                           color: group?.color,
                         }}
                       >
@@ -279,12 +279,12 @@ export function TagSelector({
                         Object.keys(groupedFilteredTags).length - 1
                       ] && <Separator className="mt-2" />}
                   </div>
-                ),
+                )
               )}
 
               {Object.keys(groupedFilteredTags).length === 0 && (
                 <div className="text-center py-4 text-muted-foreground text-sm">
-                  {searchQuery ? "未找到匹配的标签" : "暂无标签"}
+                  {searchQuery ? '未找到匹配的标签' : '暂无标签'}
                 </div>
               )}
             </div>
