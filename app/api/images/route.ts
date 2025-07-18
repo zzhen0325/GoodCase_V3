@@ -54,23 +54,13 @@ export async function POST(request: NextRequest) {
     const result = await DatabaseAdmin.createImage({
       url: imageUrl,
       title: filename || 'unknown',
-      size: {
-        width: 0,
-        height: 0,
-        fileSize: size || 0,
-      },
-      metadata: {
-        format: type || 'image/jpeg',
-      },
       prompts: [
         {
           id: '',
-          imageId: '',
-          text: prompt,
-          type: 'positive',
-          sortOrder: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          title: prompt,
+          content: prompt,
+          color: '#3b82f6',
+          order: 0,
         },
       ],
       tags: [],

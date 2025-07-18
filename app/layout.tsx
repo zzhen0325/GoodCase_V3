@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Poppins, Roboto_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { FirebaseProvider } from '@/components/firebase-provider';
+import { VersionInfoComponent } from '@/components/version-info';
 import './globals.css';
 
 const poppins = Poppins({
@@ -71,6 +72,7 @@ export default function RootLayout({
             {children}
           </div>
           <Toaster />
+          <VersionInfoComponent />
         </FirebaseProvider>
         <script
           dangerouslySetInnerHTML={{

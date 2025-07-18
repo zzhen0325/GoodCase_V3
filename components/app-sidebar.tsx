@@ -68,10 +68,13 @@ export function AppSidebar({
 
   // 处理标签点击筛选
   const handleTagClick = (tagId: string) => {
+    const tag = tags.find(t => t.id === tagId);
+    if (!tag) return;
+    
     const currentTags = currentFilters?.tags || [];
-    const newTags = currentTags.includes(tagId)
-      ? currentTags.filter((id) => id !== tagId)
-      : [...currentTags, tagId];
+    const newTags = currentTags.includes(tag.name)
+      ? currentTags.filter((name) => name !== tag.name)
+      : [...currentTags, tag.name];
 
     onSearch?.({
       query: currentFilters?.query || '',
@@ -187,7 +190,7 @@ export function AppSidebar({
                       {isExpanded && (
                         <div className="ml-4 space-y-1">
                           {groupTags.map((tag) => {
-                            const isSelected = selectedTags.includes(tag.id);
+                            const isSelected = selectedTags.includes(tag.name);
                             return (
                               <button
                                 key={tag.id}
@@ -201,7 +204,7 @@ export function AppSidebar({
                                 <div className="flex items-center justify-between">
                                   <span>{tag.name}</span>
                                   <span className="text-xs text-muted-foreground">
-                                    ({tag.usageCount})
+            
                                   </span>
                                 </div>
                               </button>

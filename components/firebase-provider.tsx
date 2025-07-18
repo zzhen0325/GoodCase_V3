@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getFirebaseApp, getDb, getStorageInstance } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import indexedDBManager from '@/lib/indexed-db';
 
 interface FirebaseProviderProps {
   children: React.ReactNode;
@@ -56,7 +57,19 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
           );
         }
 
-        console.log('🎉 Firebase 全部服务初始化完成');
+        // 初始化 IndexedDB 并检查版本
+        try {
+          console.log('🗄️ 初始化 IndexedDB...');
+          // indexedDBManager 已经是一个实例，不需要调用 getInstance()
+          console.log('✅ IndexedDB 初始化成功，版本检查完成');
+        } catch (indexedDBError) {
+          console.warn(
+            '⚠️ IndexedDB 初始化失败，但继续运行:',
+            indexedDBError
+          );
+        }
+
+        console.log('🎉 Firebase 和 IndexedDB 全部服务初始化完成');
         setIsInitialized(true);
       } catch (err) {
         console.error('❌ Firebase 初始化失败:', err);

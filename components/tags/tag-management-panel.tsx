@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-
 // 数组移动工具函数
 function arrayMove<T>(array: T[], from: number, to: number): T[] {
   const newArray = [...array];
@@ -38,11 +37,11 @@ import {
   Search,
   Trash2,
   Edit,
+  Edit2,
   FolderPlus,
   Tags as TagsIcon,
   BarChart3,
   Move,
-  RefreshCw,
 } from 'lucide-react';
 import { TagGroup, Tag } from '@/types';
 import {
@@ -193,7 +192,7 @@ function CreateGroupDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!name.trim()}>
+          <Button onClick={handleSubmit} disabled={!name?.trim()}>
             创建
           </Button>
         </DialogFooter>
@@ -279,7 +278,7 @@ function CreateTagDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!name.trim() || !groupId}>
+          <Button onClick={handleSubmit} disabled={!name?.trim() || !groupId}>
             创建
           </Button>
         </DialogFooter>
@@ -356,7 +355,7 @@ function EditGroupDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!name.trim()}>
+          <Button onClick={handleSubmit} disabled={!name?.trim()}>
             保存
           </Button>
         </DialogFooter>
@@ -431,7 +430,7 @@ function EditTagDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!name.trim() || !groupId}>
+          <Button onClick={handleSubmit} disabled={!name?.trim() || !groupId}>
             保存
           </Button>
         </DialogFooter>
@@ -553,7 +552,7 @@ export function TagManagementPanel({
     type: 'group' | 'tag' | 'selected';
     data?: any;
   }>({ type: 'tag' });
-  const [recalculatingUsage, setRecalculatingUsage] = useState(false);
+
 
   // 切换分组展开状态
   const toggleGroupExpand = (groupId: string) => {
@@ -585,6 +584,8 @@ export function TagManagementPanel({
     const docRef = await addDoc(collection(db, 'tagGroups'), { ...newGroup, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     const newGroupWithId = { ...newGroup, id: docRef.id };
     setLocalTagGroups([...currentGroups, newGroupWithId]);
+    // 刷新数据以确保新创建的分组能够显示
+    refreshAll();
     return { success: true };
   };
 
@@ -612,7 +613,7 @@ export function TagManagementPanel({
   // 处理创建标签
   const handleCreateTag = async (data: { name: string; groupId: string }) => {
     try {
-      await createTag({ ...data, usageCount: 0, color: '#64748b' });
+      await createTag({ ...data, color: '#64748b' });
     } catch (error) {
       console.error('创建标签失败:', error);
     }
@@ -690,37 +691,14 @@ export function TagManagementPanel({
     }
   };
 
-  // 重新计算标签使用次数
-  const handleRecalculateUsage = async () => {
-    setRecalculatingUsage(true);
-    try {
-      const response = await fetch('/api/tags/recalculate-usage', {
-        method: 'POST',
-      });
 
-      if (!response.ok) {
-        throw new Error('重新计算失败');
-      }
-
-      const result = await response.json();
-      console.log('重新计算完成:', result);
-
-      // 刷新标签数据以显示最新的使用次数
-      refreshAll();
-    } catch (error) {
-      console.error('重新计算使用次数失败:', error);
-      alert('重新计算失败，请稍后重试');
-    } finally {
-      setRecalculatingUsage(false);
-    }
-  };
 
   // 添加标签到分组
   const handleAddTag = (groupId: string) => {
     setCreateTagGroupId(groupId);
     setShowCreateTag(true);
   };
-
+  const { getFilteredTags } = useTagOperations();
   const groupedTags = getTagsByGroup();
   const filteredGroups = getFilteredTagGroups();
 
@@ -880,7 +858,7 @@ export function TagManagementPanel({
           <Separator />
 
           {/* 统计信息 */}
-          <div className="grid grid-cols-3 gap-4 py-2">
+          <div className="grid grid-cols-2 gap-4 py-2">
             <div className="text-center">
               <div className="text-2xl font-bold">{tagGroups.length}</div>
               <div className="text-sm text-muted-foreground">标签分组</div>
@@ -889,31 +867,6 @@ export function TagManagementPanel({
               <div className="text-2xl font-bold">{tags.length}</div>
               <div className="text-sm text-muted-foreground">标签总数</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {tags.reduce((sum, tag) => sum + (tag.usageCount || 0), 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">总使用次数</div>
-            </div>
-          </div>
-
-          {/* 重新计算使用次数按钮 */}
-          <div className="flex justify-center py-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRecalculateUsage}
-              disabled={recalculatingUsage}
-              className="text-xs"
-            >
-              <RefreshCw
-                className={cn(
-                  'w-3 h-3 mr-1',
-                  recalculatingUsage && 'animate-spin'
-                )}
-              />
-              {recalculatingUsage ? '重新计算中...' : '重新计算使用次数'}
-            </Button>
           </div>
 
           <Separator />
@@ -927,35 +880,141 @@ export function TagManagementPanel({
                 </div>
               ) : error ? (
                 <div className="text-center py-8 text-red-500">{error}</div>
-              ) : getFilteredTagGroups().length === 0 ? (
+              ) : tagGroups.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? '未找到匹配的分组或标签' : '暂无标签分组'}
+                  {searchQuery ? '未找到匹配的分组' : '暂无标签分组'}
+                  <div className="text-xs mt-2 text-muted-foreground">
+                    请先创建标签分组，然后上传图片时标签会自动归类
+                  </div>
                 </div>
               ) : (
-                getFilteredTagGroups().map((group: TagGroup) => (
-                  <TagGroupItem
-                    key={group.id}
-                    group={group}
-                    tags={groupedTags[group.id]?.tags || []}
-                    expanded={expandedGroups.has(group.id)}
-                    selectedTags={selectedTags}
-                    showUsageCount
-                    onToggleExpand={toggleGroupExpand}
-                    onTagClick={(tag) => toggleTagSelection(tag.id)}
-                    onTagRemove={(tag) => {
-                      setDeleteTarget({ type: 'tag', data: tag });
-                      setShowDeleteConfirm(true);
-                    }}
-                    onTagEdit={handleEditTag}
-                    onGroupEdit={handleEditGroup}
-                    onGroupDelete={(group) => {
-                      setDeleteTarget({ type: 'group', data: group });
-                      setShowDeleteConfirm(true);
-                    }}
-                    onAddTag={handleAddTag}
-                    onGroupSelect={selectTagsByGroup}
-                  />
-                ))
+                <div className="space-y-2">
+                  {filteredGroups.map((group) => {
+                    const groupTags = tags.filter(tag => tag.groupId === group.id);
+                    const filteredGroupTags = groupTags.filter(tag => 
+                      !searchQuery || tag.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+                    
+                    // 如果有搜索查询且该分组下没有匹配的标签，则不显示该分组
+                    if (searchQuery && filteredGroupTags.length === 0) {
+                      return null;
+                    }
+                    
+                    return (
+                      <TagGroupItem
+                        key={group.id}
+                        group={group}
+                        tags={filteredGroupTags}
+                        expanded={true}
+                        selectedTags={selectedTags}
+                        showUsageCount={false}
+                        onTagClick={(tag) => toggleTagSelection(tag.id)}
+                        onTagEdit={handleEditTag}
+                        onGroupEdit={(updatedGroup) => {
+                          setEditingGroup(updatedGroup);
+                          setShowEditGroup(true);
+                        }}
+                        onGroupDelete={(group) => {
+                          setDeleteTarget({ type: 'group', data: group });
+                          setShowDeleteConfirm(true);
+                        }}
+                        onAddTag={handleAddTag}
+                        onGroupSelect={(groupId) => {
+                          const groupTags = tags.filter(tag => tag.groupId === groupId);
+                          const allSelected = groupTags.every(tag => selectedTags.includes(tag.id));
+                          if (allSelected) {
+                            // 取消选择该分组的所有标签
+                            groupTags.forEach(tag => {
+                              if (selectedTags.includes(tag.id)) {
+                                toggleTagSelection(tag.id);
+                              }
+                            });
+                          } else {
+                            // 选择该分组的所有标签
+                            groupTags.forEach(tag => {
+                              if (!selectedTags.includes(tag.id)) {
+                                toggleTagSelection(tag.id);
+                              }
+                            });
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                  
+                  {/* 显示未分组的标签 */}
+                  {(() => {
+                    const ungroupedTags = tags.filter(tag => !tag.groupId);
+                    const filteredUngroupedTags = ungroupedTags.filter(tag => 
+                      !searchQuery || tag.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+                    
+                    if (filteredUngroupedTags.length === 0) return null;
+                    
+                    return (
+                      <div className="border rounded-lg bg-card">
+                        <div className="flex items-center justify-between p-3 border-b">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm text-muted-foreground">未分组标签</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {filteredUngroupedTags.length} 个标签
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="p-3 space-y-2">
+                          {filteredUngroupedTags.map((tag) => (
+                            <div
+                              key={tag.id}
+                              className={cn(
+                                'flex items-center justify-between p-2 border rounded hover:bg-muted/50 transition-colors',
+                                selectedTags.includes(tag.id) && 'bg-primary/10 border-primary'
+                              )}
+                            >
+                              <div className="flex items-center gap-3 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTags.includes(tag.id)}
+                                  onChange={() => toggleTagSelection(tag.id)}
+                                  className="rounded"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: tag.color || '#64748b' }}
+                                  />
+                                  <span className="font-medium text-sm">{tag.name}</span>
+
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditTag(tag)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDeleteTarget({ type: 'tag', data: tag });
+                                    setShowDeleteConfirm(true);
+                                  }}
+                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()
+                  }
+                </div>
               )}
             </div>
           </ScrollArea>

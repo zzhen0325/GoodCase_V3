@@ -14,43 +14,7 @@ export async function PUT(
 
     const database = Database.getInstance();
 
-    // 如果更新包含标签变更，需要更新标签使用次数
-    if (updates.tags !== undefined) {
-      // 获取原始图片数据
-      const originalResult = await database.getImageById(id);
-      if (originalResult.success && originalResult.data) {
-        const originalTags = originalResult.data.tags || [];
-        const newTags = updates.tags || [];
 
-        // 找出被移除的标签
-        const removedTags = originalTags.filter(
-          (tag) => !newTags.includes(tag)
-        );
-        // 找出新添加的标签
-        const addedTags = newTags.filter((tag) => !originalTags.includes(tag));
-
-        // 更新标签使用次数
-        for (const tag of removedTags) {
-          try {
-            const tagId =
-              typeof tag === 'string' ? tag : (tag as any).id || tag;
-            await DatabaseAdmin.updateTagUsageCount(tagId, -1);
-          } catch (error) {
-            console.error(`更新标签 ${tag} 使用次数失败:`, error);
-          }
-        }
-
-        for (const tag of addedTags) {
-          try {
-            const tagId =
-              typeof tag === 'string' ? tag : (tag as any).id || tag;
-            await DatabaseAdmin.updateTagUsageCount(tagId, 1);
-          } catch (error) {
-            console.error(`更新标签 ${tag} 使用次数失败:`, error);
-          }
-        }
-      }
-    }
 
     const result = await database.updateImage(id, updates);
 
@@ -109,21 +73,7 @@ export async function DELETE(
 
     const database = Database.getInstance();
 
-    // 获取图片数据以减少标签使用次数
-    const imageResult = await database.getImageById(id);
-    if (imageResult.success && imageResult.data) {
-      const tags = imageResult.data.tags || [];
 
-      // 减少所有关联标签的使用次数
-      for (const tag of tags) {
-        try {
-          const tagId = typeof tag === 'string' ? tag : (tag as any).id || tag;
-          await DatabaseAdmin.updateTagUsageCount(tagId, -1);
-        } catch (error) {
-          console.error(`减少标签 ${tag} 使用次数失败:`, error);
-        }
-      }
-    }
 
     // 删除图片
     const result = await database.deleteImage(id);

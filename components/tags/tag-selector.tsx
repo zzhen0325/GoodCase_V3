@@ -142,17 +142,15 @@ export function TagSelector({
                         }}
                       >
                         {tag.name}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-3 p-0 ml-1 hover:bg-red-500/20"
+                        <div
+                          className="h-3 w-3 p-0 ml-1 hover:bg-red-500/20 cursor-pointer rounded flex items-center justify-center"
                           onClick={(e) => {
                             e.stopPropagation();
                             removeTag(tag.id);
                           }}
                         >
                           <X className="w-2 h-2" />
-                        </Button>
+                        </div>
                       </Badge>
                     );
                   })}
@@ -162,17 +160,15 @@ export function TagSelector({
 
             <div className="flex items-center gap-2">
               {selectedTags.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
+                <div
+                  className="h-6 w-6 p-0 hover:bg-muted/50 cursor-pointer rounded flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     clearAll();
                   }}
                 >
                   <X className="w-3 h-3" />
-                </Button>
+                </div>
               )}
               <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
             </div>

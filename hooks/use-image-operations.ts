@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { ImageData, Prompt } from '@/types';
+import { ImageData, Prompt, PromptBlock } from '@/types';
 import { database } from '@/lib/database';
 import { copyToClipboard } from '@/lib/utils';
 
@@ -56,7 +56,7 @@ export function useImageOperations({
 
   // 处理图片上传
   const handleImageUpload = useCallback(
-    async (file: File, imageName: string, prompts: Prompt[] = []) => {
+    async (file: File, imageName: string, prompts: PromptBlock[] = []) => {
       console.log('📤 开始上传图片:', file.name);
 
       try {
@@ -70,29 +70,38 @@ export function useImageOperations({
 
         const base64 = await base64Promise;
 
+        // 将PromptBlock转换为Prompt格式
+        const convertedPrompts: Prompt[] = prompts.map((block, index) => ({
+          id: block.id,
+          title: block.title || `提示词 ${index + 1}`,
+          content: block.content || block.text || '',
+          color: block.color || '#3b82f6',
+          order: block.order || block.sortOrder || index,
+          createdAt: typeof block.createdAt === 'string' ? block.createdAt : new Date().toISOString(),
+          updatedAt: typeof block.updatedAt === 'string' ? block.updatedAt : new Date().toISOString(),
+        }));
+
         // 创建图片数据
         const imageData = {
           title: imageName,
           url: base64,
-          prompts: prompts,
+          prompts: convertedPrompts,
           tags: [],
         };
 
         // 添加图片到数据库
         const result = await database.addImage(imageData);
-        if (!result.success) {
-          throw new Error(result.error);
+        if (!result.success || !result.data) {
+          throw new Error(result.error || '上传失败');
         }
 
         console.log('✅ 图片上传成功:', result.data);
 
         // 更新本地状态
-        setImages((prev) => [result.data, ...prev]);
+        setImages((prev) => [result.data!, ...prev]);
 
         // 触发刷新
         onRefresh?.();
-
-        return result.data;
       } catch (error) {
         console.error('❌ 上传失败:', error);
         throw error;
@@ -159,7 +168,7 @@ export function useImageOperations({
             console.log('✅ 图片复制成功:', result.data);
 
             // 更新本地状态
-            setImages((prev) => [result.data, ...prev]);
+            setImages((prev) => [result.data!, ...prev]);
 
             // 触发刷新
             onRefresh?.();

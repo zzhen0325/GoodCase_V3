@@ -59,41 +59,47 @@ export function TagItem({
   const badgeVariant = selected ? 'default' : variant;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tag.id });
-const style = {
+
+const dragStyle = {
   transform: CSS.Transform.toString(transform),
   transition,
   opacity: isDragging ? 0.7 : 1,
 };
+
+const badgeStyle = {
+  backgroundColor: selected
+    ? group?.color
+    : variant === 'outline'
+      ? 'transparent'
+      : group?.color + '20',
+  borderColor: group?.color,
+  color: selected ? 'white' : group?.color,
+};
+
 return (
-    <Badge
+    <div
       ref={setNodeRef}
-      style={style}
+      style={dragStyle}
       {...attributes}
       {...listeners}
-      variant={badgeVariant}
-      className={cn(
-        'inline-flex items-center gap-1.5 cursor-pointer transition-all duration-200',
-        'hover:shadow-sm hover:scale-105',
-        selected && 'ring-2 ring-primary ring-offset-1',
-        sizeClasses[size],
-        className
-      )}
-      style={{
-        backgroundColor: selected
-          ? group?.color
-          : variant === 'outline'
-            ? 'transparent'
-            : group?.color + '20',
-        borderColor: group?.color,
-        color: selected ? 'white' : group?.color,
-      }}
-      onClick={handleClick}
     >
+      <Badge
+        variant={badgeVariant}
+        className={cn(
+          'inline-flex items-center gap-1.5 cursor-pointer transition-all duration-200',
+          'hover:shadow-sm hover:scale-105',
+          selected && 'ring-2 ring-primary ring-offset-1',
+          sizeClasses[size],
+          className
+        )}
+        style={badgeStyle}
+        onClick={handleClick}
+      >
       <Hash className="w-3 h-3" />
       <span className="font-medium">{tag.name}</span>
 
       {showUsageCount && (
-        <span className="text-xs opacity-75">({tag.usageCount})</span>
+        <span className="text-xs opacity-75">(0)</span>
       )}
 
       {showEdit && (
@@ -119,6 +125,7 @@ return (
           <X className="w-3 h-3" />
         </Button>
       )}
-    </Badge>
+      </Badge>
+    </div>
   );
 }

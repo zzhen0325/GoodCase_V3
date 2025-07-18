@@ -22,14 +22,26 @@ export function generateId(): string {
 }
 
 // 格式化日期
-export function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
+export function formatDate(date: Date | string | number): string {
+  try {
+    const dateObj = new Date(date);
+    
+    // 检查日期是否有效
+    if (isNaN(dateObj.getTime())) {
+      return '无效日期';
+    }
+    
+    return new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(dateObj);
+  } catch (error) {
+    console.error('日期格式化错误:', error);
+    return '无效日期';
+  }
 }
 
 // 文件大小格式化
@@ -107,9 +119,8 @@ export function filterImages(
     filtered = filtered.filter((image) => {
       const searchableText = [
         image.title,
-        image.description || '',
-        image.prompts?.[0]?.text || '',
-        ...image.tags,
+        image.prompts?.[0]?.content || '',
+        ...image.tags.map(tag => typeof tag === 'string' ? tag : tag.name),
       ]
         .join(' ')
         .toLowerCase();
@@ -122,7 +133,11 @@ export function filterImages(
   // 标签筛选 - 支持多标签筛选
   if (filters.tags && filters.tags.length > 0) {
     filtered = filtered.filter((image) =>
-      filters.tags.some((tag) => image.tags.includes(tag))
+      filters.tags.some((filterTag) => 
+        image.tags.some(imageTag => 
+          typeof imageTag === 'string' ? imageTag === filterTag : imageTag.name === filterTag
+        )
+      )
     );
   }
 
@@ -135,19 +150,14 @@ export function filterImages(
     });
   }
 
-  // 尺寸范围筛选
-  if (filters.sizeRange) {
-    const { minWidth, maxWidth, minHeight, maxHeight } = filters.sizeRange;
-    filtered = filtered.filter((image) => {
-      const { width, height } = image.size;
-      return (
-        (!minWidth || width >= minWidth) &&
-        (!maxWidth || width <= maxWidth) &&
-        (!minHeight || height >= minHeight) &&
-        (!maxHeight || height <= maxHeight)
-      );
-    });
-  }
+  // 尺寸范围筛选 - 暂时跳过，因为 ImageData 没有 size 属性
+  // if (filters.sizeRange) {
+  //   const { minWidth, maxWidth, minHeight, maxHeight } = filters.sizeRange;
+  //   filtered = filtered.filter((image) => {
+  //     // ImageData 类型中没有 size 属性
+  //     return true;
+  //   });
+  // }
 
   // 排序 - 支持更多排序字段
   if (filters.sortBy) {
@@ -168,8 +178,9 @@ export function filterImages(
           bValue = new Date(b.updatedAt).getTime();
           break;
         case 'size':
-          aValue = a.size.width * a.size.height;
-          bValue = b.size.width * b.size.height;
+          // ImageData 类型中没有 size 属性，使用默认排序
+          aValue = 0;
+          bValue = 0;
           break;
         default:
           return 0;
@@ -205,9 +216,8 @@ export function searchImagesOptimized(
     .map((image) => {
       const searchableText = [
         image.title,
-        image.description || '',
-        image.prompts?.[0]?.text || '',
-        ...image.tags,
+        image.prompts?.[0]?.content || '',
+        ...image.tags.map(tag => typeof tag === 'string' ? tag : tag.name),
       ]
         .join(' ')
         .toLowerCase();

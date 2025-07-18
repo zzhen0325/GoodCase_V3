@@ -25,8 +25,13 @@ export async function POST(request: NextRequest) {
         const result = await database.addImage({
           title: image.title,
           url: image.url,
-          prompt: image.prompts?.[0]?.text || image.prompt || '',
-          size: image.size || 0,
+          prompts: image.prompts || [{
+            id: `prompt_${Date.now()}`,
+            title: '默认提示词',
+            content: (image as any).prompt || '',
+            color: '#3b82f6',
+            order: 0
+          }],
           tags: image.tags || [],
         });
 

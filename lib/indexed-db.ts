@@ -6,13 +6,12 @@ import {
   PromptBlock,
   DEFAULT_PROMPT_BLOCKS,
 } from '@/types';
+import { VersionManager } from '@/lib/version-manager';
 
 const DB_NAME = 'ImageGalleryDB';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const STORES = {
   IMAGES: 'images',
-  TAGS: 'tags',
-  TAG_GROUPS: 'tag_groups',
   PROMPT_BLOCKS: 'prompt_blocks',
   IMAGE_CACHE: 'image_cache',
 } as const;
@@ -46,40 +45,47 @@ class IndexedDBManager {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = (event as any).oldVersion;
+        const newVersion = (event as any).newVersion;
+        
+        console.log(`IndexedDB 版本升级: ${oldVersion} -> ${newVersion}`);
 
-        // 删除所有现有存储以重新创建
-        Object.values(STORES).forEach((storeName) => {
-          if (db.objectStoreNames.contains(storeName)) {
-            db.deleteObjectStore(storeName);
-          }
-        });
+        // 版本6的升级逻辑
+        if (oldVersion < 6) {
+          // 检查版本兼容性
+          const compatibility = VersionManager.checkCompatibility(oldVersion);
+          console.log(`版本兼容性检查: ${compatibility.message}`);
+          
+          // 删除所有现有存储以重新创建（保持向后兼容）
+          Object.values(STORES).forEach((storeName) => {
+            if (db.objectStoreNames.contains(storeName)) {
+              db.deleteObjectStore(storeName);
+            }
+          });
 
-        // 重新创建所有存储和索引
-        Object.values(STORES).forEach((storeName) => {
-          const store = db.createObjectStore(storeName, { keyPath: 'id' });
+          // 重新创建所有存储和索引
+          Object.values(STORES).forEach((storeName) => {
+            const store = db.createObjectStore(storeName, { keyPath: 'id' });
 
-          // 为不同存储创建索引
-          switch (storeName) {
-            case STORES.IMAGES:
-              store.createIndex('sortOrder', 'sortOrder');
-              store.createIndex('createdAt', 'createdAt');
-              store.createIndex('tags', 'tags', { multiEntry: true });
-              break;
-            case STORES.TAGS:
-              store.createIndex('groupId', 'groupId');
-              store.createIndex('sortOrder', 'sortOrder');
-              store.createIndex('name', 'name');
-              break;
-            case STORES.TAG_GROUPS:
-              store.createIndex('sortOrder', 'sortOrder');
-              store.createIndex('name', 'name');
-              break;
-            case STORES.PROMPT_BLOCKS:
-              store.createIndex('imageId', 'imageId');
-              store.createIndex('sortOrder', 'sortOrder');
-              break;
-          }
-        });
+            // 为不同存储创建索引
+            switch (storeName) {
+              case STORES.IMAGES:
+                store.createIndex('sortOrder', 'sortOrder');
+                store.createIndex('createdAt', 'createdAt');
+                store.createIndex('tags', 'tags', { multiEntry: true });
+                store.createIndex('updatedAt', 'updatedAt');
+                break;
+              case STORES.PROMPT_BLOCKS:
+                store.createIndex('imageId', 'imageId');
+                store.createIndex('sortOrder', 'sortOrder');
+                break;
+            }
+          });
+          
+          // 记录版本升级日志
+          VersionManager.logVersionUpgrade(oldVersion, 6);
+          console.log('IndexedDB schema 已升级到版本 6');
+        }
       };
 
       request.onsuccess = (event) => {
@@ -137,10 +143,13 @@ class IndexedDBManager {
         id: `${image.id}_prompt_${index}`,
         title: template.title,
         text: template.text,
+        content: template.text,
+        color: '#3b82f6',
         imageId: image.id,
         sortOrder: index,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        order: index,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }));
 
       defaultPrompts.forEach((prompt) => promptStore.put(prompt));
@@ -185,7 +194,15 @@ class IndexedDBManager {
         };
         request.onerror = () => reject(request.error);
       });
-      image.prompts = prompts;
+      image.prompts = prompts.map(prompt => ({
+        id: prompt.id,
+        title: prompt.title || '',
+        content: prompt.content,
+        color: prompt.color || '#ef4444',
+        order: prompt.order || 0,
+        createdAt: prompt.createdAt?.toString(),
+        updatedAt: prompt.updatedAt?.toString()
+      }));
     }
 
     return images.sort((a: any, b: any) => a.sortOrder - b.sortOrder);
@@ -222,7 +239,15 @@ class IndexedDBManager {
         };
         request.onerror = () => reject(request.error);
       });
-      image.prompts = prompts;
+      image.prompts = prompts.map(prompt => ({
+        id: prompt.id,
+        title: prompt.title || '',
+        content: prompt.content,
+        color: prompt.color || '#ef4444',
+        order: prompt.order || 0,
+        createdAt: prompt.createdAt?.toString(),
+        updatedAt: prompt.updatedAt?.toString()
+      }));
     }
 
     return image;
@@ -263,190 +288,7 @@ class IndexedDBManager {
     });
   }
 
-  // 标签操作
-  public async addTag(tag: Tag): Promise<void> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, skipping addTag');
-      return;
-    }
 
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAGS], 'readwrite');
-    const store = transaction.objectStore(STORES.TAGS);
-
-    // 确保标签有sortOrder
-    if (tag.sortOrder === undefined) {
-      const maxSortOrder = await this.getMaxSortOrder(STORES.TAGS, tag.groupId);
-      tag.sortOrder = maxSortOrder + 1;
-    }
-
-    store.put(tag);
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
-
-  public async getTags(groupId?: string): Promise<Tag[]> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, returning empty array');
-      return [];
-    }
-
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAGS], 'readonly');
-    const store = transaction.objectStore(STORES.TAGS);
-
-    return new Promise((resolve, reject) => {
-      let request: IDBRequest;
-      if (groupId) {
-        request = store.index('groupId').getAll(groupId);
-      } else {
-        request = store.getAll();
-      }
-
-      request.onsuccess = () => {
-        const result = request.result.sort((a, b) => a.sortOrder - b.sortOrder);
-        resolve(result);
-      };
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  public async updateTag(tag: Tag): Promise<void> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, skipping updateTag');
-      return;
-    }
-
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAGS], 'readwrite');
-    const store = transaction.objectStore(STORES.TAGS);
-
-    tag.updatedAt = new Date();
-    store.put(tag);
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
-
-  public async deleteTag(id: string): Promise<void> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, skipping deleteTag');
-      return;
-    }
-
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAGS], 'readwrite');
-    const store = transaction.objectStore(STORES.TAGS);
-
-    store.delete(id);
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
-
-  // 标签分组操作
-  public async addTagGroup(tagGroup: TagGroup): Promise<void> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, skipping addTagGroup');
-      return;
-    }
-
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAG_GROUPS], 'readwrite');
-    const store = transaction.objectStore(STORES.TAG_GROUPS);
-
-    // 确保分组有sortOrder
-    if (tagGroup.sortOrder === undefined) {
-      const maxSortOrder = await this.getMaxSortOrder(STORES.TAG_GROUPS);
-      tagGroup.sortOrder = maxSortOrder + 1;
-    }
-
-    store.put(tagGroup);
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
-
-  public async getTagGroups(): Promise<TagGroup[]> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, returning empty array');
-      return [];
-    }
-
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAG_GROUPS], 'readonly');
-    const store = transaction.objectStore(STORES.TAG_GROUPS);
-
-    return new Promise((resolve, reject) => {
-      const request = store.index('sortOrder').getAll();
-      request.onsuccess = () => {
-        const result = request.result.sort((a, b) => a.sortOrder - b.sortOrder);
-        resolve(result);
-      };
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  public async updateTagGroup(tagGroup: TagGroup): Promise<void> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, skipping updateTagGroup');
-      return;
-    }
-
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAG_GROUPS], 'readwrite');
-    const store = transaction.objectStore(STORES.TAG_GROUPS);
-
-    tagGroup.updatedAt = new Date();
-    store.put(tagGroup);
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
-
-  public async deleteTagGroup(id: string): Promise<void> {
-    if (!this.isClient) {
-      console.warn('IndexedDB not available, skipping deleteTagGroup');
-      return;
-    }
-
-    const db = await this.getDB();
-    const transaction = db.transaction(
-      [STORES.TAG_GROUPS, STORES.TAGS],
-      'readwrite'
-    );
-    const groupStore = transaction.objectStore(STORES.TAG_GROUPS);
-    const tagStore = transaction.objectStore(STORES.TAGS);
-
-    // 删除分组
-    groupStore.delete(id);
-
-    // 将该分组下的标签的groupId设为undefined
-    const tagRequest = tagStore.index('groupId').getAll(id);
-    tagRequest.onsuccess = () => {
-      tagRequest.result.forEach((tag) => {
-        tag.groupId = undefined;
-        tag.updatedAt = new Date();
-        tagStore.put(tag);
-      });
-    };
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
 
   // 缓存图片blob数据
   public async cacheImageBlob(
@@ -519,7 +361,7 @@ class IndexedDBManager {
     // 确保提示词块有sortOrder
     if (promptBlock.sortOrder === undefined) {
       const maxSortOrder = await this.getMaxSortOrderForImage(
-        promptBlock.imageId
+        promptBlock.imageId || ''
       );
       promptBlock.sortOrder = maxSortOrder + 1;
     }
@@ -562,7 +404,7 @@ class IndexedDBManager {
     const transaction = db.transaction([STORES.PROMPT_BLOCKS], 'readwrite');
     const store = transaction.objectStore(STORES.PROMPT_BLOCKS);
 
-    promptBlock.updatedAt = new Date();
+    promptBlock.updatedAt = new Date().toISOString();
     store.put(promptBlock);
 
     return new Promise((resolve, reject) => {
@@ -590,10 +432,7 @@ class IndexedDBManager {
   }
 
   // 辅助方法
-  private async getMaxSortOrder(
-    storeName: string,
-    groupId?: string
-  ): Promise<number> {
+  private async getMaxSortOrder(storeName: string): Promise<number> {
     if (!this.isClient) return 0;
 
     const db = await this.getDB();
@@ -601,22 +440,91 @@ class IndexedDBManager {
     const store = transaction.objectStore(storeName);
 
     return new Promise((resolve, reject) => {
-      let request: IDBRequest;
-      if (groupId && storeName === STORES.TAGS) {
-        request = store.index('groupId').getAll(groupId);
-      } else {
-        request = store.getAll();
-      }
+      const request = store.getAll();
 
       request.onsuccess = () => {
         const items = request.result;
         const maxOrder = items.reduce((max: number, item: any) => {
-          return Math.max(max, item.sortOrder || 0);
+          return Math.max(max, item.sortOrder || item.order || 0);
         }, 0);
         resolve(maxOrder);
       };
       request.onerror = () => reject(request.error);
     });
+  }
+
+  // 获取提示词方法（兼容旧接口）
+  public async getPrompts(imageId: string): Promise<any[]> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, returning empty array');
+      return [];
+    }
+
+    const promptBlocks = await this.getPromptBlocks(imageId);
+    // 转换PromptBlock为Prompt格式
+    const prompts = promptBlocks.map(block => ({
+      id: block.id,
+      title: block.title || '',
+      content: block.text || block.content || '',
+      color: block.color || '#3b82f6',
+      order: block.sortOrder || 0,
+      createdAt: block.createdAt,
+      updatedAt: block.updatedAt
+    }));
+    return prompts;
+  }
+
+  // 添加提示词方法（兼容旧接口）
+  public async addPrompt(imageId: string, prompt: any): Promise<void> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, skipping addPrompt');
+      return;
+    }
+
+    const maxSortOrder = await this.getMaxSortOrderForImage(imageId);
+    
+    const promptBlock: PromptBlock = {
+      id: prompt.id || `${imageId}_prompt_${Date.now()}`,
+      title: prompt.title || '',
+      text: prompt.content || '',
+      content: prompt.content || '',
+      color: prompt.color || '#3b82f6',
+      imageId: imageId,
+      sortOrder: prompt.order !== undefined ? prompt.order : maxSortOrder + 1,
+      order: prompt.order !== undefined ? prompt.order : maxSortOrder + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await this.addPromptBlock(promptBlock);
+  }
+
+  // 更新提示词方法（兼容旧接口）
+  public async updatePrompt(prompt: any): Promise<void> {
+    if (!this.isClient) {
+      console.warn('IndexedDB not available, skipping updatePrompt');
+      return;
+    }
+
+    const promptBlock: PromptBlock = {
+      id: prompt.id,
+      title: prompt.title || '',
+      text: prompt.content || '',
+      content: prompt.content || '',
+      color: prompt.color || '#3b82f6',
+      imageId: prompt.imageId || '',
+      sortOrder: prompt.order || 0,
+      order: prompt.order || 0,
+      createdAt: typeof prompt.createdAt === 'string' ? prompt.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await this.updatePromptBlock(promptBlock);
+  }
+
+  // 删除提示词方法（兼容旧接口）
+  public async deletePrompt(id: string): Promise<void> {
+    await this.deletePromptBlock(id);
   }
 
   private async getMaxSortOrderForImage(imageId: string): Promise<number> {
@@ -640,25 +548,6 @@ class IndexedDBManager {
   }
 
   // 统计方法
-  public async getTagCount(groupId?: string): Promise<number> {
-    if (!this.isClient) return 0;
-
-    const db = await this.getDB();
-    const transaction = db.transaction([STORES.TAGS], 'readonly');
-    const store = transaction.objectStore(STORES.TAGS);
-
-    return new Promise((resolve, reject) => {
-      let request: IDBRequest;
-      if (groupId) {
-        request = store.index('groupId').count(groupId);
-      } else {
-        request = store.count();
-      }
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
 
   public async getImageCountByTag(tagName: string): Promise<number> {
     if (!this.isClient) return 0;
@@ -672,7 +561,7 @@ class IndexedDBManager {
       request.onsuccess = () => {
         const images = request.result;
         const count = images.filter(
-          (image) => image.tags && image.tags.includes(tagName)
+          (image) => image.tags && image.tags.some((tag: any) => tag.name === tagName)
         ).length;
         resolve(count);
       };
@@ -697,17 +586,17 @@ class IndexedDBManager {
       const textMatch =
         !query ||
         image.title.toLowerCase().includes(query.toLowerCase()) ||
-        image.description?.toLowerCase().includes(query.toLowerCase()) ||
+        (image as any).description?.toLowerCase().includes(query.toLowerCase()) ||
         image.prompts.some(
           (prompt) =>
             prompt.title.toLowerCase().includes(query.toLowerCase()) ||
-            prompt.text.toLowerCase().includes(query.toLowerCase())
+            (prompt.content || '').toLowerCase().includes(query.toLowerCase())
         );
 
       // 标签过滤
       const tagMatch =
         tagFilters.length === 0 ||
-        tagFilters.every((tag) => image.tags.includes(tag));
+        tagFilters.every((tagName) => image.tags.some((tag: any) => tag.name === tagName));
 
       return textMatch && tagMatch;
     });

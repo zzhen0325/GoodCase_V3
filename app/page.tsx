@@ -235,7 +235,7 @@ export default function HomePage() {
       <DownloadProgressToast
         isVisible={downloadProgress.isVisible}
         progress={downloadProgress.progress}
-        onClose={downloadProgress.hideToast}
+        onClose={downloadProgress.hideProgress}
       />
     </SidebarProvider>
   );

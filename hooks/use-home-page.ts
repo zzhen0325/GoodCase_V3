@@ -35,7 +35,12 @@ export function useHomePage() {
     selectedImage: modalState.selectedImage,
     setImages: imageState.setImages,
     setSelectedImage: modalState.setSelectedImage,
-    setIsImageModalOpen: modalState.setIsImageModalOpen,
+    setIsImageModalOpen: (value: React.SetStateAction<boolean>) => {
+      const newValue = typeof value === 'function' ? value(modalState.isImageModalOpen) : value;
+      if (!newValue) {
+        modalState.closeImageModal();
+      }
+    },
     onRefresh: imageState.refetch,
   });
 

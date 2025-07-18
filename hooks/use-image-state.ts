@@ -65,7 +65,7 @@ export function useImageState(): ImageState & ImageActions {
       const result = await database.getAllImages();
       const loadTime = Date.now() - startTime;
 
-      if (result.success) {
+      if (result.success && result.data) {
         setImages(result.data);
         setConnectionStatus('connected');
         console.log(
@@ -92,10 +92,12 @@ export function useImageState(): ImageState & ImageActions {
     setIsLoading(true);
 
     const unsubscribe = database.subscribeToImages((images) => {
-      setImages(images);
-      setConnectionStatus('connected');
-      setIsLoading(false);
-      console.log(`📸 实时更新: 收到 ${images.length} 张图片`);
+      if (images) {
+        setImages(images);
+        setConnectionStatus('connected');
+        setIsLoading(false);
+        console.log(`📸 实时更新: 收到 ${images.length} 张图片`);
+      }
     });
 
     return () => {
@@ -128,7 +130,7 @@ export function useImageState(): ImageState & ImageActions {
 
       // 标签过滤
       if (searchFilters.tags.length > 0) {
-        const imageTags = image.tags?.map((tag) => tag.name) || [];
+        const imageTags = image.tags?.filter(tag => tag && tag.name).map((tag) => tag.name) || [];
         const hasAllTags = searchFilters.tags.every((tag) =>
           imageTags.includes(tag)
         );

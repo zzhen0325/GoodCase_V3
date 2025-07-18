@@ -14,19 +14,35 @@ export interface ImageData {
   tags: Tag[];
   createdAt: string;
   updatedAt: string;
-  usageCount?: number;
+  sortOrder?: number;
+
   isLocal?: boolean;
   isUploading?: boolean;
 }
 
-// 标签类型
+// 标签类型 - 简化版，包含分组信息
 export interface Tag {
   id: string;
   name: string;
   color: string;
-  groupId: string; // 所属分组的唯一ID，必填
+  // 分组信息直接嵌入标签中
+  groupId?: string; // 分组ID，可选
+  groupName?: string; // 分组名称
+  groupColor?: string; // 分组颜色
   order?: number; // 在分组内的排序位置
-  usageCount?: number;
+
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 标签分组类型
+export interface TagGroup {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+  order?: number; // 自定义排序字段，数值越小排序越靠前
+  tagCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -40,6 +56,19 @@ export interface Prompt {
   order: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface PromptBlock {
+  id: string;
+  title?: string;
+  content: string;
+  text?: string; // 兼容旧版本
+  color?: string;
+  order?: number;
+  sortOrder?: number;
+  imageId?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 // 搜索过滤器 - 优化版
@@ -114,8 +143,8 @@ export interface ImageDocument {
   thumbnailUrl?: string;
   title: string;
   description?: string;
-  tags: string[];
-  prompt?: string;
+  prompts: Prompt[]; // 提示词数组（嵌套存储）
+  tags: Tag[]; // 标签数组（嵌套存储）
   width: number;
   height: number;
   fileSize: number;
@@ -131,7 +160,7 @@ export interface TagDocument {
   name: string;
   color: string;
   groupId?: string;
-  usageCount: number;
+
   createdAt: any;
   updatedAt: any;
 }
@@ -141,22 +170,20 @@ export interface TagGroupDocument {
   name: string;
   color: string;
   description?: string;
-  tagCount: number;
-  createdAt: any;
-  updatedAt: any;
+  order?: number; // 显示顺序
+  tagCount?: number;
+  createdAt?: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
 }
 
 export interface PromptDocument {
   id?: string;
-  text: string;
-  category?: string;
-  tags: string[];
-  usageCount: number;
-  isTemplate: boolean;
-  color?: string;
-  imageId?: string; // 关联的图片ID
-  createdAt: any;
-  updatedAt: any;
+  title: string; // 提示词标题
+  content: string; // 提示词内容
+  color: string; // 颜色主题
+  order: number; // 显示顺序
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
 }
 
 // 颜色主题 - 精简版
@@ -298,15 +325,6 @@ export function isTag(obj: any): obj is Tag {
   );
 }
 
-export interface TagGroup {
-  id: string;
-  name: string;
-  color: string;
-  order?: number; // 自定义排序字段，数值越小排序越靠前
-  tagCount?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
 // TagGroup 功能已简化，不再需要类型检查函数
 
 // 工具类型

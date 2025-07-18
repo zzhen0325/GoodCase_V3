@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -96,6 +97,9 @@ export function ProgressModal({
             />
             {title}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            显示当前操作的进度状态和详细信息
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

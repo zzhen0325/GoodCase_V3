@@ -23,7 +23,7 @@ export function useDataSync({
     setConnectionStatus('reconnecting');
     try {
       const result = await database.getAllImages();
-      if (result.success) {
+      if (result.success && result.data) {
         setImages(result.data);
         console.log('📸 手动刷新图片成功');
         setConnectionStatus('connected');

@@ -15,12 +15,13 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { getDb } from './firebase';
-import { ImageData, Tag, Prompt, DBResult } from '@/types';
+import { ImageData, Tag, TagGroup, Prompt, DBResult } from '@/types';
 
 // Firestore集合名称
 const COLLECTIONS = {
   IMAGES: 'images',
   PROMPTS: 'prompts',
+  TAG_GROUPS: 'tagGroups',
 } as const;
 
 // 客户端数据库操作类
@@ -81,7 +82,7 @@ export class Database {
     );
   }
 
-  // 获取所有标签（实时监听）- 从图片数据中提取
+  // 获取所有标签（实时监听）- 从图片数据中动态提取
   subscribeToTags(
     callback: (tags: Tag[]) => void,
     onError?: (error: Error) => void
@@ -98,6 +99,7 @@ export class Database {
       q,
       (snapshot) => {
         const tagMap = new Map<string, Tag>();
+        const tagUsageCount = new Map<string, number>();
 
         // 从所有图片中提取标签
         snapshot.docs.forEach((doc) => {
@@ -105,35 +107,137 @@ export class Database {
           const imageTags = data.tags || [];
 
           imageTags.forEach((tag: Tag) => {
+            // 检查tag是否为null或undefined，以及是否有name属性
+            if (!tag || !tag.name) {
+              return;
+            }
+            
+            // 统计标签使用次数
+            tagUsageCount.set(tag.name, (tagUsageCount.get(tag.name) || 0) + 1);
+            
             if (tagMap.has(tag.name)) {
               const existingTag = tagMap.get(tag.name)!;
-              existingTag.usageCount = (existingTag.usageCount || 0) + 1;
-              // 保持最新的更新时间
+      
+              // 保持最新的更新时间和分组信息
               if (
                 tag.updatedAt &&
                 (!existingTag.updatedAt ||
                   tag.updatedAt > existingTag.updatedAt)
               ) {
                 existingTag.updatedAt = tag.updatedAt;
+                // 更新分组信息（使用最新的）
+                if (tag.groupId) existingTag.groupId = tag.groupId;
+                if (tag.groupName) existingTag.groupName = tag.groupName;
+                if (tag.groupColor) existingTag.groupColor = tag.groupColor;
               }
             } else {
               tagMap.set(tag.name, {
                 ...tag,
-                usageCount: 1,
+                // 确保有默认分组信息
+                groupId: tag.groupId || 'default',
+                groupName: tag.groupName || '默认分组',
+                groupColor: tag.groupColor || '#64748b'
               });
             }
           });
         });
 
         // 转换为数组并按使用次数排序
-        const tags = Array.from(tagMap.values()).sort(
-          (a, b) => (b.usageCount || 0) - (a.usageCount || 0)
-        );
+        const tags = Array.from(tagMap.values())
+          .sort((a, b) => {
+            const countA = tagUsageCount.get(a.name) || 0;
+            const countB = tagUsageCount.get(b.name) || 0;
+            // 先按使用次数降序，再按名称升序
+            if (countA !== countB) {
+              return countB - countA;
+            }
+            return a.name.localeCompare(b.name);
+          });
 
         callback(tags);
       },
       (error) => {
         console.error('标签监听错误:', error);
+        if (onError) onError(error);
+      }
+    );
+  }
+
+  // 获取所有标签分组（实时监听）- 从图片数据中动态提取
+  subscribeToTagGroups(
+    callback: (tagGroups: TagGroup[]) => void,
+    onError?: (error: Error) => void
+  ): () => void {
+    const dbInstance = getDb();
+    if (!dbInstance) {
+      onError?.(new Error('Firestore 未初始化'));
+      return () => {};
+    }
+    const imagesRef = collection(dbInstance, COLLECTIONS.IMAGES);
+    const q = query(imagesRef, orderBy('createdAt', 'desc'));
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const groupMap = new Map<string, TagGroup>();
+        const groupTagCount = new Map<string, number>();
+
+        // 从所有图片中提取标签分组信息
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const imageTags = data.tags || [];
+
+          imageTags.forEach((tag: Tag) => {
+            if (!tag || !tag.name) {
+              return;
+            }
+
+            const groupId = tag.groupId || 'default';
+            const groupName = tag.groupName || '默认分组';
+            const groupColor = tag.groupColor || '#64748b';
+
+            // 统计分组中的标签数量
+            groupTagCount.set(groupId, (groupTagCount.get(groupId) || 0) + 1);
+
+            if (!groupMap.has(groupId)) {
+              groupMap.set(groupId, {
+                id: groupId,
+                name: groupName,
+                color: groupColor,
+                order: groupId === 'default' ? 0 : 1,
+                tagCount: 0,
+                createdAt: tag.createdAt || new Date().toISOString(),
+                updatedAt: tag.updatedAt || new Date().toISOString(),
+              });
+            } else {
+              // 更新分组信息（使用最新的）
+              const existingGroup = groupMap.get(groupId)!;
+              if (tag.updatedAt && (!existingGroup.updatedAt || tag.updatedAt > existingGroup.updatedAt)) {
+                existingGroup.name = groupName;
+                existingGroup.color = groupColor;
+                existingGroup.updatedAt = tag.updatedAt;
+              }
+            }
+          });
+        });
+
+        // 更新标签数量并转换为数组
+        const tagGroups = Array.from(groupMap.values())
+          .map(group => ({
+            ...group,
+            tagCount: groupTagCount.get(group.id) || 0
+          }))
+          .sort((a, b) => {
+            // 默认分组排在最前面，其他按名称排序
+            if (a.id === 'default') return -1;
+            if (b.id === 'default') return 1;
+            return a.name.localeCompare(b.name);
+          });
+
+        callback(tagGroups);
+      },
+      (error) => {
+        console.error('标签分组监听错误:', error);
         if (onError) onError(error);
       }
     );
@@ -214,12 +318,14 @@ export class Database {
       return {
         success: true,
         data: newImageData,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error('添加图片失败:', error);
       return {
         success: false,
         error: '添加图片失败',
+        timestamp: new Date(),
       };
     }
   }
@@ -254,12 +360,14 @@ export class Database {
       return {
         success: true,
         data: images,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error('获取图片失败:', error);
       return {
         success: false,
         error: '获取图片失败',
+        timestamp: new Date(),
       };
     }
   }
@@ -279,6 +387,7 @@ export class Database {
         return {
           success: false,
           error: '图片不存在',
+          timestamp: new Date(),
         };
       }
 
@@ -296,12 +405,14 @@ export class Database {
       return {
         success: true,
         data: image,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error('获取图片失败:', error);
       return {
         success: false,
         error: '获取图片失败',
+        timestamp: new Date(),
       };
     }
   }
@@ -325,6 +436,7 @@ export class Database {
         return {
           success: false,
           error: '图片不存在',
+          timestamp: new Date(),
         };
       }
 
@@ -360,12 +472,14 @@ export class Database {
       return {
         success: true,
         data: updatedImage,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error('更新图片失败:', error);
       return {
         success: false,
         error: '更新图片失败',
+        timestamp: new Date(),
       };
     }
   }
@@ -386,6 +500,7 @@ export class Database {
         return {
           success: false,
           error: '图片不存在',
+          timestamp: new Date(),
         };
       }
 
@@ -412,12 +527,14 @@ export class Database {
 
       return {
         success: true,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error('删除图片失败:', error);
       return {
         success: false,
         error: '删除图片失败',
+        timestamp: new Date(),
       };
     }
   }
@@ -441,12 +558,69 @@ export class Database {
 
       return {
         success: true,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error('批量删除图片失败:', error);
       return {
         success: false,
         error: '批量删除图片失败',
+        timestamp: new Date(),
+      };
+    }
+  }
+
+  // 创建标签
+  async createTag(data: {
+    name: string;
+    color: string;
+    groupId?: string;
+  }): Promise<DBResult<{ tag: Tag }>> {
+    try {
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error('Firestore 未初始化');
+      }
+
+      // 确保默认分组存在
+      const DatabaseAdmin = (await import('./database-admin')).DatabaseAdmin;
+      const finalGroupId = data.groupId || await DatabaseAdmin.ensureDefaultTagGroup();
+
+      const tagRef = await addDoc(
+        collection(dbInstance, 'tags'),
+        {
+          name: data.name,
+          color: data.color,
+          groupId: finalGroupId,
+  
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+      );
+
+      const newTagDoc = await getDoc(tagRef);
+      const newTagData = {
+        id: newTagDoc.id,
+        ...newTagDoc.data(),
+        createdAt:
+          newTagDoc.data()?.createdAt?.toDate?.()?.toISOString() ||
+          new Date().toISOString(),
+        updatedAt:
+          newTagDoc.data()?.updatedAt?.toDate?.()?.toISOString() ||
+          new Date().toISOString(),
+      } as Tag;
+
+      return {
+        success: true,
+        data: { tag: newTagData },
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error('创建标签失败:', error);
+      return {
+        success: false,
+        error: '创建标签失败',
+        timestamp: new Date(),
       };
     }
   }

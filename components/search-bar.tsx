@@ -58,13 +58,19 @@ export function SearchBar({
   // 处理标签选择
   const handleTagsChange = useCallback(
     (tagIds: string[]) => {
+      // 将标签 ID 转换为标签名称
+      const tagNames = tagIds.map(id => {
+        const tag = tags.find(t => t.id === id);
+        return tag?.name || '';
+      }).filter(name => name !== '');
+      
       onSearch({
         ...currentFilters,
         query,
-        tags: tagIds,
+        tags: tagNames,
       });
     },
-    [onSearch, currentFilters, query]
+    [onSearch, currentFilters, query, tags]
   );
 
   // 清空搜索
@@ -135,7 +141,10 @@ export function SearchBar({
             <TagSelector
               tags={tags}
               tagGroups={tagGroups}
-              selectedTagIds={currentFilters?.tags || []}
+              selectedTagIds={currentFilters?.tags?.map(tagName => {
+                const tag = tags.find(t => t.name === tagName);
+                return tag?.id || '';
+              }).filter(id => id !== '') || []}
               onTagsChange={handleTagsChange}
               className="w-80"
             />
