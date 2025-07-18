@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Copy, Trash2, Palette, Check, X } from "lucide-react";
-import { Prompt, COLOR_THEMES, getColorTheme } from "@/types";
+import { PromptBlock, COLOR_THEMES, getColorTheme } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,9 +14,9 @@ import { copyToClipboard, cn } from "@/lib/utils";
 
 // 提示词块组件属性
 interface PromptBlockProps {
-  prompt: Prompt;
+  prompt: PromptBlock;
   isEditing: boolean;
-  onUpdate: (id: string, updates: Partial<Prompt>) => void;
+  onUpdate: (id: string, updates: Partial<PromptBlock>) => void;
   onDelete: (id: string) => void;
   onCopy: (content: string) => void;
   onEnterEditMode?: () => void;
@@ -110,7 +110,7 @@ export function PromptBlock({
   };
 
   // 获取当前颜色主题
-  const currentTheme = getColorTheme(prompt.color || "default");
+  const currentTheme = getColorTheme((prompt as any).color || "default");
 
   return (
     <div className="relative group">
@@ -231,7 +231,7 @@ export function PromptBlock({
                               backgroundColor: theme.bg,
                               color: theme.text,
                               borderColor:
-                                prompt.color === theme.name
+                                (prompt as any).color === theme.name
                                   ? "#000"
                                   : "transparent",
                             }}

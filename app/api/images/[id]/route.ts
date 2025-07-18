@@ -32,7 +32,8 @@ export async function PUT(
         // 更新标签使用次数
         for (const tag of removedTags) {
           try {
-            await DatabaseAdmin.updateTagUsageCount(tag, -1);
+            const tagId = typeof tag === 'string' ? tag : (tag as any).id || tag;
+            await DatabaseAdmin.updateTagUsageCount(tagId, -1);
           } catch (error) {
             console.error(`更新标签 ${tag} 使用次数失败:`, error);
           }
@@ -40,7 +41,8 @@ export async function PUT(
 
         for (const tag of addedTags) {
           try {
-            await DatabaseAdmin.updateTagUsageCount(tag, 1);
+            const tagId = typeof tag === 'string' ? tag : (tag as any).id || tag;
+            await DatabaseAdmin.updateTagUsageCount(tagId, 1);
           } catch (error) {
             console.error(`更新标签 ${tag} 使用次数失败:`, error);
           }
@@ -113,7 +115,8 @@ export async function DELETE(
       // 减少所有关联标签的使用次数
       for (const tag of tags) {
         try {
-          await DatabaseAdmin.updateTagUsageCount(tag, -1);
+          const tagId = typeof tag === 'string' ? tag : (tag as any).id || tag;
+          await DatabaseAdmin.updateTagUsageCount(tagId, -1);
         } catch (error) {
           console.error(`减少标签 ${tag} 使用次数失败:`, error);
         }

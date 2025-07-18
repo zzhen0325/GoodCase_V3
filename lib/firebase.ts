@@ -69,15 +69,22 @@ function initializeFirestoreDb() {
       try {
         // 在客户端启用离线持久化，服务器端使用默认配置
         if (typeof window !== "undefined") {
-          db = initializeFirestore(firebaseApp, {
-            // 启用离线持久化
-            localCache: {
-              kind: "persistent",
-            },
-            // 强制使用长轮询，解决连接超时问题
-            experimentalForceLongPolling: true,
-            ignoreUndefinedProperties: true,
-          });
+          try {
+            db = initializeFirestore(firebaseApp, {
+              // 启用离线持久化
+              localCache: {
+                kind: "persistent",
+              },
+              // 强制使用长轮询，解决连接超时问题
+              experimentalForceLongPolling: true,
+              ignoreUndefinedProperties: true,
+            });
+            console.log("✅ Firestore 初始化成功（带离线持久化）");
+          } catch (persistentError) {
+            console.warn("⚠️ 离线持久化初始化失败，使用默认配置:", persistentError);
+            // 如果离线持久化失败，使用默认配置
+            db = getFirestore(firebaseApp);
+          }
         } else {
           // 服务器端使用默认配置
           db = getFirestore(firebaseApp);
@@ -211,6 +218,9 @@ export function getStorageInstance() {
 export function getAuthInstance() {
   return initializeAuth();
 }
+
+// 导出初始化函数
+export { initializeStorage, initializeAuth };
 
 // 向后兼容的导出
 export { db };

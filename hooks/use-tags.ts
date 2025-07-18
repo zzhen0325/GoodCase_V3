@@ -8,12 +8,12 @@ export function useTags() {
   const [error, setError] = useState<string | null>(null);
 
   // 获取所有标签
-  const fetchTags = async () => {
+  const fetchTags = async (groupId?: string) => {
     try {
       setIsLoading(true);
       setError(null);
-
-      const tags = await dataService.getAllTags();
+      
+      const tags = await dataService.getTags(groupId);
       setTags(tags);
     } catch (err) {
       console.error("获取标签失败:", err);
@@ -25,21 +25,14 @@ export function useTags() {
 
   // 创建标签
   const createTag = async (
-    tagData: Omit<Tag, "id" | "createdAt" | "updatedAt">,
+    tagData: Omit<Tag, "id" | "createdAt" | "updatedAt" | "sortOrder">,
   ) => {
     try {
       setError(null);
-
-      const result = await dataService.createTag(tagData);
-
-      if (result.success) {
-        setTags((prev) => [...prev, result.data]);
-        return result.data;
-      } else {
-        const errorMsg = result.error || "创建标签失败";
-        setError(errorMsg);
-        throw new Error(errorMsg);
-      }
+      
+      const newTag = await dataService.addTag(tagData);
+      setTags((prev) => [...prev, newTag]);
+      return newTag;
     } catch (err) {
       console.error("创建标签失败:", err);
       const errorMsg = err instanceof Error ? err.message : "创建标签失败";
@@ -55,18 +48,11 @@ export function useTags() {
   ) => {
     try {
       setError(null);
-
-      const result = await dataService.updateTag(id, updates);
-
-      if (result.success) {
-        setTags((prev) =>
-          prev.map((tag) => (tag.id === id ? result.data : tag)),
-        );
-      } else {
-        const errorMsg = result.error || "更新标签失败";
-        setError(errorMsg);
-        throw new Error(errorMsg);
-      }
+      
+      await dataService.updateTag(id, updates);
+      setTags((prev) =>
+        prev.map((tag) => (tag.id === id ? { ...tag, ...updates } : tag)),
+      );
     } catch (err) {
       console.error("更新标签失败:", err);
       const errorMsg = err instanceof Error ? err.message : "更新标签失败";
@@ -79,16 +65,9 @@ export function useTags() {
   const deleteTag = async (id: string) => {
     try {
       setError(null);
-
-      const result = await dataService.deleteTag(id);
-
-      if (result.success) {
-        setTags((prev) => prev.filter((tag) => tag.id !== id));
-      } else {
-        const errorMsg = result.error || "删除标签失败";
-        setError(errorMsg);
-        throw new Error(errorMsg);
-      }
+      
+      await dataService.deleteTag(id);
+      setTags((prev) => prev.filter((tag) => tag.id !== id));
     } catch (err) {
       console.error("删除标签失败:", err);
       const errorMsg = err instanceof Error ? err.message : "删除标签失败";
@@ -101,6 +80,22 @@ export function useTags() {
     fetchTags();
   }, []);
 
+  // 重新排序标签
+  const reorderTags = async (tagIds: string[]) => {
+    try {
+      setError(null);
+      
+      await dataService.reorderTags(tagIds);
+      // 重新获取标签以更新排序
+      await fetchTags();
+    } catch (err) {
+      console.error("重新排序标签失败:", err);
+      const errorMsg = err instanceof Error ? err.message : "重新排序标签失败";
+      setError(errorMsg);
+      throw err;
+    }
+  };
+
   return {
     tags,
     isLoading,
@@ -108,6 +103,7 @@ export function useTags() {
     createTag,
     updateTag,
     deleteTag,
+    reorderTags,
     refetch: fetchTags,
   };
 }

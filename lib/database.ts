@@ -18,13 +18,14 @@ import {
   DocumentSnapshot,
   writeBatch,
   runTransaction,
+  serverTimestamp as firestoreServerTimestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDb as getFirestoreDb } from "@/lib/firebase";
 import {
   ImageData,
   Tag,
   TagGroup,
-  Prompt,
+  PromptBlock,
   DBResult,
   BatchResult,
   ImageDocument,
@@ -45,6 +46,7 @@ const COLLECTIONS = {
 
 // 获取数据库实例的辅助函数
 function getDb() {
+  const db = getFirestoreDb();
   if (!db) {
     throw new Error("Firebase 数据库未初始化");
   }
@@ -53,7 +55,7 @@ function getDb() {
 
 // 服务器时间戳辅助函数
 function serverTimestamp() {
-  return Timestamp.now();
+  return firestoreServerTimestamp();
 }
 
 /**
@@ -78,6 +80,7 @@ export class Database {
 
     try {
       // 确保 Firebase 已初始化
+      const db = getFirestoreDb();
       if (!db) {
         throw new Error("Firebase 数据库未初始化");
       }
@@ -94,28 +97,7 @@ export class Database {
     }
   }
 
-  // 文档转换辅助函数
-  private convertImageDocument(doc: DocumentSnapshot): ImageData | null {
-    if (!doc.exists()) return null;
 
-    const data = doc.data() as any;
-    return {
-      id: doc.id,
-      url: data.url,
-      title: data.title || "",
-      prompts: data.prompts || [],
-      tagIds: data.tagIds || [],
-      createdAt:
-        data.createdAt?.toDate?.()?.toISOString() ||
-        data.createdAt ||
-        new Date().toISOString(),
-      updatedAt:
-        data.updatedAt?.toDate?.()?.toISOString() ||
-        data.updatedAt ||
-        new Date().toISOString(),
-      usageCount: data.usageCount || 0,
-    };
-  }
 
   // 批量操作方法
   async batchUpdateImages(
@@ -152,19 +134,23 @@ export class Database {
       await batch.commit();
 
       return {
-        success: true,
-        results,
-        successCount: results.filter((r) => r.success).length,
-        failureCount: results.filter((r) => !r.success).length,
+        success: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success).length,
+        errors: results.filter((r) => !r.success).map((r) => r.error || "未知错误"),
+        results: results.map((r) => ({
+          success: r.success,
+          data: r.id,
+          error: r.error,
+          timestamp: new Date(),
+        })),
       };
     } catch (error) {
       console.error("批量更新失败:", error);
       return {
-        success: false,
-        error: "批量更新失败",
+        success: 0,
+        failed: updates.length,
+        errors: ["批量更新失败"],
         results: [],
-        successCount: 0,
-        failureCount: updates.length,
       };
     }
   }
@@ -210,12 +196,14 @@ export class Database {
           hasMore,
           lastDoc,
         },
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error("分页查询图片失败:", error);
       return {
         success: false,
         error: "分页查询图片失败",
+        timestamp: new Date(),
       };
     }
   }
@@ -257,26 +245,28 @@ export class Database {
         images = images.filter(
           (image) =>
             image.title.toLowerCase().includes(term) ||
-            image.prompts.some((prompt) => prompt.toLowerCase().includes(term)),
+            (image.prompt && image.prompt.toLowerCase().includes(term)),
         );
       }
 
       // 标签过滤
       if (filters?.tagIds && filters.tagIds.length > 0) {
         images = images.filter((image) =>
-          filters.tagIds!.some((tagId) => image.tagIds.includes(tagId)),
+          filters.tagIds!.some((tagId) => image.tags.includes(tagId)),
         );
       }
 
       return {
         success: true,
         data: images,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error("搜索图片失败:", error);
       return {
         success: false,
         error: "搜索图片失败",
+        timestamp: new Date(),
       };
     }
   }
@@ -302,12 +292,13 @@ export class Database {
         });
       });
 
-      return { success: true };
+      return { success: true, timestamp: new Date() };
     } catch (error) {
       console.error("更新使用次数失败:", error);
       return {
         success: false,
         error: "更新使用次数失败",
+        timestamp: new Date(),
       };
     }
   }
@@ -395,12 +386,14 @@ export class Database {
       return {
         success: true,
         data: images,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error("获取所有图片失败:", error);
       return {
         success: false,
         error: "获取图片失败",
+        timestamp: new Date(),
       };
     }
   }
@@ -418,12 +411,14 @@ export class Database {
       return {
         success: true,
         data: imageData,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error("获取图片失败:", error);
       return {
         success: false,
         error: "获取图片失败",
+        timestamp: new Date(),
       };
     }
   }
@@ -456,12 +451,14 @@ export class Database {
       return {
         success: true,
         data: newImageData,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error("添加图片失败:", error);
       return {
         success: false,
         error: "添加图片失败",
+        timestamp: new Date(),
       };
     }
   }
@@ -480,6 +477,42 @@ export class Database {
       const updateData = { ...updates };
       delete updateData.id;
       delete updateData.createdAt;
+      
+      // 处理prompts字段的更新
+      if (updates.prompts !== undefined) {
+        // 先删除该图片的所有现有提示词
+        const promptsRef = collection(dbInstance, COLLECTIONS.PROMPTS);
+        const existingPromptsQuery = query(promptsRef, where("imageId", "==", id));
+        const existingPromptsSnapshot = await getDocs(existingPromptsQuery);
+        
+        const batch = writeBatch(dbInstance);
+        
+        // 删除现有提示词
+        existingPromptsSnapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        
+        // 添加新的提示词
+        updates.prompts.forEach((prompt) => {
+          const promptRef = doc(promptsRef);
+          const promptData = {
+            imageId: id,
+            text: prompt.text,
+            category: prompt.category || "",
+            tags: prompt.tags || [],
+            usageCount: prompt.usageCount || 0,
+            isTemplate: prompt.isTemplate || false,
+            createdAt: prompt.createdAt && prompt.createdAt instanceof Date ? Timestamp.fromDate(prompt.createdAt) : (prompt.createdAt && typeof (prompt.createdAt as any).toDate === 'function' ? (prompt.createdAt as any) : Timestamp.now()),
+            updatedAt: Timestamp.now(),
+          };
+          batch.set(promptRef, promptData);
+        });
+        
+        await batch.commit();
+        
+        // 从updateData中移除prompts字段，因为它不存储在IMAGES集合中
+        delete updateData.prompts;
+      }
 
       const docData = {
         ...updateData,
@@ -495,16 +528,42 @@ export class Database {
       if (!updatedImageData) {
         throw new Error("更新图片后无法获取数据");
       }
+      
+      // 如果更新了prompts，需要重新获取完整的图片数据（包括prompts）
+      if (updates.prompts !== undefined) {
+        const promptsRef = collection(dbInstance, COLLECTIONS.PROMPTS);
+        const promptsQuery = query(promptsRef, where("imageId", "==", id));
+        const promptsSnapshot = await getDocs(promptsQuery);
+        
+        const prompts: Prompt[] = [];
+        promptsSnapshot.docs.forEach((doc) => {
+          const promptData = doc.data();
+          prompts.push({
+            id: doc.id,
+            text: promptData.text,
+            category: promptData.category,
+            tags: promptData.tags,
+            usageCount: promptData.usageCount,
+            isTemplate: promptData.isTemplate,
+            createdAt: promptData.createdAt?.toDate() || new Date(),
+            updatedAt: promptData.updatedAt?.toDate() || new Date(),
+          });
+        });
+        
+        updatedImageData.prompts = prompts;
+      }
 
       return {
         success: true,
         data: updatedImageData,
+        timestamp: new Date(),
       };
     } catch (error) {
       console.error("更新图片失败:", error);
       return {
         success: false,
         error: "更新图片失败",
+        timestamp: new Date(),
       };
     }
   }
@@ -514,7 +573,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const imageRef = doc(db, COLLECTIONS.IMAGES, id);
+      const dbInstance = getDb();
+      const imageRef = doc(dbInstance, COLLECTIONS.IMAGES, id);
       await deleteDoc(imageRef);
 
       return {
@@ -536,11 +596,12 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const batch = writeBatch(db);
+      const dbInstance = getDb();
+      const batch = writeBatch(dbInstance);
       const results: DBResult[] = [];
 
       for (const id of ids) {
-        const imageRef = doc(db, COLLECTIONS.IMAGES, id);
+        const imageRef = doc(dbInstance, COLLECTIONS.IMAGES, id);
         batch.delete(imageRef);
         results.push({
           success: true,
@@ -581,7 +642,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagsRef = collection(db, COLLECTIONS.TAGS);
+      const dbInstance = getDb();
+      const tagsRef = collection(dbInstance, COLLECTIONS.TAGS);
       const q = query(tagsRef, orderBy("name"));
       const snapshot = await getDocs(q);
 
@@ -613,7 +675,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagRef = doc(db, COLLECTIONS.TAGS, id);
+      const dbInstance = getDb();
+      const tagRef = doc(dbInstance, COLLECTIONS.TAGS, id);
       const tagDoc = await getDoc(tagRef);
 
       const tagData = this.convertTagDocument(tagDoc);
@@ -640,7 +703,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagsRef = collection(db, COLLECTIONS.TAGS);
+      const dbInstance = getDb();
+      const tagsRef = collection(dbInstance, COLLECTIONS.TAGS);
 
       const docData: Omit<TagDocument, "createdAt" | "updatedAt"> = {
         name: tagData.name,
@@ -682,7 +746,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagRef = doc(db, COLLECTIONS.TAGS, id);
+      const dbInstance = getDb();
+      const tagRef = doc(dbInstance, COLLECTIONS.TAGS, id);
 
       const updateData: Partial<TagDocument> = {};
 
@@ -723,7 +788,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagRef = doc(db, COLLECTIONS.TAGS, id);
+      const dbInstance = getDb();
+      const tagRef = doc(dbInstance, COLLECTIONS.TAGS, id);
       await deleteDoc(tagRef);
 
       return {
@@ -747,7 +813,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagGroupsRef = collection(db, COLLECTIONS.TAG_GROUPS);
+      const dbInstance = getDb();
+      const tagGroupsRef = collection(dbInstance, COLLECTIONS.TAG_GROUPS);
       const q = query(tagGroupsRef, orderBy("name"));
       const snapshot = await getDocs(q);
 
@@ -779,7 +846,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagGroupRef = doc(db, COLLECTIONS.TAG_GROUPS, id);
+      const dbInstance = getDb();
+      const tagGroupRef = doc(dbInstance, COLLECTIONS.TAG_GROUPS, id);
       const tagGroupDoc = await getDoc(tagGroupRef);
 
       const tagGroupData = this.convertTagGroupDocument(tagGroupDoc);
@@ -806,12 +874,14 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagGroupsRef = collection(db, COLLECTIONS.TAG_GROUPS);
+      const dbInstance = getDb();
+      const tagGroupsRef = collection(dbInstance, COLLECTIONS.TAG_GROUPS);
 
       const docData: Omit<TagGroupDocument, "createdAt" | "updatedAt"> = {
         name: tagGroupData.name,
         color: tagGroupData.color,
         description: tagGroupData.description,
+        tagCount: 0,
       };
 
       const docRef = await addDoc(tagGroupsRef, {
@@ -850,7 +920,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagGroupRef = doc(db, COLLECTIONS.TAG_GROUPS, id);
+      const dbInstance = getDb();
+      const tagGroupRef = doc(dbInstance, COLLECTIONS.TAG_GROUPS, id);
 
       const updateData: Partial<TagGroupDocument> = {};
 
@@ -890,7 +961,8 @@ export class Database {
     try {
       await this.ensureInitialized();
 
-      const tagGroupRef = doc(db, COLLECTIONS.TAG_GROUPS, id);
+      const dbInstance = getDb();
+      const tagGroupRef = doc(dbInstance, COLLECTIONS.TAG_GROUPS, id);
       await deleteDoc(tagGroupRef);
 
       return {
@@ -925,6 +997,7 @@ export class Database {
       description: data.description,
       tags: data.tags || [],
       prompt: data.prompt,
+      prompts: [], // 初始化为空数组，实际数据由getAllImages等方法填充
       size: {
         width: data.width,
         height: data.height,
@@ -935,10 +1008,8 @@ export class Database {
         colorSpace: data.colorSpace,
         hasTransparency: data.hasTransparency,
       },
-      createdAt:
-        data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      updatedAt:
-        data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      createdAt: data.createdAt?.toDate?.() || new Date(),
+      updatedAt: data.updatedAt?.toDate?.() || new Date(),
     };
   }
 
@@ -956,10 +1027,8 @@ export class Database {
       color: data.color,
       groupId: data.groupId,
       usageCount: data.usageCount || 0,
-      createdAt:
-        data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      updatedAt:
-        data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      createdAt: data.createdAt?.toDate?.() || new Date(),
+      updatedAt: data.updatedAt?.toDate?.() || new Date(),
     };
   }
 
@@ -976,10 +1045,9 @@ export class Database {
       name: data.name,
       color: data.color,
       description: data.description,
-      createdAt:
-        data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      updatedAt:
-        data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      tagCount: data.tagCount || 0,
+      createdAt: data.createdAt?.toDate?.() || new Date(),
+      updatedAt: data.updatedAt?.toDate?.() || new Date(),
     };
   }
 }

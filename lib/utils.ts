@@ -108,7 +108,7 @@ export function filterImages(
       const searchableText = [
         image.title,
         image.description || "",
-        image.prompt || "",
+        image.prompts?.[0]?.text || "",
         ...image.tags,
       ]
         .join(" ")
@@ -120,9 +120,9 @@ export function filterImages(
   }
 
   // 标签筛选 - 支持多标签筛选
-  if (filters.tagIds && filters.tagIds.length > 0) {
+  if (filters.tags && filters.tags.length > 0) {
     filtered = filtered.filter((image) =>
-      filters.tagIds.some((tagId) => image.tags.includes(tagId)),
+      filters.tags.some((tag) => image.tags.includes(tag)),
     );
   }
 
@@ -206,7 +206,7 @@ export function searchImagesOptimized(
       const searchableText = [
         image.title,
         image.description || "",
-        image.prompt || "",
+        image.prompts?.[0]?.text || "",
         ...image.tags,
       ]
         .join(" ")

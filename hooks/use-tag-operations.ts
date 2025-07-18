@@ -9,23 +9,60 @@ export function useTagOperations() {
 
   const {
     tagGroups,
-    loading: groupsLoading,
+    isLoading: groupsLoading,
     error: groupsError,
-    createTagGroup,
-    updateTagGroup,
-    deleteTagGroup,
-    refresh: refreshGroups,
+    createTagGroup: _createTagGroup,
+    updateTagGroup: _updateTagGroup,
+    deleteTagGroup: _deleteTagGroup,
+    refetch: refreshGroups,
   } = useTagGroups();
 
   const {
     tags,
-    loading: tagsLoading,
+    isLoading: tagsLoading,
     error: tagsError,
-    createTag,
-    updateTag,
-    deleteTag,
-    refresh: refreshTags,
+    createTag: _createTag,
+    updateTag: _updateTag,
+    deleteTag: _deleteTag,
+    refetch: refreshTags,
   } = useTags();
+
+  // 包装操作函数以自动刷新数据
+  const createTagGroup = async (data: any) => {
+    const result = await _createTagGroup(data);
+    refreshAll(); // 刷新所有数据
+    return result;
+  };
+
+  const updateTagGroup = async (id: string, data: any) => {
+    const result = await _updateTagGroup(id, data);
+    refreshAll(); // 刷新所有数据
+    return result;
+  };
+
+  const deleteTagGroup = async (id: string) => {
+    const result = await _deleteTagGroup(id);
+    refreshAll(); // 刷新所有数据
+    return result;
+  };
+
+  const createTag = async (data: any) => {
+    const result = await _createTag(data);
+    refreshAll(); // 刷新所有数据
+    return result;
+  };
+
+  const updateTag = async (id: string, data: any) => {
+    const result = await _updateTag(id, data);
+    refreshAll(); // 刷新所有数据
+    return result;
+  };
+
+  const deleteTag = async (id: string) => {
+    const result = await _deleteTag(id);
+    refreshAll(); // 刷新所有数据
+    return result;
+  };
 
   // 根据分组组织标签
   const getTagsByGroup = () => {
@@ -117,8 +154,7 @@ export function useTagOperations() {
     try {
       await Promise.all(selectedTags.map((tagId) => deleteTag(tagId)));
       setSelectedTags([]);
-      refreshTags();
-      refreshGroups(); // 刷新分组以更新标签计数
+      // deleteTag 已经包含了刷新逻辑，无需重复调用
     } catch (error) {
       console.error("批量删除标签失败:", error);
       throw error;

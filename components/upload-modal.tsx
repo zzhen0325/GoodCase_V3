@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ImageData, Prompt } from "@/types";
+import { ImageData, PromptBlock as PromptBlockType } from "@/types";
 import { PromptBlock } from "./prompt-block";
 import { toast } from "sonner";
 import { generateId } from "@/lib/utils";
@@ -23,7 +23,7 @@ import { DndContext, useDroppable, DragEndEvent } from "@dnd-kit/core";
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (file: File, imageName: string, prompts: Prompt[]) => Promise<void>;
+  onUpload: (file: File, imageName: string, prompts: PromptBlockType[]) => Promise<void>;
 }
 
 // 上传图片弹窗组件
@@ -31,7 +31,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [imageName, setImageName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<PromptBlockType[]>([]);
 
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -89,16 +89,13 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   };
 
   // 创建默认提示词
-  const createDefaultPrompts = (): Prompt[] => {
+  const createDefaultPrompts = (): PromptBlockType[] => {
     const now = new Date();
     return ["风格", "主体", "场景"].map((text, index) => ({
       id: generateId(),
-      text,
-      category: "default",
-      tags: [],
-      usageCount: 0,
-      isTemplate: false,
-      color: "slate" as const,
+      title: text,
+      content: "",
+      sortOrder: index,
       createdAt: now,
       updatedAt: now,
     }));
@@ -196,14 +193,11 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   // 添加新提示词
   const addPrompt = () => {
-    const newPrompt: Prompt = {
+    const newPrompt: PromptBlockType = {
       id: generateId(),
-      text: "新提示词",
-      category: "default",
-      tags: [],
-      usageCount: 0,
-      isTemplate: false,
-      color: "slate",
+      title: "新提示词",
+      content: "",
+      sortOrder: prompts.length,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -211,7 +205,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   };
 
   // 更新提示词
-  const updatePrompt = (id: string, updates: Partial<Prompt>) => {
+  const updatePrompt = (id: string, updates: Partial<PromptBlockType>) => {
     setPrompts(
       prompts.map((prompt) =>
         prompt.id === id

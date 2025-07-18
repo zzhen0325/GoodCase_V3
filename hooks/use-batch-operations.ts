@@ -1,13 +1,11 @@
 import { useCallback } from "react";
 import { ImageData } from "@/types";
-import { apiClient } from "@/lib/api";
+import { dataService } from "@/lib/data-service";
 
 interface UseBatchOperationsProps {
   selectedImageIds: Set<string>;
   filteredImages: ImageData[];
-
   setSelectedImageIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  getFileExtensionFromUrl: (url: string) => string;
 }
 
 /**
@@ -17,10 +15,21 @@ interface UseBatchOperationsProps {
 export function useBatchOperations({
   selectedImageIds,
   filteredImages,
-
   setSelectedImageIds,
-  getFileExtensionFromUrl,
 }: UseBatchOperationsProps) {
+  // 获取文件扩展名的辅助函数
+  const getFileExtensionFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const lastDot = pathname.lastIndexOf('.');
+      if (lastDot === -1) return 'png';
+      return pathname.substring(lastDot + 1).toLowerCase() || 'png';
+    } catch {
+      return 'png';
+    }
+  };
+
   // 批量删除
   const handleBatchDelete = useCallback(async () => {
     if (selectedImageIds.size === 0) return;
@@ -32,7 +41,7 @@ export function useBatchOperations({
 
     try {
       const deletePromises = Array.from(selectedImageIds).map((id) =>
-        apiClient.deleteImage(id),
+        dataService.deleteImage(id),
       );
       await Promise.all(deletePromises);
       setSelectedImageIds(new Set());

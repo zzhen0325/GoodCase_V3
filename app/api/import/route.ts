@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         const result = await database.addImage({
           title: image.title,
           url: image.url,
-          prompt: image.prompt || "",
+          prompt: image.prompts?.[0]?.text || image.prompt || "",
           size: image.size || 0,
           tags: image.tags || [],
         });

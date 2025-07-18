@@ -12,7 +12,9 @@ export interface ImageData extends BaseEntity {
   title: string;
   description?: string;
   tags: string[]; // 简化为字符串数组
-  prompt?: string;
+  prompt?: string; // 保留向后兼容
+  prompts: PromptBlock[]; // 提示词块数组
+  sortOrder: number; // 手动排序字段
   size: {
     width: number;
     height: number;
@@ -31,6 +33,7 @@ export interface Tag extends BaseEntity {
   color: string;
   groupId?: string;
   usageCount: number; // 使用次数，用于排序和清理
+  sortOrder: number; // 手动排序字段
 }
 
 // 标签分组接口 - 精简版
@@ -39,9 +42,20 @@ export interface TagGroup extends BaseEntity {
   color: string;
   description?: string;
   tagCount: number; // 包含的标签数量
+  sortOrder: number; // 手动排序字段
 }
 
-// 提示词接口 - 精简版
+// 提示词块接口 - 重新设计
+export interface PromptBlock extends BaseEntity {
+  title: string; // 提示词块标题
+  text: string; // 提示词内容
+  imageId: string; // 关联的图片ID
+  sortOrder: number; // 手动排序字段
+  color?: string;
+}
+
+// 提示词接口 - 精简版（保留兼容性，已废弃，请使用 PromptBlock）
+// @deprecated 请使用 PromptBlock 接口
 export interface Prompt extends BaseEntity {
   text: string;
   category?: string;
@@ -49,6 +63,7 @@ export interface Prompt extends BaseEntity {
   usageCount: number;
   isTemplate: boolean;
   color?: string;
+  sortOrder: number; // 手动排序字段
 }
 
 // 搜索过滤器 - 优化版
@@ -111,7 +126,7 @@ export interface ExportData {
   images: ImageData[];
   tags: Tag[];
   tagGroups: TagGroup[];
-  prompts: Prompt[];
+  prompts: PromptBlock[];
   metadata: {
     totalImages: number;
     totalTags: number;
@@ -121,6 +136,7 @@ export interface ExportData {
 
 // Firestore 文档类型（用于数据库存储）
 export interface ImageDocument {
+  id?: string;
   url: string;
   thumbnailUrl?: string;
   title: string;
@@ -138,6 +154,7 @@ export interface ImageDocument {
 }
 
 export interface TagDocument {
+  id?: string;
   name: string;
   color: string;
   groupId?: string;
@@ -147,6 +164,7 @@ export interface TagDocument {
 }
 
 export interface TagGroupDocument {
+  id?: string;
   name: string;
   color: string;
   description?: string;
@@ -156,11 +174,14 @@ export interface TagGroupDocument {
 }
 
 export interface PromptDocument {
+  id?: string;
   text: string;
   category?: string;
   tags: string[];
   usageCount: number;
   isTemplate: boolean;
+  color?: string;
+  imageId?: string; // 关联的图片ID
   createdAt: any;
   updatedAt: any;
 }
@@ -324,12 +345,12 @@ export type FilterableFields = keyof Pick<
   ImageData,
   "title" | "description" | "tags"
 >;
-export type SearchableEntities = ImageData | Tag | TagGroup | Prompt;
+export type SearchableEntities = ImageData | Tag | TagGroup | PromptBlock;
 
 // 事件类型
 export type DataChangeEvent = {
   type: "create" | "update" | "delete";
-  entity: "image" | "tag" | "tagGroup" | "prompt";
+  entity: "image" | "tag" | "tagGroup" | "promptBlock";
   id: string;
   data?: any;
 };
@@ -382,6 +403,13 @@ export const DEFAULT_SEARCH_FILTERS: SearchFilters = {
   sortBy: "createdAt",
   sortOrder: "desc",
 };
+
+// 默认提示词块模板
+export const DEFAULT_PROMPT_BLOCKS = [
+  { title: "风格", text: "" },
+  { title: "主体", text: "" },
+  { title: "场景", text: "" },
+] as const;
 
 // 连接状态类型
 export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";

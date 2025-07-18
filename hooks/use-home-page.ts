@@ -32,20 +32,18 @@ export function useHomePage() {
 
   // 图片操作
   const imageOperations = useImageOperations({
-    connectionStatus: imageState.connectionStatus,
     selectedImage: modalState.selectedImage,
     setImages: imageState.setImages,
     setSelectedImage: modalState.setSelectedImage,
-    setIsImageModalOpen: () => {}, // 这个在 modalState 中处理
+    setIsImageModalOpen: modalState.setIsImageModalOpen,
+    onRefresh: imageState.refetch,
   });
 
   // 批量操作
   const batchOperations = useBatchOperations({
     selectedImageIds: editMode.selectedImageIds,
     filteredImages: imageState.filteredImages,
-
     setSelectedImageIds: editMode.setSelectedImageIds,
-    getFileExtensionFromUrl: imageOperations.getFileExtensionFromUrl,
   });
 
   // 导航操作

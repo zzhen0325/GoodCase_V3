@@ -2,6 +2,7 @@ import React from "react";
 import type { Metadata, Viewport } from "next";
 import { Poppins, Roboto_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { FirebaseProvider } from "@/components/firebase-provider";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -65,10 +66,12 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${robotoMono.variable} font-sans antialiased`}
       >
-        <div className="min-h-screen bg-background text-foreground">
-          {children}
-        </div>
-        <Toaster />
+        <FirebaseProvider>
+          <div className="min-h-screen bg-background text-foreground">
+            {children}
+          </div>
+          <Toaster />
+        </FirebaseProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `

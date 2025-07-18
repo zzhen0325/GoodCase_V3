@@ -16,7 +16,7 @@ interface ImageState {
 
 interface ImageActions {
   handleSearchChange: (filters: Partial<SearchFilters>) => void;
-  refreshImages: (useCache?: boolean) => Promise<void>;
+  refetch: () => Promise<void>;
   clearSearch: () => void;
   clearCache: () => void;
   setImages: React.Dispatch<React.SetStateAction<ImageData[]>>;
@@ -55,13 +55,13 @@ export function useImageState(): ImageState & ImageActions {
   }, []);
 
   // 加载图片数据
-  const loadImages = useCallback(async (useCache = true) => {
+  const loadImages = useCallback(async () => {
     try {
       setIsLoading(true);
       setCacheStatus("loading");
 
       const startTime = Date.now();
-      const imageData = await dataService.getAllImages(useCache);
+      const imageData = await dataService.getImages();
       const loadTime = Date.now() - startTime;
 
       setImages(imageData);
@@ -82,30 +82,14 @@ export function useImageState(): ImageState & ImageActions {
 
   // 初始化数据加载
   useEffect(() => {
-    loadImages(true);
+    loadImages();
   }, [loadImages]);
 
-  // 订阅实时数据变化
-  useEffect(() => {
-    console.log("🔄 开始监听图片数据变化");
-
-    const unsubscribe = dataService.subscribeToImages(
-      (newImages: ImageData[]) => {
-        console.log(`📸 实时更新: 接收到 ${newImages.length} 张图片`);
-        setImages(newImages);
-        setConnectionStatus("connected");
-      },
-      (error) => {
-        console.error("❌ 实时监听错误:", error);
-        setConnectionStatus("disconnected");
-      },
-    );
-
-    return () => {
-      console.log("🔇 取消图片数据监听");
-      unsubscribe();
-    };
-  }, []);
+  // 订阅实时数据变化（暂时移除，因为新的数据服务层不需要实时订阅）
+  // useEffect(() => {
+  //   console.log("🔄 开始监听图片数据变化");
+  //   // 实时订阅逻辑已移除，改为手动刷新
+  // }, []);
 
   // 执行搜索和筛选
   const performSearch = useCallback(async () => {
@@ -144,9 +128,9 @@ export function useImageState(): ImageState & ImageActions {
   );
 
   // 刷新图片数据
-  const refreshImages = useCallback(
-    async (useCache = false) => {
-      await loadImages(useCache);
+  const refetch = useCallback(
+    async () => {
+      await loadImages();
     },
     [loadImages],
   );
@@ -157,8 +141,8 @@ export function useImageState(): ImageState & ImageActions {
   }, []);
 
   // 清除缓存
-  const clearCache = useCallback(() => {
-    dataService.clearAllCache();
+  const clearCache = useCallback(async () => {
+    // 清除缓存逻辑已简化
     setCacheStatus("miss");
   }, []);
 
@@ -170,7 +154,7 @@ export function useImageState(): ImageState & ImageActions {
     connectionStatus,
     cacheStatus,
     handleSearchChange,
-    refreshImages,
+    refetch,
     clearSearch,
     clearCache,
     setImages,

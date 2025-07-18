@@ -14,6 +14,7 @@ import { SearchFilters, DEFAULT_SEARCH_FILTERS } from "@/types";
 import { debounce } from "@/lib/utils";
 import { TagSelector } from "@/components/tags/tag-selector";
 import { TagManagementPanel } from "@/components/tags/tag-management-panel";
+import { useTagOperations } from "@/hooks/use-tag-operations";
 
 // 搜索框组件属性
 interface SearchBarProps {
@@ -28,6 +29,9 @@ export function SearchBar({
   const [query, setQuery] = useState(currentFilters.query || "");
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [showTagManagement, setShowTagManagement] = useState(false);
+  
+  // 获取标签数据
+  const { tags, tagGroups } = useTagOperations();
 
   // 防抖搜索函数
   const debouncedSearch = useMemo(
@@ -129,8 +133,8 @@ export function SearchBar({
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="end">
             <TagSelector
-              tags={[]}
-              tagGroups={[]}
+              tags={tags}
+              tagGroups={tagGroups}
               selectedTagIds={currentFilters?.tags || []}
               onTagsChange={handleTagsChange}
               className="w-80"

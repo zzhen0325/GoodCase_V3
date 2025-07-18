@@ -1,7 +1,6 @@
-import { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { ImageData } from "@/types";
-import { apiClient } from "@/lib/api";
-import IndexedDBManager from "@/lib/indexed-db";
+import { dataService } from "@/lib/data-service";
 
 interface UseDataSyncProps {
   setImages: React.Dispatch<React.SetStateAction<ImageData[]>>;
@@ -18,83 +17,15 @@ export function useDataSync({
   setImages,
   setConnectionStatus,
 }: UseDataSyncProps) {
-  // 后台同步 IndexedDB 到 Firestore
-  useEffect(() => {
-    const syncInterval = setInterval(async () => {
-      console.log("🔄 检查 IndexedDB 中的待上传图片...");
-      const imagesToUpload = await IndexedDBManager.getImages();
-      const pendingImages = imagesToUpload.filter((img) => !img.is_valid);
 
-      if (pendingImages.length > 0) {
-        console.log(
-          `📤 发现 ${pendingImages.length} 张待上传图片，开始同步...`,
-        );
-        for (const image of pendingImages) {
-          try {
-            // 将 base64 转换回 File 对象
-            const res = await fetch(image.image_data);
-            const blob = await res.blob();
-            const file = new File([blob], image.image_name, {
-              type: blob.type,
-            });
-
-            const imageData = {
-              url: image.image_data,
-              title: image.image_name,
-              description: image.description || "",
-              tags: [],
-              size: {
-                width: 0,
-                height: 0,
-                fileSize: file.size,
-              },
-              metadata: {
-                format: file.type,
-              },
-            };
-            const result = await apiClient.addImage(imageData);
-            if (result.success && result.data) {
-              console.log(`✅ 图片 ${image.image_name} 同步成功`);
-              // 用服务器返回的数据替换本地临时数据
-              setImages((prevImages) =>
-                prevImages.map((prevImage) =>
-                  prevImage.id === image.id
-                    ? { ...result.data!, isLocal: false }
-                    : prevImage,
-                ),
-              );
-              // 从 IndexedDB 中删除
-              await IndexedDBManager.deleteImage(image.id);
-            } else {
-              console.error(
-                `❌ 图片 ${image.image_name} 同步失败:`,
-                result.error,
-              );
-            }
-          } catch (error) {
-            console.error(`❌ 同步图片 ${image.image_name} 时出错:`, error);
-          }
-        }
-      } else {
-        console.log("✅ 无待上传图片");
-      }
-    }, 30000); // 每30秒检查一次
-
-    return () => clearInterval(syncInterval);
-  }, [setImages]);
-
-  // 手动刷新数据（备用方法）
+  // 手动刷新数据
   const refreshData = useCallback(async () => {
     console.log("🔄 手动刷新数据...");
     setConnectionStatus("reconnecting");
     try {
-      const imagesResult = await apiClient.getAllImages();
-
-      if (imagesResult.success && imagesResult.data) {
-        setImages(imagesResult.data);
-        console.log("📸 手动刷新图片成功");
-      }
-
+      const images = await dataService.getImages();
+      setImages(images);
+      console.log("📸 手动刷新图片成功");
       setConnectionStatus("connected");
     } catch (error) {
       console.error("手动刷新数据失败:", error);

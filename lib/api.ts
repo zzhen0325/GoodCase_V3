@@ -95,13 +95,17 @@ class ApiClient {
       if (filters.sortBy) params.append("sortBy", filters.sortBy);
       if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
       if (filters.dateRange?.start)
-        params.append("dateStart", filters.dateRange.start);
+        params.append("dateStart", filters.dateRange.start.toISOString());
       if (filters.dateRange?.end)
-        params.append("dateEnd", filters.dateRange.end);
-      if (filters.sizeRange?.min)
-        params.append("sizeMin", filters.sizeRange.min.toString());
-      if (filters.sizeRange?.max)
-        params.append("sizeMax", filters.sizeRange.max.toString());
+        params.append("dateEnd", filters.dateRange.end.toISOString());
+      if (filters.sizeRange?.minWidth)
+        params.append("minWidth", filters.sizeRange.minWidth.toString());
+      if (filters.sizeRange?.maxWidth)
+        params.append("maxWidth", filters.sizeRange.maxWidth.toString());
+      if (filters.sizeRange?.minHeight)
+        params.append("minHeight", filters.sizeRange.minHeight.toString());
+      if (filters.sizeRange?.maxHeight)
+        params.append("maxHeight", filters.sizeRange.maxHeight.toString());
 
       if (pagination?.page) params.append("page", pagination.page.toString());
       if (pagination?.limit)
@@ -113,12 +117,16 @@ class ApiClient {
       if (!response.ok) {
         return {
           images: [],
-          total: 0,
-          page: 1,
-          limit: 20,
-          hasMore: false,
+          pagination: {
+            page: 1,
+            limit: 20,
+            total: 0,
+            hasNext: false,
+            hasPrev: false,
+          },
           filters,
-          timestamp: new Date(),
+          total: 0,
+          searchTime: 0,
         };
       }
 
@@ -130,22 +138,93 @@ class ApiClient {
       console.error("搜索图片失败:", error);
       return {
         images: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-        hasMore: false,
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
         filters,
+        total: 0,
+        searchTime: 0,
+      };
+    }
+  }
+
+  // 添加图片（先上传到客户端存储，再保存信息）
+  async addImage(
+    file: File,
+    prompt: string,
+  ): Promise<DBResult<ImageData>> {
+    try {
+      console.log("🚀 开始客户端图片上传流程:", {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        promptLength: prompt.length
+      });
+      
+      // 1. 先在客户端上传图片到Firebase Storage
+      console.log("📤 步骤1: 上传图片到Firebase Storage...");
+      const { ClientImageStorageService } = await import('@/lib/client-image-storage');
+      const imageUrl = await ClientImageStorageService.uploadImage(file);
+      console.log("✅ 图片上传成功，URL:", imageUrl);
+      
+      // 2. 然后调用API保存图片信息
+      console.log("💾 步骤2: 保存图片信息到数据库...");
+      const requestData = {
+        imageUrl,
+        filename: file.name,
+        size: file.size,
+        type: file.type,
+        prompt,
+      };
+      console.log("📋 API请求数据:", requestData);
+      
+      const response = await fetch(`${this.baseUrl}/images`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      console.log("📡 API响应状态:", response.status, response.statusText);
+      const result = await response.json();
+      console.log("📋 API响应数据:", result);
+
+      if (!response.ok) {
+        console.error("❌ API请求失败:", result);
+        return {
+          success: false,
+          error: result.error || "添加图片失败",
+          timestamp: new Date(),
+        };
+      }
+
+      console.log("✅ 图片添加流程完成");
+      return {
+        ...result,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("❌ 添加图片失败:", error);
+      console.error("错误堆栈:", error instanceof Error ? error.stack : 'No stack trace');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "网络错误",
         timestamp: new Date(),
       };
     }
   }
 
-  // 添加图片
-  async addImage(
+  // 添加图片信息（仅保存元数据，用于已上传的图片）
+  async addImageMetadata(
     imageData: Omit<ImageData, "id" | "createdAt" | "updatedAt">,
   ): Promise<DBResult<ImageData>> {
     try {
-      const response = await fetch(`${this.baseUrl}/images`, {
+      const response = await fetch(`${this.baseUrl}/images/metadata`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -158,7 +237,7 @@ class ApiClient {
       if (!response.ok) {
         return {
           success: false,
-          error: result.error || "添加图片失败",
+          error: result.error || "添加图片信息失败",
           timestamp: new Date(),
         };
       }
@@ -168,7 +247,7 @@ class ApiClient {
         timestamp: new Date(),
       };
     } catch (error) {
-      console.error("添加图片失败:", error);
+      console.error("添加图片信息失败:", error);
       return {
         success: false,
         error: "网络错误",
@@ -297,7 +376,7 @@ class ApiClient {
     options?: FileUploadOptions,
   ): Promise<UploadValidationResult> {
     const maxSize = options?.maxSize || 10 * 1024 * 1024; // 默认10MB
-    const allowedTypes = options?.allowedTypes || [
+    const allowedTypes = options?.allowedFormats || [
       "image/jpeg",
       "image/png",
       "image/gif",
@@ -307,33 +386,25 @@ class ApiClient {
     // 检查文件类型
     if (!allowedTypes.includes(file.type)) {
       return {
-        valid: false,
-        error: "不支持的文件类型",
-        details: {
-          fileType: file.type,
-          allowedTypes,
-        },
+        isValid: false,
+        errors: ["不支持的文件类型"],
+        warnings: [],
       };
     }
 
     // 检查文件大小
     if (file.size > maxSize) {
       return {
-        valid: false,
-        error: `文件大小不能超过${Math.round(maxSize / 1024 / 1024)}MB`,
-        details: {
-          fileSize: file.size,
-          maxSize,
-        },
+        isValid: false,
+        errors: [`文件大小不能超过${Math.round(maxSize / 1024 / 1024)}MB`],
+        warnings: [],
       };
     }
 
     return {
-      valid: true,
-      details: {
-        fileSize: file.size,
-        fileType: file.type,
-      },
+      isValid: true,
+      errors: [],
+      warnings: [],
     };
   }
 
@@ -345,24 +416,33 @@ class ApiClient {
     try {
       // 先验证文件
       const validation = await this.validateUpload(file, options);
-      if (!validation.valid) {
+      if (!validation.isValid) {
         return {
           success: false,
-          error: validation.error || "文件验证失败",
+          error: validation.errors.join(", ") || "文件验证失败",
           timestamp: new Date(),
         };
       }
 
-      const formData = new FormData();
-      formData.append("file", file);
+      // 使用客户端直接上传到Firebase Storage
+      const { ImageStorageService } = await import("@/lib/image-storage");
+      const imageUrl = await ImageStorageService.uploadImage(file, "images");
 
-      if (options?.generateThumbnail) {
-        formData.append("generateThumbnail", "true");
-      }
-
+      // 验证上传结果
       const response = await fetch(`${this.baseUrl}/upload`, {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl,
+          metadata: {
+            originalName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+            uploadTime: new Date().toISOString(),
+          },
+        }),
       });
 
       const result = await response.json();
@@ -370,7 +450,7 @@ class ApiClient {
       if (!response.ok) {
         return {
           success: false,
-          error: result.error || "上传失败",
+          error: result.error || "上传验证失败",
           timestamp: new Date(),
         };
       }
@@ -383,7 +463,7 @@ class ApiClient {
       console.error("上传文件失败:", error);
       return {
         success: false,
-        error: "网络错误",
+        error: error instanceof Error ? error.message : "网络错误",
         timestamp: new Date(),
       };
     }

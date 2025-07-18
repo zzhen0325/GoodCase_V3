@@ -8,7 +8,7 @@ import {
   orderBy,
   Unsubscribe,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, getDb } from "@/lib/firebase";
 import {
   ImageData,
   Tag,
@@ -33,11 +33,16 @@ class ListenerManager {
   private reconnectDelay = 1000; // 1秒
   private cacheManager: CacheManager;
   private performanceMetrics: PerformanceMetrics = {
+    loadTime: 0,
+    searchTime: 0,
+    renderTime: 0,
+    cacheHitRate: 0,
+    memoryUsage: 0,
     totalRequests: 0,
+    errorCount: 0,
+    averageResponseTime: 0,
     cacheHits: 0,
     cacheMisses: 0,
-    averageResponseTime: 0,
-    errorCount: 0,
     lastUpdated: new Date(),
   };
 
@@ -164,7 +169,11 @@ class ListenerManager {
     }
 
     try {
-      const q = query(collection(db, "images"), orderBy("createdAt", "desc"));
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error("Database not initialized");
+      }
+      const q = query(collection(dbInstance, "images"), orderBy("createdAt", "desc"));
 
       const unsubscribe = onSnapshot(
         q,
@@ -243,8 +252,12 @@ class ListenerManager {
     }
 
     try {
-      const unsubscribe = onSnapshot(
-        doc(db, "images", id),
+       const dbInstance = getDb();
+       if (!dbInstance) {
+         throw new Error("Database not initialized");
+       }
+       const unsubscribe = onSnapshot(
+         doc(dbInstance, "images", id),
         (doc) => {
           try {
             if (doc.exists()) {
@@ -320,7 +333,11 @@ class ListenerManager {
     }
 
     try {
-      const q = query(collection(db, "tags"), orderBy("name", "asc"));
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error("Database not initialized");
+      }
+      const q = query(collection(dbInstance, "tags"), orderBy("name", "asc"));
 
       const unsubscribe = onSnapshot(
         q,
@@ -392,7 +409,11 @@ class ListenerManager {
     }
 
     try {
-      const q = query(collection(db, "tag-groups"), orderBy("name", "asc"));
+      const dbInstance = getDb();
+      if (!dbInstance) {
+        throw new Error("Database not initialized");
+      }
+      const q = query(collection(dbInstance, "tag-groups"), orderBy("name", "asc"));
 
       const unsubscribe = onSnapshot(
         q,

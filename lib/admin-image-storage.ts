@@ -8,77 +8,95 @@ export class AdminImageStorageService {
     file: File,
     folder: string = "images",
   ): Promise<string> {
-    try {
-      // 检查文件大小 (限制为 10MB)
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      if (file.size > maxSize) {
-        throw new Error("文件大小超过限制 (10MB)");
-      }
+    const maxRetries = 3;
+    let lastError: any;
 
-      // 检查文件类型
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-      ];
-      console.log("文件类型检查:", {
-        fileName: file.name,
-        fileType: file.type,
-        allowedTypes,
-      });
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error(
-          `不支持的文件类型: ${file.type}。支持的类型: ${allowedTypes.join(", ")}`,
-        );
-      }
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // 检查文件大小 (限制为 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+          throw new Error("文件大小超过限制 (10MB)");
+        }
 
-      // 生成唯一文件名
-      const fileExtension = file.name.split(".").pop();
-      const fileName = `${uuidv4()}.${fileExtension}`;
-      const filePath = `${folder}/${fileName}`;
+        // 检查文件类型
+        const allowedTypes = [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+        ];
+        console.log("文件类型检查:", {
+          fileName: file.name,
+          fileType: file.type,
+          allowedTypes,
+        });
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error(
+            `不支持的文件类型: ${file.type}。支持的类型: ${allowedTypes.join(", ")}`,
+          );
+        }
 
-      console.log("服务端开始上传图片:", {
-        fileName,
-        fileSize: file.size,
-        fileType: file.type,
-      });
+        // 生成唯一文件名
+        const fileExtension = file.name.split(".").pop();
+        const fileName = `${uuidv4()}.${fileExtension}`;
+        const filePath = `${folder}/${fileName}`;
 
-      // 获取存储桶
-      const bucket = adminStorage.bucket();
-      const fileRef = bucket.file(filePath);
+        console.log(`服务端开始上传图片 (尝试 ${attempt}/${maxRetries}):`, {
+          fileName,
+          fileSize: file.size,
+          fileType: file.type,
+        });
 
-      // 将 File 转换为 Buffer
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+        // 获取存储桶
+        const bucket = adminStorage.bucket();
+        const fileRef = bucket.file(filePath);
 
-      // 设置上传选项
-      const options = {
-        metadata: {
-          contentType: file.type,
+        // 将 File 转换为 Buffer
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        // 设置上传选项
+        const options = {
           metadata: {
-            originalName: file.name,
-            uploadTime: new Date().toISOString(),
+            contentType: file.type,
+            metadata: {
+              originalName: file.name,
+              uploadTime: new Date().toISOString(),
+            },
           },
-        },
-      };
+          timeout: 30000, // 30秒超时
+        };
 
-      // 上传文件
-      await fileRef.save(buffer, options);
+        // 上传文件
+        await fileRef.save(buffer, options);
 
-      // 使公开访问
-      await fileRef.makePublic();
+        // 使公开访问
+        await fileRef.makePublic();
 
-      // 生成公开访问URL
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+        // 生成公开访问URL
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
-      console.log("服务端图片上传成功:", publicUrl);
-      return publicUrl;
-    } catch (error: any) {
-      console.error("服务端图片上传失败:", error);
-      throw new Error(`服务端图片上传失败: ${error.message || "未知错误"}`);
+        console.log("服务端图片上传成功:", publicUrl);
+        return publicUrl;
+      } catch (error: any) {
+        lastError = error;
+        console.error(`服务端图片上传失败 (尝试 ${attempt}/${maxRetries}):`, error);
+        
+        // 如果是网络错误且还有重试机会，则继续重试
+        if ((error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') && attempt < maxRetries) {
+          console.log(`网络错误，${2000 * attempt}ms后重试...`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        
+        // 如果不是网络错误或已达到最大重试次数，直接抛出错误
+        break;
+      }
     }
+
+    throw new Error(`服务端图片上传失败: ${lastError?.message || "未知错误"}`);
   }
   // 服务端删除图片
   static async deleteImage(imageUrl: string): Promise<void> {

@@ -12,8 +12,8 @@ export function useTagGroups() {
     try {
       setIsLoading(true);
       setError(null);
-
-      const tagGroups = await dataService.getAllTagGroups();
+      
+      const tagGroups = await dataService.getTagGroups();
       setTagGroups(tagGroups);
     } catch (err) {
       console.error("获取标签分组失败:", err);
@@ -25,21 +25,14 @@ export function useTagGroups() {
 
   // 创建标签分组
   const createTagGroup = async (
-    tagGroupData: Omit<TagGroup, "id" | "createdAt" | "updatedAt">,
+    tagGroupData: Omit<TagGroup, "id" | "createdAt" | "updatedAt" | "sortOrder">,
   ) => {
     try {
       setError(null);
-
-      const result = await dataService.createTagGroup(tagGroupData);
-
-      if (result.success && result.data) {
-        setTagGroups((prev) => [...prev, result.data!]);
-        return result.data;
-      } else {
-        const errorMsg = result.error || "创建标签分组失败";
-        setError(errorMsg);
-        throw new Error(errorMsg);
-      }
+      
+      const newTagGroup = await dataService.addTagGroup(tagGroupData);
+      setTagGroups((prev) => [...prev, newTagGroup]);
+      return newTagGroup;
     } catch (err) {
       console.error("创建标签分组失败:", err);
       const errorMsg = err instanceof Error ? err.message : "创建标签分组失败";
@@ -55,18 +48,11 @@ export function useTagGroups() {
   ) => {
     try {
       setError(null);
-
-      const result = await dataService.updateTagGroup(id, updates);
-
-      if (result.success && result.data) {
-        setTagGroups((prev) =>
-          prev.map((tagGroup) => (tagGroup.id === id ? result.data! : tagGroup)),
-        );
-      } else {
-        const errorMsg = result.error || "更新标签分组失败";
-        setError(errorMsg);
-        throw new Error(errorMsg);
-      }
+      
+      await dataService.updateTagGroup(id, updates);
+      setTagGroups((prev) =>
+        prev.map((tagGroup) => (tagGroup.id === id ? { ...tagGroup, ...updates } : tagGroup)),
+      );
     } catch (err) {
       console.error("更新标签分组失败:", err);
       const errorMsg = err instanceof Error ? err.message : "更新标签分组失败";
@@ -79,16 +65,9 @@ export function useTagGroups() {
   const deleteTagGroup = async (id: string) => {
     try {
       setError(null);
-
-      const result = await dataService.deleteTagGroup(id);
-
-      if (result.success) {
-        setTagGroups((prev) => prev.filter((tagGroup) => tagGroup.id !== id));
-      } else {
-        const errorMsg = result.error || "删除标签分组失败";
-        setError(errorMsg);
-        throw new Error(errorMsg);
-      }
+      
+      await dataService.deleteTagGroup(id);
+      setTagGroups((prev) => prev.filter((tagGroup) => tagGroup.id !== id));
     } catch (err) {
       console.error("删除标签分组失败:", err);
       const errorMsg = err instanceof Error ? err.message : "删除标签分组失败";
@@ -101,6 +80,22 @@ export function useTagGroups() {
     fetchTagGroups();
   }, []);
 
+  // 重新排序标签分组
+  const reorderTagGroups = async (tagGroupIds: string[]) => {
+    try {
+      setError(null);
+      
+      await dataService.reorderTagGroups(tagGroupIds);
+      // 重新获取标签分组以更新排序
+      await fetchTagGroups();
+    } catch (err) {
+      console.error("重新排序标签分组失败:", err);
+      const errorMsg = err instanceof Error ? err.message : "重新排序标签分组失败";
+      setError(errorMsg);
+      throw err;
+    }
+  };
+
   return {
     tagGroups,
     isLoading,
@@ -108,6 +103,7 @@ export function useTagGroups() {
     createTagGroup,
     updateTagGroup,
     deleteTagGroup,
+    reorderTagGroups,
     refetch: fetchTagGroups,
   };
 }

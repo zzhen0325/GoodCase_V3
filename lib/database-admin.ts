@@ -1,9 +1,10 @@
 import { getServerFirebase } from "./firebase-server";
+import { Timestamp } from "firebase-admin/firestore";
 import type {
   ImageData,
   ImageDocument,
   PromptDocument,
-  Prompt,
+  PromptBlock,
   ExportData,
   TagGroup,
   TagGroupDocument,
@@ -37,32 +38,46 @@ export class DatabaseAdmin {
         // 获取关联的提示词
         const promptsSnapshot = await db
           .collection(COLLECTIONS.PROMPTS)
-          .where("imageId", "==", imageData.id)
-          .orderBy("order")
+          .where("imageId", "==", doc.id)
+          .orderBy("createdAt", "asc")
           .get();
 
-        const prompts: Prompt[] = promptsSnapshot.docs.map((promptDoc: any) => {
+        const prompts: PromptBlock[] = promptsSnapshot.docs.map((promptDoc: any) => {
           const promptData = promptDoc.data() as PromptDocument;
           return {
-            id: promptData.id,
-            title: promptData.title,
-            content: promptData.content,
+            id: promptDoc.id,
+            text: promptData.text || '',
+            category: promptData.category,
+            tags: promptData.tags || [],
+            usageCount: promptData.usageCount || 0,
+            isTemplate: promptData.isTemplate || false,
             color: promptData.color,
-            order: promptData.order,
-            createdAt: promptData.createdAt,
-            updatedAt: promptData.updatedAt,
+            createdAt: promptData.createdAt?.toDate?.() || new Date(),
+            updatedAt: promptData.updatedAt?.toDate?.() || new Date(),
           };
         });
 
         images.push({
-          id: imageData.id,
+          id: doc.id,
           url: imageData.url,
+          thumbnailUrl: imageData.thumbnailUrl,
           title: imageData.title,
-          prompts,
-          tagIds: imageData.tagIds || [],
-          createdAt: imageData.createdAt,
-          updatedAt: imageData.updatedAt,
-          usageCount: imageData.usageCount,
+          description: imageData.description,
+          prompt: prompts.length > 0 ? prompts[0].text : '', // 保留向后兼容
+          prompts: prompts, // 新增完整的提示词数组
+          tags: imageData.tags || [],
+          createdAt: imageData.createdAt?.toDate?.() || new Date(),
+          updatedAt: imageData.updatedAt?.toDate?.() || new Date(),
+          size: {
+            width: imageData.width || 0,
+            height: imageData.height || 0,
+            fileSize: imageData.fileSize || 0,
+          },
+          metadata: {
+            format: imageData.format || 'unknown',
+            colorSpace: imageData.colorSpace,
+            hasTransparency: imageData.hasTransparency,
+          },
         });
       }
 
@@ -74,7 +89,7 @@ export class DatabaseAdmin {
   }
 
   // 获取所有提示词
-  static async getAllPrompts(): Promise<Prompt[]> {
+  static async getAllPrompts(): Promise<PromptBlock[]> {
     try {
       const { db } = await getServerFirebase();
       const promptsSnapshot = await db
@@ -85,13 +100,15 @@ export class DatabaseAdmin {
       return promptsSnapshot.docs.map((doc: any) => {
         const data = doc.data() as PromptDocument;
         return {
-          id: data.id,
-          title: data.title,
-          content: data.content,
+          id: doc.id,
+          text: data.text || '',
+          category: data.category,
+          tags: data.tags || [],
+          usageCount: data.usageCount || 0,
+          isTemplate: data.isTemplate || false,
           color: data.color,
-          order: data.order,
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date(),
         };
       });
     } catch (error) {
@@ -112,10 +129,14 @@ export class DatabaseAdmin {
 
       const exportData: ExportData = {
         version: "2.0",
-        exportedAt: new Date().toISOString(),
+        exportDate: new Date(),
         images,
+        tags: [],
+        tagGroups: [],
+        prompts,
         metadata: {
           totalImages: images.length,
+          totalTags: 0,
           totalPrompts: prompts.length,
         },
       };
@@ -188,20 +209,23 @@ export class DatabaseAdmin {
   }
 
   // 创建图片（管理员版本）
-  static async createImage(imageData: any): Promise<string> {
+  static async createImage(imageData: Partial<ImageData> & { url: string; title: string }): Promise<string> {
     try {
       const { db } = await getServerFirebase();
-      const now = new Date().toISOString();
+      const now = Timestamp.now();
       const imageRef = db.collection(COLLECTIONS.IMAGES).doc();
 
       const imageDoc: ImageDocument = {
         id: imageRef.id,
         url: imageData.url,
         title: imageData.title,
-        tagIds: imageData.tagIds || [],
+        tags: imageData.tags || [],
+        width: imageData.size?.width || 0,
+        height: imageData.size?.height || 0,
+        fileSize: imageData.size?.fileSize || 0,
+        format: imageData.metadata?.format || 'unknown',
         createdAt: now,
         updatedAt: now,
-        usageCount: 0,
       };
 
       await imageRef.set(imageDoc);
@@ -212,11 +236,12 @@ export class DatabaseAdmin {
           const promptRef = db.collection(COLLECTIONS.PROMPTS).doc();
           const promptDoc: PromptDocument = {
             id: promptRef.id,
-            imageId: imageRef.id,
-            title: prompt.title,
-            content: prompt.content,
-            color: prompt.color,
-            order: prompt.order,
+            text: prompt.text || '',
+            category: prompt.category || 'general',
+            tags: prompt.tags || [],
+            usageCount: prompt.usageCount || 0,
+            isTemplate: prompt.isTemplate || false,
+            imageId: imageRef.id, // 关联到图片ID
             createdAt: now,
             updatedAt: now,
           };
@@ -256,29 +281,53 @@ export class DatabaseAdmin {
           id: imageRef.id,
           url: image.url,
           title: image.title,
-          tagIds: image.tagIds || [],
-          createdAt: image.createdAt,
-          updatedAt: image.updatedAt,
-          usageCount: image.usageCount || 0,
+          tags: image.tags || [],
+          width: image.size?.width || 0,
+          height: image.size?.height || 0,
+          fileSize: image.size?.fileSize || 0,
+          format: image.metadata?.format || 'unknown',
+          createdAt: typeof image.createdAt === 'string' ? Timestamp.fromDate(new Date(image.createdAt)) : image.createdAt,
+          updatedAt: typeof image.updatedAt === 'string' ? Timestamp.fromDate(new Date(image.updatedAt)) : image.updatedAt,
         };
         await imageRef.set(imageDoc);
         importedImages++;
 
-        // 导入提示词
-        for (const prompt of image.prompts) {
+        // 导入提示词（如果存在）
+        if (image.prompt) {
           const promptRef = db.collection(COLLECTIONS.PROMPTS).doc();
           const promptDoc: PromptDocument = {
             id: promptRef.id,
+            text: image.prompt,
+            category: 'imported',
+            tags: image.tags || [],
+            usageCount: 0,
+            isTemplate: false,
             imageId: imageRef.id,
-            title: prompt.title,
-            content: prompt.content,
-            color: prompt.color,
-            order: prompt.order,
-            createdAt: prompt.createdAt || image.createdAt,
-            updatedAt: prompt.updatedAt || image.updatedAt,
+            createdAt: typeof image.createdAt === 'string' ? Timestamp.fromDate(new Date(image.createdAt)) : image.createdAt,
+            updatedAt: typeof image.updatedAt === 'string' ? Timestamp.fromDate(new Date(image.updatedAt)) : image.updatedAt,
           };
           await promptRef.set(promptDoc);
           importedPrompts++;
+        }
+
+        // 兼容旧格式的prompts数组
+        if ((image as any).prompts && Array.isArray((image as any).prompts)) {
+          for (const prompt of (image as any).prompts) {
+          const promptRef = db.collection(COLLECTIONS.PROMPTS).doc();
+          const promptDoc: PromptDocument = {
+            id: promptRef.id,
+            text: prompt.text || prompt.title || prompt.content || '',
+            category: prompt.category || 'imported',
+            tags: prompt.tags || [],
+            usageCount: prompt.usageCount || 0,
+            isTemplate: prompt.isTemplate || false,
+            imageId: imageRef.id,
+            createdAt: typeof (prompt.createdAt || image.createdAt) === 'string' ? Timestamp.fromDate(new Date(prompt.createdAt || image.createdAt)) : (prompt.createdAt || image.createdAt),
+            updatedAt: typeof (prompt.updatedAt || image.updatedAt) === 'string' ? Timestamp.fromDate(new Date(prompt.updatedAt || image.updatedAt)) : (prompt.updatedAt || image.updatedAt),
+          };
+          await promptRef.set(promptDoc);
+          importedPrompts++;
+          }
         }
 
         // 标签现在直接存储在图片文档中
@@ -323,11 +372,11 @@ export class DatabaseAdmin {
         // 获取该分组下的标签数量
         const tagsSnapshot = await db
           .collection(COLLECTIONS.TAGS)
-          .where("groupId", "==", data.id)
+          .where("groupId", "==", doc.id)
           .get();
 
         tagGroups.push({
-          id: data.id,
+          id: doc.id,
           name: data.name,
           color: data.color,
           tagCount: tagsSnapshot.size,
@@ -358,11 +407,11 @@ export class DatabaseAdmin {
       // 获取该分组下的标签数量
       const tagsSnapshot = await db
         .collection(COLLECTIONS.TAGS)
-        .where("groupId", "==", data.id)
+        .where("groupId", "==", doc.id)
         .get();
 
       return {
-        id: data.id,
+        id: doc.id,
         name: data.name,
         color: data.color,
         tagCount: tagsSnapshot.size,
@@ -382,13 +431,14 @@ export class DatabaseAdmin {
   }): Promise<TagGroup> {
     try {
       const { db } = await getServerFirebase();
-      const now = new Date().toISOString();
+      const now = Timestamp.now();
       const ref = db.collection(COLLECTIONS.TAG_GROUPS).doc();
 
       const tagGroupDoc: TagGroupDocument = {
         id: ref.id,
         name: data.name,
         color: data.color,
+        tagCount: 0,
         createdAt: now,
         updatedAt: now,
       };
@@ -400,8 +450,8 @@ export class DatabaseAdmin {
         name: data.name,
         color: data.color,
         tagCount: 0,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: now.toDate(),
+        updatedAt: now.toDate(),
       };
     } catch (error) {
       console.error("创建标签分组失败:", error);
@@ -416,7 +466,7 @@ export class DatabaseAdmin {
   ): Promise<TagGroup> {
     try {
       const { db } = await getServerFirebase();
-      const now = new Date().toISOString();
+      const now = Timestamp.now();
 
       const updateData = {
         name: data.name,
@@ -464,8 +514,9 @@ export class DatabaseAdmin {
       return snapshot.docs.map((doc: any) => {
         const data = doc.data() as TagDocument;
         return {
-          id: data.id,
+          id: doc.id,
           name: data.name,
+          color: data.color,
           groupId: data.groupId,
           usageCount: data.usageCount,
           createdAt: data.createdAt,
@@ -491,8 +542,9 @@ export class DatabaseAdmin {
       return snapshot.docs.map((doc: any) => {
         const data = doc.data() as TagDocument;
         return {
-          id: data.id,
+          id: doc.id,
           name: data.name,
+          color: data.color,
           groupId: data.groupId,
           usageCount: data.usageCount,
           createdAt: data.createdAt,
@@ -508,16 +560,18 @@ export class DatabaseAdmin {
   // 创建标签
   static async createTag(data: {
     name: string;
+    color: string;
     groupId: string;
   }): Promise<Tag> {
     try {
       const { db } = await getServerFirebase();
-      const now = new Date().toISOString();
+      const now = Timestamp.now();
       const ref = db.collection(COLLECTIONS.TAGS).doc();
 
       const tagDoc: TagDocument = {
         id: ref.id,
         name: data.name,
+        color: data.color,
         groupId: data.groupId,
         usageCount: 0,
         createdAt: now,
@@ -529,10 +583,11 @@ export class DatabaseAdmin {
       return {
         id: ref.id,
         name: data.name,
+        color: data.color,
         groupId: data.groupId,
         usageCount: 0,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: now.toDate(),
+        updatedAt: now.toDate(),
       };
     } catch (error) {
       console.error("创建标签失败:", error);
@@ -543,14 +598,15 @@ export class DatabaseAdmin {
   // 更新标签
   static async updateTag(
     id: string,
-    data: { name: string; groupId: string },
+    data: { name: string; color: string; groupId: string },
   ): Promise<Tag> {
     try {
       const { db } = await getServerFirebase();
-      const now = new Date().toISOString();
+      const now = Timestamp.now();
 
       const updateData = {
         name: data.name,
+        color: data.color,
         groupId: data.groupId,
         updatedAt: now,
       };
@@ -565,8 +621,9 @@ export class DatabaseAdmin {
 
       const tagData = doc.data() as TagDocument;
       return {
-        id: tagData.id,
+        id: doc.id,
         name: tagData.name,
+        color: tagData.color,
         groupId: tagData.groupId,
         usageCount: tagData.usageCount,
         createdAt: tagData.createdAt,
@@ -595,17 +652,17 @@ export class DatabaseAdmin {
       const { db } = await getServerFirebase();
       const imagesSnapshot = await db
         .collection(COLLECTIONS.IMAGES)
-        .where("tagIds", "array-contains", tagId)
+        .where("tags", "array-contains", tagId)
         .get();
 
       const batch = db.batch();
 
       imagesSnapshot.docs.forEach((doc: any) => {
         const imageData = doc.data() as ImageDocument;
-        const updatedTagIds = imageData.tagIds.filter((id) => id !== tagId);
+        const updatedTags = imageData.tags.filter((id) => id !== tagId);
         batch.update(doc.ref, {
-          tagIds: updatedTagIds,
-          updatedAt: new Date().toISOString(),
+          tags: updatedTags,
+          updatedAt: Timestamp.now(),
         });
       });
 
@@ -636,7 +693,7 @@ export class DatabaseAdmin {
 
         transaction.update(tagRef, {
           usageCount: newUsageCount,
-          updatedAt: new Date().toISOString(),
+          updatedAt: Timestamp.now(),
         });
       });
     } catch (error) {

@@ -51,7 +51,7 @@ import {
 import { PromptBlock } from "./prompt-block";
 import { useTagOperations } from "@/hooks/use-tag-operations";
 
-import { ImageData, Prompt, AVAILABLE_COLORS } from "@/types";
+import { ImageData, PromptBlock as PromptBlockType, AVAILABLE_COLORS } from "@/types";
 import { generateId, copyToClipboard, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -74,7 +74,7 @@ interface ImagePreviewProps {
 
 interface ImageActionsProps {
   isEditing: boolean;
-  prompts: Prompt[];
+  prompts: PromptBlockType[];
   onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
@@ -246,7 +246,7 @@ function ImageInfo({
         setNewTagName("");
         setSelectedGroupId("");
         setShowAddTag(false);
-        refreshTags();
+        // createTag 已经包含了刷新逻辑，无需重复调用
         toast.success("标签创建并添加成功");
       }
     } catch (error) {
@@ -308,7 +308,7 @@ function ImageInfo({
                   {isEditing && (
                     <X
                       className="w-3 h-3 cursor-pointer hover:text-red-500"
-                      onClick={() => handleRemoveTag(tag.id)}
+                      onClick={() => handleRemoveTag(tag.name)}
                     />
                   )}
                 </Badge>
@@ -482,7 +482,7 @@ export function ImageModal({
   // 状态管理
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<PromptBlockType[]>([]);
   const [editedTagIds, setEditedTagIds] = useState<string[]>([]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -500,22 +500,22 @@ export function ImageModal({
   useEffect(() => {
     if (image && isOpen) {
       setEditedTitle(image.title);
-      setPrompts(
-        image.prompt
-          ? [
-              {
-                id: generateId(),
-                text: image.prompt,
-                category: "",
-                tags: [],
-                usageCount: 0,
-                isTemplate: false,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            ]
-          : [],
-      );
+      // 优先使用promptBlocks数组，如果没有则使用description作为后备
+      if (image.promptBlocks && image.promptBlocks.length > 0) {
+        setPrompts(image.promptBlocks);
+      } else if (image.description) {
+        setPrompts([
+          {
+            id: generateId(),
+            text: image.description,
+            sortOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ]);
+      } else {
+        setPrompts([]);
+      }
       // 初始化编辑中的标签为图片当前标签
       setEditedTagIds([...(image.tags || [])]);
       setIsEditing(false);
@@ -554,8 +554,8 @@ export function ImageModal({
     try {
       const updateData = {
         title: editedTitle,
-        prompts: prompts,
-        tagIds: editedTagIds,
+        promptBlocks: prompts,
+        tags: editedTagIds,
       };
 
       // 所有标签变更同步到数据库
@@ -572,23 +572,23 @@ export function ImageModal({
   const cancelEdit = () => {
     if (image) {
       // 重置为编辑前的状态
-      setEditedTitle(image.title);
-      setPrompts(
-        image.prompt
-          ? [
-              {
-                id: generateId(),
-                text: image.prompt,
-                category: "",
-                tags: [],
-                usageCount: 0,
-                isTemplate: false,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            ]
-          : [],
-      );
+    setEditedTitle(image.title);
+    // 优先使用promptBlocks数组，如果没有则使用description作为后备
+    if (image.promptBlocks && image.promptBlocks.length > 0) {
+      setPrompts(image.promptBlocks);
+    } else if (image.description) {
+      setPrompts([
+        {
+          id: generateId(),
+          text: image.description,
+          sortOrder: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+    } else {
+      setPrompts([]);
+    }
       setEditedTagIds([...(image.tags || [])]);
       toast.info("已取消编辑");
     }
@@ -716,13 +716,10 @@ export function ImageModal({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        const newPrompt: Prompt = {
+                        const newPrompt: PromptBlockType = {
                           id: generateId(),
                           text: "",
-                          category: "",
-                          tags: [],
-                          usageCount: 0,
-                          isTemplate: false,
+                          sortOrder: prompts.length,
                           createdAt: new Date(),
                           updatedAt: new Date(),
                         };
@@ -757,7 +754,12 @@ export function ImageModal({
                           oldIndex,
                           newIndex,
                         );
-                        setPrompts(reorderedPrompts);
+                        // 更新排序字段
+                        const updatedPrompts = reorderedPrompts.map((item, index) => ({
+                          ...item,
+                          sortOrder: index,
+                        }));
+                        setPrompts(updatedPrompts);
                       }
                       setActiveId(null);
                     }}
@@ -771,7 +773,7 @@ export function ImageModal({
                           key={prompt.id}
                           prompt={prompt}
                           isEditing={isEditing}
-                          onUpdate={(id: string, updates: Partial<Prompt>) => {
+                          onUpdate={(id: string, updates: Partial<PromptBlockType>) => {
                             const updatedPrompts = prompts.map((prompt) =>
                               prompt.id === id
                                 ? { ...prompt, ...updates }
@@ -813,13 +815,10 @@ export function ImageModal({
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const newPrompt: Prompt = {
+                            const newPrompt: PromptBlockType = {
                               id: generateId(),
                               text: "",
-                              category: "",
-                              tags: [],
-                              usageCount: 0,
-                              isTemplate: false,
+                              sortOrder: prompts.length,
                               createdAt: new Date(),
                               updatedAt: new Date(),
                             };
@@ -849,8 +848,12 @@ export function ImageModal({
                     deleteStatus={deleteStatus}
                     onUpdate={(updates) => {
                       if (updates.tags) {
-                        // 只更新本地状态，不同步到数据库
+                        // 更新本地状态
                         setEditedTagIds(updates.tags);
+                        // 如果不在编辑模式，立即保存到数据库
+                        if (!isEditing && image) {
+                          onUpdate(image.id, { tags: updates.tags });
+                        }
                       }
                     }}
                   />

@@ -7,12 +7,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { name, groupId } = await request.json();
+    const { name, color, groupId } = await request.json();
     const { id } = await params;
 
-    if (!name || !groupId) {
+    if (!name || !color || !groupId) {
       return NextResponse.json(
-        { success: false, error: "标签名称和分组ID不能为空" },
+        { success: false, error: "标签名称、颜色和分组ID不能为空" },
         { status: 400 },
       );
     }
@@ -26,7 +26,7 @@ export async function PUT(
       );
     }
 
-    const tag = await DatabaseAdmin.updateTag(id, { name, groupId });
+    const tag = await DatabaseAdmin.updateTag(id, { name, color, groupId });
     return NextResponse.json({ success: true, data: tag });
   } catch (error) {
     console.error("更新标签失败:", error);
