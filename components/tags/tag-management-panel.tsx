@@ -788,16 +788,6 @@ export function TagManagementPanel({
           {/* 工具栏 */}
           <div className="flex items-center justify-between gap-4 py-2">
             <div className="flex items-center gap-2 flex-1">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="搜索分组或标签..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-
               {selectedTags.length > 0 && (
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">
