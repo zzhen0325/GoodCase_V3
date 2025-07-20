@@ -34,29 +34,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Plus,
-  Search,
   Trash2,
-  Edit,
   Edit2,
   FolderPlus,
-  Tags as TagsIcon,
-  BarChart3,
   Move,
 } from 'lucide-react';
 import { TagGroup, Tag } from '@/types';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { createPortal } from 'react-dom';
 import { TagGroupItem } from './tag-group-item';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { cn } from '@/lib/utils';
@@ -67,81 +50,57 @@ interface TagManagementPanelProps {
   className?: string;
 }
 
-interface CreateGroupDialogProps {
+interface CreateCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: { name: string; color: string }) => void;
+  onConfirm: (data: { name: string }) => void;
 }
 
 interface CreateTagDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: { name: string; groupId: string }) => void;
-  tagGroups: TagGroup[];
-  defaultGroupId?: string;
+  onConfirm: (data: { name: string; categoryId?: string }) => void;
+  tagCategories: TagGroup[];
+  defaultCategoryId?: string;
 }
 
-interface EditGroupDialogProps {
+interface EditCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: { name: string; color: string }) => void;
-  group: TagGroup | null;
+  onConfirm: (data: { name: string }) => void;
+  category: TagGroup | null;
 }
 
 interface EditTagDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: { name: string; groupId: string }) => void;
-  tagGroups: TagGroup[];
   tag: Tag | null;
+  onConfirm: (data: { name: string; categoryId?: string }) => void;
+  tagCategories: TagGroup[];
 }
 
 interface MoveTagDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (groupId: string) => void;
-  tagGroups: TagGroup[];
+  onConfirm: (categoryId: string) => void;
+  tagCategories: TagGroup[];
   selectedTags: Tag[];
 }
 
-// 颜色选项
-const COLOR_OPTIONS = [
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#eab308',
-  '#84cc16',
-  '#22c55e',
-  '#10b981',
-  '#14b8a6',
-  '#06b6d4',
-  '#0ea5e9',
-  '#3b82f6',
-  '#6366f1',
-  '#8b5cf6',
-  '#a855f7',
-  '#d946ef',
-  '#ec4899',
-  '#f43f5e',
-  '#64748b',
-  '#6b7280',
-  '#374151',
-];
 
-// 创建分组对话框
-function CreateGroupDialog({
+
+// 创建分类对话框
+function CreateCategoryDialog({
   open,
   onOpenChange,
   onConfirm,
-}: CreateGroupDialogProps) {
+}: CreateCategoryDialogProps) {
   const [name, setName] = useState('');
-  const [color, setColor] = useState(COLOR_OPTIONS[0]);
 
   const handleSubmit = () => {
     if (name.trim()) {
-      onConfirm({ name: name.trim(), color });
+      onConfirm({ name: name.trim() });
       setName('');
-      setColor(COLOR_OPTIONS[0]);
       onOpenChange(false);
     }
   };
@@ -150,41 +109,22 @@ function CreateGroupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>创建标签分组</DialogTitle>
+          <DialogTitle>创建标签分类</DialogTitle>
           <DialogDescription>
-            创建一个新的标签分组来组织您的标签。
+            创建一个新的标签分类来组织您的标签。
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="group-name">分组名称</Label>
+            <Label htmlFor="category-name">分类名称</Label>
             <Input
-              id="group-name"
+              id="category-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="输入分组名称"
+              placeholder="输入分类名称"
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
-          </div>
-
-          <div>
-            <Label>分组颜色</Label>
-            <div className="grid grid-cols-10 gap-2 mt-2">
-              {COLOR_OPTIONS.map((colorOption) => (
-                <button
-                  key={colorOption}
-                  className={cn(
-                    'w-6 h-6 rounded-full border-2 transition-all',
-                    color === colorOption
-                      ? 'border-foreground scale-110'
-                      : 'border-transparent'
-                  )}
-                  style={{ backgroundColor: colorOption }}
-                  onClick={() => setColor(colorOption)}
-                />
-              ))}
-            </div>
           </div>
         </div>
 
@@ -206,32 +146,36 @@ function CreateTagDialog({
   open,
   onOpenChange,
   onConfirm,
-  tagGroups,
-  defaultGroupId,
+  tagCategories,
+  defaultCategoryId,
 }: CreateTagDialogProps) {
   const [name, setName] = useState('');
-  const [groupId, setGroupId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
 
-  // 确保groupId在tagGroups变化时正确初始化
+  // 确保categoryId在tagCategories变化时正确初始化
   React.useEffect(() => {
-    if (tagGroups.length > 0) {
-      setGroupId(defaultGroupId || tagGroups[0].id);
+    if (tagCategories.length > 0) {
+      setCategoryId(defaultCategoryId || tagCategories[0].id);
+    } else {
+      setCategoryId(''); // 没有分类时设置为空
     }
-  }, [tagGroups, defaultGroupId]);
+  }, [tagCategories, defaultCategoryId]);
 
   // 重置表单状态当对话框打开时
   React.useEffect(() => {
     if (open) {
       setName('');
-      if (tagGroups.length > 0) {
-        setGroupId(defaultGroupId || tagGroups[0].id);
+      if (tagCategories.length > 0) {
+        setCategoryId(defaultCategoryId || tagCategories[0].id);
+      } else {
+        setCategoryId(''); // 没有分类时设置为空
       }
     }
-  }, [open, tagGroups, defaultGroupId]);
+  }, [open, tagCategories, defaultCategoryId]);
 
   const handleSubmit = () => {
-    if (name.trim() && groupId) {
-      onConfirm({ name: name.trim(), groupId });
+    if (name.trim()) {
+      onConfirm({ name: name.trim(), categoryId: categoryId || undefined });
       setName('');
       onOpenChange(false);
     }
@@ -242,7 +186,7 @@ function CreateTagDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>创建标签</DialogTitle>
-          <DialogDescription>在指定分组中创建一个新标签。</DialogDescription>
+          <DialogDescription>在指定分类中创建一个新标签。</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -258,19 +202,25 @@ function CreateTagDialog({
           </div>
 
           <div>
-            <Label htmlFor="tag-group">所属分组</Label>
-            <select
-              id="tag-group"
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-              className="w-full p-2 border rounded-md"
-            >
-              {tagGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
+            <Label htmlFor="tag-category">所属分类</Label>
+            {tagCategories.length > 0 ? (
+              <select
+                id="tag-category"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full p-2 border rounded-md"
+              >
+                {tagCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full p-2 border rounded-md bg-muted text-muted-foreground text-sm">
+                暂无分类，标签将创建为未分类状态
+              </div>
+            )}
           </div>
         </div>
 
@@ -278,7 +228,7 @@ function CreateTagDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!name?.trim() || !groupId}>
+          <Button onClick={handleSubmit} disabled={!name?.trim()}>
             创建
           </Button>
         </DialogFooter>
@@ -287,26 +237,24 @@ function CreateTagDialog({
   );
 }
 
-// 编辑分组对话框
-function EditGroupDialog({
+// 编辑分类对话框
+function EditCategoryDialog({
   open,
   onOpenChange,
   onConfirm,
-  group,
-}: EditGroupDialogProps) {
-  const [name, setName] = useState(group?.name || '');
-  const [color, setColor] = useState(group?.color || COLOR_OPTIONS[0]);
+  category,
+}: EditCategoryDialogProps) {
+  const [name, setName] = useState(category?.name || '');
 
   React.useEffect(() => {
-    if (group) {
-      setName(group.name);
-      setColor(group.color);
+    if (category) {
+      setName(category.name);
     }
-  }, [group]);
+  }, [category]);
 
   const handleSubmit = () => {
     if (name.trim()) {
-      onConfirm({ name: name.trim(), color });
+      onConfirm({ name: name.trim() });
       onOpenChange(false);
     }
   };
@@ -315,39 +263,20 @@ function EditGroupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>编辑标签分组</DialogTitle>
-          <DialogDescription>修改标签分组的名称和颜色。</DialogDescription>
+          <DialogTitle>编辑标签分类</DialogTitle>
+          <DialogDescription>修改标签分类的名称。</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="edit-group-name">分组名称</Label>
+            <Label htmlFor="edit-category-name">分类名称</Label>
             <Input
-              id="edit-group-name"
+              id="edit-category-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="输入分组名称"
+              placeholder="输入分类名称"
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
-          </div>
-
-          <div>
-            <Label>分组颜色</Label>
-            <div className="grid grid-cols-10 gap-2 mt-2">
-              {COLOR_OPTIONS.map((colorOption) => (
-                <button
-                  key={colorOption}
-                  className={cn(
-                    'w-6 h-6 rounded-full border-2 transition-all',
-                    color === colorOption
-                      ? 'border-foreground scale-110'
-                      : 'border-transparent'
-                  )}
-                  style={{ backgroundColor: colorOption }}
-                  onClick={() => setColor(colorOption)}
-                />
-              ))}
-            </div>
           </div>
         </div>
 
@@ -369,22 +298,27 @@ function EditTagDialog({
   open,
   onOpenChange,
   onConfirm,
-  tagGroups,
+  tagCategories,
   tag,
 }: EditTagDialogProps) {
   const [name, setName] = useState('');
-  const [groupId, setGroupId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
 
   React.useEffect(() => {
     if (tag) {
       setName(tag.name);
-      setGroupId(tag.groupId || '');
+      // 如果标签没有分类且有可用分类，设置为第一个分类
+      if (!tag.categoryId && tagCategories.length > 0) {
+        setCategoryId(tagCategories[0].id);
+      } else {
+        setCategoryId(tag.categoryId || '');
+      }
     }
-  }, [tag]);
+  }, [tag, tagCategories]);
 
   const handleSubmit = () => {
-    if (name.trim() && groupId) {
-      onConfirm({ name: name.trim(), groupId });
+    if (name.trim()) {
+      onConfirm({ name: name.trim(), categoryId: categoryId || undefined });
       onOpenChange(false);
     }
   };
@@ -394,7 +328,7 @@ function EditTagDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>编辑标签</DialogTitle>
-          <DialogDescription>修改标签的名称和所属分组。</DialogDescription>
+          <DialogDescription>修改标签的名称和所属分类。</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -410,19 +344,26 @@ function EditTagDialog({
           </div>
 
           <div>
-            <Label htmlFor="edit-tag-group">所属分组</Label>
-            <select
-              id="edit-tag-group"
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-              className="w-full p-2 border rounded-md"
-            >
-              {tagGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
+            <Label htmlFor="edit-tag-category">所属分类</Label>
+            {tagCategories.length > 0 ? (
+              <select
+                id="edit-tag-category"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="">无分类</option>
+                {tagCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full p-2 border rounded-md bg-muted text-muted-foreground">
+                暂无分类，标签将保持为未分类状态
+              </div>
+            )}
           </div>
         </div>
 
@@ -430,7 +371,7 @@ function EditTagDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!name?.trim() || !groupId}>
+          <Button onClick={handleSubmit} disabled={!name?.trim()}>
             保存
           </Button>
         </DialogFooter>
@@ -444,15 +385,15 @@ function MoveTagDialog({
   open,
   onOpenChange,
   onConfirm,
-  tagGroups,
+  tagCategories,
   selectedTags,
 }: MoveTagDialogProps) {
-  const [groupId, setGroupId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
 
   const handleSubmit = () => {
-    if (groupId) {
-      onConfirm(groupId);
-      setGroupId('');
+    if (categoryId) {
+      onConfirm(categoryId);
+      setCategoryId('');
       onOpenChange(false);
     }
   };
@@ -463,7 +404,7 @@ function MoveTagDialog({
         <DialogHeader>
           <DialogTitle>移动标签</DialogTitle>
           <DialogDescription>
-            将选中的 {selectedTags.length} 个标签移动到指定分组。
+            将选中的 {selectedTags.length} 个标签移动到指定分类。
           </DialogDescription>
         </DialogHeader>
 
@@ -480,17 +421,17 @@ function MoveTagDialog({
           </div>
 
           <div>
-            <Label htmlFor="move-tag-group">目标分组</Label>
+            <Label htmlFor="move-tag-category">目标分类</Label>
             <select
-              id="move-tag-group"
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
+              id="move-tag-category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
               className="w-full p-2 border rounded-md"
             >
-              <option value="">请选择目标分组</option>
-              {tagGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
+              <option value="">请选择目标分类</option>
+              {tagCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
                 </option>
               ))}
             </select>
@@ -501,7 +442,7 @@ function MoveTagDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!groupId}>
+          <Button onClick={handleSubmit} disabled={!categoryId}>
             移动
           </Button>
         </DialogFooter>
@@ -519,7 +460,6 @@ export function TagManagementPanel({
     tagGroups,
     tags,
     selectedTags,
-    searchQuery,
     loading,
     error,
     createTag,
@@ -529,108 +469,83 @@ export function TagManagementPanel({
     clearTagSelection,
     selectTagsByGroup,
     deleteSelectedTags,
-    setSearchQuery,
     getTagsByGroup,
-    getFilteredTagGroups,
     refreshAll,
+    createTagGroup,
+    updateTagGroup,
+    deleteTagGroup,
   } = useTagOperations();
 
-  const [localTagGroups, setLocalTagGroups] = useState<TagGroup[]>([]);
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [localTagCategories, setLocalTagCategories] = useState<TagGroup[]>([]);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<Tag | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [showCreateTag, setShowCreateTag] = useState(false);
-  const [createTagGroupId, setCreateTagGroupId] = useState<string>('');
-  const [showEditGroup, setShowEditGroup] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<TagGroup | null>(null);
+  const [createTagCategoryId, setCreateTagCategoryId] = useState<string>('');
+  const [showEditCategory, setShowEditCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<TagGroup | null>(null);
   const [showEditTag, setShowEditTag] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [showMoveTag, setShowMoveTag] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: 'group' | 'tag' | 'selected';
+    type: 'category' | 'tag' | 'selected';
     data?: any;
   }>({ type: 'tag' });
 
 
-  // 切换分组展开状态
-  const toggleGroupExpand = (groupId: string) => {
-    const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(groupId)) {
-      newExpanded.delete(groupId);
+  // 切换分类展开状态
+  const toggleCategoryExpand = (categoryId: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryId)) {
+      newExpanded.delete(categoryId);
     } else {
-      newExpanded.add(groupId);
+      newExpanded.add(categoryId);
     }
-    setExpandedGroups(newExpanded);
+    setExpandedCategories(newExpanded);
   };
 
-  // 创建分组方法
-  const createTagGroup = async (data: { name: string; color: string }) => {
-    const db = getDb();
-    if (!db) {
-      throw new Error('数据库连接失败');
-    }
-    const currentGroups = tagGroups.length > 0 ? tagGroups : localTagGroups;
-    const maxOrder = currentGroups.length > 0 ? Math.max(...currentGroups.map((g: TagGroup) => g.order ?? 0)) : 0;
-    const newGroup: Omit<TagGroup, 'id'> = {
-      name: data.name,
-      color: data.color,
-      order: maxOrder + 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tagCount: 0,
-    };
-    const docRef = await addDoc(collection(db, 'tagGroups'), { ...newGroup, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    const newGroupWithId = { ...newGroup, id: docRef.id };
-    setLocalTagGroups([...currentGroups, newGroupWithId]);
-    // 刷新数据以确保新创建的分组能够显示
-    refreshAll();
-    return { success: true };
-  };
 
-  // 更新分组方法
-  const updateTagGroup = async (id: string, data: { name: string; color: string }) => {
-    console.warn('标签分组功能已简化，暂不支持更新');
-    return { success: false };
-  };
 
-  // 删除分组方法
-  const deleteTagGroup = async (id: string) => {
-    console.warn('标签分组功能已简化，暂不支持删除');
-    return { success: false };
-  };
-
-  // 处理创建分组
-  const handleCreateGroup = async (data: { name: string; color: string }) => {
+  // 处理创建分类
+  const handleCreateCategory = async (data: { name: string }) => {
     try {
       await createTagGroup(data);
     } catch (error) {
-      console.error('创建分组失败:', error);
+      console.error('创建分类失败:', error);
     }
   };
 
   // 处理创建标签
-  const handleCreateTag = async (data: { name: string; groupId: string }) => {
+  const handleCreateTag = async (data: { name: string; categoryId?: string }) => {
     try {
-      await createTag({ ...data, color: '#64748b' });
+      // 随机选择一个颜色主题
+      const colorThemes = ['pink', 'cyan', 'yellow', 'green', 'purple'];
+      const randomColor = colorThemes[Math.floor(Math.random() * colorThemes.length)];
+      
+      await createTag({ 
+        name: data.name, 
+        color: randomColor,
+        categoryId: data.categoryId || undefined
+      });
     } catch (error) {
       console.error('创建标签失败:', error);
     }
   };
 
-  // 处理编辑分组
-  const handleEditGroup = (group: TagGroup) => {
-    setEditingGroup(group);
-    setShowEditGroup(true);
+  // 处理编辑分类
+  const handleEditCategory = (category: TagGroup) => {
+    setEditingCategory(category);
+    setShowEditCategory(true);
   };
 
-  const handleUpdateGroup = async (data: { name: string; color: string }) => {
-    if (editingGroup) {
+  const handleUpdateCategory = async (data: { name: string }) => {
+    if (editingCategory) {
       try {
-        await updateTagGroup(editingGroup.id, data);
+        await updateTagGroup(editingCategory.id, data);
       } catch (error) {
-        console.error('更新分组失败:', error);
+        console.error('更新分类失败:', error);
       }
     }
   };
@@ -641,10 +556,13 @@ export function TagManagementPanel({
     setShowEditTag(true);
   };
 
-  const handleUpdateTag = async (data: { name: string; groupId: string }) => {
+  const handleUpdateTag = async (data: { name: string; categoryId?: string }) => {
     if (editingTag) {
       try {
-        await updateTag(editingTag.id, data);
+        await updateTag(editingTag.id, {
+          name: data.name,
+          categoryId: data.categoryId || undefined
+        });
       } catch (error) {
         console.error('更新标签失败:', error);
       }
@@ -658,18 +576,16 @@ export function TagManagementPanel({
     }
   };
 
-  const handleMoveTagsToGroup = async (groupId: string) => {
+  const handleMoveTagsToCategory = async (categoryId: string) => {
     try {
+      // selectedTags 是字符串数组（标签ID），直接使用
       await Promise.all(
         selectedTags.map((tagId) => {
-          const tag = tags.find((t) => t.id === tagId);
-          if (tag) {
-            return updateTag(tagId, { name: tag.name, groupId });
-          }
-          return Promise.resolve();
+          return updateTag(tagId, { categoryId: categoryId });
         })
       );
       clearTagSelection();
+      setShowMoveTag(false);
     } catch (error) {
       console.error('移动标签失败:', error);
     }
@@ -678,7 +594,7 @@ export function TagManagementPanel({
   // 处理删除确认
   const handleDeleteConfirm = async () => {
     try {
-      if (deleteTarget.type === 'group') {
+      if (deleteTarget.type === 'category') {
         await deleteTagGroup(deleteTarget.data.id);
       } else if (deleteTarget.type === 'tag') {
         await deleteTag(deleteTarget.data.id);
@@ -693,104 +609,51 @@ export function TagManagementPanel({
 
 
 
-  // 添加标签到分组
-  const handleAddTag = (groupId: string) => {
-    setCreateTagGroupId(groupId);
+  // 添加标签到分类
+  const handleAddTag = (categoryId: string) => {
+    setCreateTagCategoryId(categoryId);
     setShowCreateTag(true);
   };
-  const { getFilteredTags } = useTagOperations();
   const groupedTags = getTagsByGroup();
-  const filteredGroups = getFilteredTagGroups();
 
-  // 拖拽state
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
 
-  // 更新分组顺序方法
-  const updateGroupOrder = (newGroups: TagGroup[]) => {
-    console.warn('标签分组功能已简化，暂不支持排序');
-  };
-
-  // 更新标签在分组内的顺序
-  const updateTagOrderInGroup = (groupId: string, newTags: Tag[]) => {
-    console.warn('标签分组功能已简化，暂不支持排序');
-  };
-
-  // 移动标签到其他分组
-  const moveTagToGroup = (tagId: string, toGroupId: string) => {
-    console.warn('标签分组功能已简化，暂不支持跨分组移动');
-  };
-
-  // 分组顺序更新
-  const handleGroupDragEnd = (event: any) => {
-    const { active, over } = event;
-    if (active.id !== over?.id) {
-      const oldIndex = tagGroups.findIndex((g: TagGroup) => g.id === active.id);
-      const newIndex = tagGroups.findIndex((g: TagGroup) => g.id === over.id);
-      // 这里应调用重排分组顺序的 handler
-      if (oldIndex !== -1 && newIndex !== -1) {
-        updateGroupOrder(arrayMove(tagGroups, oldIndex, newIndex));
-      }
-    }
-    setActiveGroupId(null);
-  };
-
-  // 获取分组标签数据 - 暂时使用空对象，因为标签分组功能已简化
-  const groupedTagsData: Record<string, { tags: Tag[] }> = {};
-
-  // 标签拖拽排序、跨分组移动
-  const handleTagDragEnd = (event: any, groupId: string) => {
-    const { active, over } = event;
-    if (!active.data.current) return;
-    const fromGroupId = active.data.current.groupId;
-    const tagId = active.id;
-    if (!fromGroupId) return;
-    // 源数据查找
-    const fromTags = groupedTagsData[fromGroupId]?.tags || [];
-    let toGroupId = groupId;
-    if (!over || !over.data?.current) {
-      setActiveTag(null);
-      return;
-    }
-    // 目标分组 id
-    if (over.data.current.groupId) {
-      toGroupId = over.data.current.groupId;
-    }
-    if (fromGroupId === toGroupId) {
-      // 同组内排序逻辑（可调用后端/状态）
-      const oldIdx = fromTags.findIndex((t: Tag) => t.id === tagId);
-      const newIdx = fromTags.findIndex((t: Tag) => t.id === over.id);
-      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
-        updateTagOrderInGroup(fromGroupId, arrayMove(fromTags, oldIdx, newIdx));
-      }
-    } else {
-      // 跨分组移动
-      moveTagToGroup(tagId, toGroupId);
-    }
-    setActiveTag(null);
-  };
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className={cn('max-w-4xl max-h-[80vh]', className)}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <TagsIcon className="w-5 h-5" />
-              标签管理
-            </DialogTitle>
-            <DialogDescription>
-              管理您的标签分组和标签，组织您的图片内容。
-            </DialogDescription>
-          </DialogHeader>
+          {/* 标题和工具栏 */}
+          <div className="flex items-center justify-between gap-4 py-2 ">
+            <div>
+              <h2 className="text-lg font-semibold">Tag Management</h2>
+              <p className="text-sm text-muted-foreground">管理您的标签和标签分类，创建、编辑、删除和组织标签。</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCreateTag(true)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                新建标签
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCreateCategory(true)}
+              >
+                <FolderPlus className="w-4 h-4 mr-1" />
+                新建分类
+              </Button>
+            </div>
+          </div>
 
-          {/* 工具栏 */}
+          {/* 选择操作栏 */}
           <div className="flex items-center justify-between gap-4 py-2">
             <div className="flex items-center gap-2 flex-1">
               {selectedTags.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="text-black">
                     已选择 {selectedTags.length} 个标签
                   </Badge>
                   <Button
@@ -822,106 +685,74 @@ export function TagManagementPanel({
                 </div>
               )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCreateTag(true)}
-                disabled={tagGroups.length === 0}
-                title={tagGroups.length === 0 ? '请先创建标签分组' : ''}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                新建标签
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCreateGroup(true)}
-              >
-                <FolderPlus className="w-4 h-4 mr-1" />
-                新建分组
-              </Button>
-            </div>
           </div>
 
-          <Separator />
-
-          {/* 统计信息 */}
+          {/* 统计信息
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="text-center">
               <div className="text-2xl font-bold">{tagGroups.length}</div>
-              <div className="text-sm text-muted-foreground">标签分组</div>
+              <div className="text-sm text-muted-foreground">标签分类</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">{tags.length}</div>
               <div className="text-sm text-muted-foreground">标签总数</div>
             </div>
-          </div>
+          </div> */}
 
-          <Separator />
 
-          {/* 标签分组列表 */}
-          <ScrollArea className="flex-1 max-h-[400px]">
-            <div className="space-y-3 pr-4">
+          {/* 标签分类列表 */}
+          <ScrollArea className="flex-1 max-h-[450px]">
+            <div className="space-y-3">
               {loading ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center  text-muted-foreground">
                   加载中...
                 </div>
               ) : error ? (
                 <div className="text-center py-8 text-red-500">{error}</div>
               ) : tagGroups.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? '未找到匹配的分组' : '暂无标签分组'}
+                  暂无标签分类
                   <div className="text-xs mt-2 text-muted-foreground">
-                    请先创建标签分组，然后上传图片时标签会自动归类
+                    请先创建标签分类，然后上传图片时标签会自动归类
                   </div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {filteredGroups.map((group) => {
-                    const groupTags = tags.filter(tag => tag.groupId === group.id);
-                    const filteredGroupTags = groupTags.filter(tag => 
-                      !searchQuery || tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-                    );
-                    
-                    // 如果有搜索查询且该分组下没有匹配的标签，则不显示该分组
-                    if (searchQuery && filteredGroupTags.length === 0) {
-                      return null;
-                    }
+                  {tagGroups.map((category) => {
+                    const categoryTags = tags.filter(tag => tag.categoryId === category.id);
                     
                     return (
                       <TagGroupItem
-                        key={group.id}
-                        group={group}
-                        tags={filteredGroupTags}
+                        key={category.id}
+                        group={category}
+                        tags={categoryTags}
                         expanded={true}
                         selectedTags={selectedTags}
                         showUsageCount={false}
                         onTagClick={(tag) => toggleTagSelection(tag.id)}
                         onTagEdit={handleEditTag}
-                        onGroupEdit={(updatedGroup) => {
-                          setEditingGroup(updatedGroup);
-                          setShowEditGroup(true);
+                        onGroupEdit={(updatedCategory) => {
+                          setEditingCategory(updatedCategory);
+                          setShowEditCategory(true);
                         }}
-                        onGroupDelete={(group) => {
-                          setDeleteTarget({ type: 'group', data: group });
+                        onGroupDelete={(category) => {
+                          setDeleteTarget({ type: 'category', data: category });
                           setShowDeleteConfirm(true);
                         }}
                         onAddTag={handleAddTag}
-                        onGroupSelect={(groupId) => {
-                          const groupTags = tags.filter(tag => tag.groupId === groupId);
-                          const allSelected = groupTags.every(tag => selectedTags.includes(tag.id));
+                        onGroupSelect={(categoryId) => {
+                          const categoryTags = tags.filter(tag => tag.categoryId === categoryId);
+                          const allSelected = categoryTags.every(tag => selectedTags.includes(tag.id));
                           if (allSelected) {
-                            // 取消选择该分组的所有标签
-                            groupTags.forEach(tag => {
+                            // 取消选择该分类的所有标签
+                            categoryTags.forEach(tag => {
                               if (selectedTags.includes(tag.id)) {
                                 toggleTagSelection(tag.id);
                               }
                             });
                           } else {
-                            // 选择该分组的所有标签
-                            groupTags.forEach(tag => {
+                            // 选择该分类的所有标签
+                            categoryTags.forEach(tag => {
                               if (!selectedTags.includes(tag.id)) {
                                 toggleTagSelection(tag.id);
                               }
@@ -932,27 +763,24 @@ export function TagManagementPanel({
                     );
                   })}
                   
-                  {/* 显示未分组的标签 */}
+                  {/* 显示未分类的标签 */}
                   {(() => {
-                    const ungroupedTags = tags.filter(tag => !tag.groupId);
-                    const filteredUngroupedTags = ungroupedTags.filter(tag => 
-                      !searchQuery || tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-                    );
+                    const ungroupedTags = tags.filter(tag => !tag.categoryId);
                     
-                    if (filteredUngroupedTags.length === 0) return null;
+                    if (ungroupedTags.length === 0) return null;
                     
                     return (
                       <div className="border rounded-lg bg-card">
                         <div className="flex items-center justify-between p-3 border-b">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-muted-foreground">未分组标签</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {filteredUngroupedTags.length} 个标签
+                            <span className="font-medium text-sm text-muted-foreground">未分类标签</span>
+                            <Badge variant="secondary" className="text-xs text-black">
+                              {ungroupedTags.length} 个标签
                             </Badge>
                           </div>
                         </div>
                         <div className="p-3 space-y-2">
-                          {filteredUngroupedTags.map((tag) => (
+                          {ungroupedTags.map((tag) => (
                             <div
                               key={tag.id}
                               className={cn(
@@ -1008,21 +836,14 @@ export function TagManagementPanel({
               )}
             </div>
           </ScrollArea>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              关闭
-            </Button>
-            <Button onClick={refreshAll}>刷新</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 创建分组对话框 */}
-      <CreateGroupDialog
-        open={showCreateGroup}
-        onOpenChange={setShowCreateGroup}
-        onConfirm={handleCreateGroup}
+      {/* 创建分类对话框 */}
+      <CreateCategoryDialog
+        open={showCreateCategory}
+        onOpenChange={setShowCreateCategory}
+        onConfirm={handleCreateCategory}
       />
 
       {/* 创建标签对话框 */}
@@ -1030,16 +851,16 @@ export function TagManagementPanel({
         open={showCreateTag}
         onOpenChange={setShowCreateTag}
         onConfirm={handleCreateTag}
-        tagGroups={tagGroups}
-        defaultGroupId={createTagGroupId}
+        tagCategories={tagGroups}
+        defaultCategoryId={createTagCategoryId}
       />
 
-      {/* 编辑分组对话框 */}
-      <EditGroupDialog
-        open={showEditGroup}
-        onOpenChange={setShowEditGroup}
-        onConfirm={handleUpdateGroup}
-        group={editingGroup}
+      {/* 编辑分类对话框 */}
+      <EditCategoryDialog
+        open={showEditCategory}
+        onOpenChange={setShowEditCategory}
+        onConfirm={handleUpdateCategory}
+        category={editingCategory}
       />
 
       {/* 编辑标签对话框 */}
@@ -1047,7 +868,7 @@ export function TagManagementPanel({
         open={showEditTag}
         onOpenChange={setShowEditTag}
         onConfirm={handleUpdateTag}
-        tagGroups={tagGroups}
+        tagCategories={tagGroups}
         tag={editingTag}
       />
 
@@ -1055,8 +876,8 @@ export function TagManagementPanel({
       <MoveTagDialog
         open={showMoveTag}
         onOpenChange={setShowMoveTag}
-        onConfirm={handleMoveTagsToGroup}
-        tagGroups={tagGroups}
+        onConfirm={handleMoveTagsToCategory}
+        tagCategories={tagGroups}
         selectedTags={tags.filter((tag) => selectedTags.includes(tag.id))}
       />
 
@@ -1066,8 +887,8 @@ export function TagManagementPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget.type === 'group' &&
-                `确定要删除分组 "${deleteTarget.data?.name}" 吗？此操作将同时删除该分组下的所有标签。`}
+              {deleteTarget.type === 'category' &&
+                `确定要删除分类 "${deleteTarget.data?.name}" 吗？此操作将同时删除该分类下的所有标签。`}
               {deleteTarget.type === 'tag' &&
                 `确定要删除标签 "${deleteTarget.data?.name}" 吗？`}
               {deleteTarget.type === 'selected' &&

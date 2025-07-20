@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { X, Hash, Edit } from 'lucide-react';
-import { Tag, TagGroup } from '@/types';
+import { Tag, TagGroup, getColorTheme } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface TagItemProps {
@@ -66,14 +66,17 @@ const dragStyle = {
   opacity: isDragging ? 0.7 : 1,
 };
 
+// 获取标签的颜色主题
+const colorTheme = group ? getColorTheme(group.color || 'gray') : getColorTheme(tag.color || 'pink');
+
 const badgeStyle = {
   backgroundColor: selected
-    ? group?.color
+    ? colorTheme.primary
     : variant === 'outline'
       ? 'transparent'
-      : group?.color + '20',
-  borderColor: group?.color,
-  color: selected ? 'white' : group?.color,
+      : colorTheme.bg,
+  borderColor: colorTheme.primary,
+  color: selected ? 'white' : colorTheme.text,
 };
 
 return (

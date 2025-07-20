@@ -60,6 +60,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "@stagewise-plugins/react": "^0.5.2",
     "@stagewise/toolbar-next": "^0.5.2",
     "@types/node": "^20",

@@ -11,41 +11,55 @@ export interface ImageData {
   url: string;
   title: string;
   prompts: Prompt[];
-  tags: Tag[];
+  // tags字段移除，改为通过ImageTag关联表获取
   createdAt: string;
   updatedAt: string;
   sortOrder?: number;
 
   isLocal?: boolean;
   isUploading?: boolean;
+  // 运行时添加的标签数据（用于显示）
+  tags?: Tag[];
 }
 
-// 标签类型 - 简化版，包含分组信息
+// 标签类型 - 独立存储
 export interface Tag {
   id: string;
   name: string;
   color: string;
-  // 分组信息直接嵌入标签中
-  groupId?: string; // 分组ID，可选
-  groupName?: string; // 分组名称
-  groupColor?: string; // 分组颜色
-  order?: number; // 在分组内的排序位置
+  categoryId?: string; // 分类ID，可选
+  usageCount?: number; // 使用次数
+  order?: number; // 在分类内的排序位置
 
   createdAt?: string;
   updatedAt?: string;
+  // 运行时添加的分类信息（用于显示）
+  categoryName?: string;
 }
 
-// 标签分组类型
-export interface TagGroup {
+// 分类类型（原标签分组）
+export interface Category {
   id: string;
   name: string;
-  color: string;
   description?: string;
+  color?: string;
   order?: number; // 自定义排序字段，数值越小排序越靠前
   tagCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
+
+// 图片标签关联类型（多对多关系）
+export interface ImageTag {
+  id: string;
+  imageId: string;
+  tagId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 保持向后兼容的别名
+export type TagGroup = Category;
 
 // 提示词类型
 export interface Prompt {
@@ -144,7 +158,7 @@ export interface ImageDocument {
   title: string;
   description?: string;
   prompts: Prompt[]; // 提示词数组（嵌套存储）
-  tags: Tag[]; // 标签数组（嵌套存储）
+  // tags字段移除，改为通过ImageTag关联表存储
   width: number;
   height: number;
   fileSize: number;
@@ -159,22 +173,34 @@ export interface TagDocument {
   id?: string;
   name: string;
   color: string;
-  groupId?: string;
-
+  categoryId?: string;
+  usageCount?: number;
+  order?: number;
   createdAt: any;
   updatedAt: any;
 }
 
-export interface TagGroupDocument {
+export interface CategoryDocument {
   id?: string;
   name: string;
-  color: string;
   description?: string;
+  color?: string;
   order?: number; // 显示顺序
   tagCount?: number;
   createdAt?: any; // Firestore Timestamp
   updatedAt?: any; // Firestore Timestamp
 }
+
+export interface ImageTagDocument {
+  id?: string;
+  imageId: string;
+  tagId: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+}
+
+// 保持向后兼容的别名
+export type TagGroupDocument = CategoryDocument;
 
 export interface PromptDocument {
   id?: string;
@@ -222,36 +248,44 @@ export const AVAILABLE_COLORS = [
 
 export const COLOR_THEMES: ColorTheme[] = [
   {
-    name: 'default',
-    primary: '#3b82f6',
-    secondary: '#64748b',
-    accent: '#f59e0b',
-    bg: '#dbeafe',
-    text: '#1e40af',
+    name: 'pink',
+    primary: '#F4BFEA',
+    secondary: '#F4BFEA',
+    accent: '#F4BFEA',
+    bg: '#FFE5FA',
+    text: '#7F4073',
   },
   {
-    name: 'warm',
-    primary: '#f97316',
-    secondary: '#78716c',
-    accent: '#eab308',
-    bg: '#fed7aa',
-    text: '#c2410c',
+    name: 'cyan',
+    primary: '#80E3F5',
+    secondary: '#80E3F5',
+    accent: '#80E3F5',
+    bg: '#D7F9FF',
+    text: '#54848D',
   },
   {
-    name: 'cool',
-    primary: '#06b6d4',
-    secondary: '#64748b',
-    accent: '#8b5cf6',
-    bg: '#cffafe',
-    text: '#0891b2',
+    name: 'yellow',
+    primary: '#FFE1B3',
+    secondary: '#FFE1B3',
+    accent: '#FFE1B3',
+    bg: '#FFF7D7',
+    text: '#CF8D4B',
   },
   {
-    name: 'nature',
-    primary: '#22c55e',
-    secondary: '#6b7280',
-    accent: '#f59e0b',
-    bg: '#dcfce7',
-    text: '#166534',
+    name: 'green',
+    primary: '#A6E19E',
+    secondary: '#A6E19E',
+    accent: '#A6E19E',
+    bg: '#D1FFCB',
+    text: '#60BA54',
+  },
+  {
+    name: 'purple',
+    primary: '#D8C0FF',
+    secondary: '#D8C0FF',
+    accent: '#D8C0FF',
+    bg: '#EADDFF',
+    text: '#A180D7',
   },
 ];
 

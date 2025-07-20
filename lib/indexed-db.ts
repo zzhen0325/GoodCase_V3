@@ -596,7 +596,7 @@ class IndexedDBManager {
       // 标签过滤
       const tagMatch =
         tagFilters.length === 0 ||
-        tagFilters.every((tagName) => image.tags.some((tag: any) => tag.name === tagName));
+        (image.tags && tagFilters.every((tagName) => image.tags!.some((tag: any) => tag.name === tagName)));
 
       return textMatch && tagMatch;
     });

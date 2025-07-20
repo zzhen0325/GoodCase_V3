@@ -138,14 +138,53 @@ export class ImageStorageService {
   // 删除图片
   static async deleteImage(imageUrl: string): Promise<void> {
     try {
-      // 从URL中提取文件路径
-      const url = new URL(imageUrl);
-      const pathMatch = url.pathname.match(/\/o\/(.*?)\?/);
-      if (!pathMatch) {
-        throw new Error('无效的图片URL');
+      console.log('正在删除图片:', imageUrl);
+      
+      let filePath: string;
+      
+      // 处理不同的URL格式
+      if (imageUrl.startsWith('http')) {
+        // 完整的HTTP URL
+        const url = new URL(imageUrl);
+        
+        // 支持多种Firebase Storage URL格式
+        // 格式1: /v0/b/bucket/o/path?query
+        // 格式2: /v0/b/bucket/o/path (无查询参数)
+        let pathMatch = url.pathname.match(/\/o\/(.*?)(?:\?|$)/);
+        
+        if (!pathMatch) {
+          console.log('URL pathname:', url.pathname);
+          console.log('完整URL:', imageUrl);
+          throw new Error(`无效的图片URL格式: ${url.pathname}`);
+        }
+        
+        filePath = decodeURIComponent(pathMatch[1]);
+      } else if (imageUrl.startsWith('/')) {
+        // 相对路径格式，如: /perceptive-map-465407-s9.firebasestorage.app/images/xxx.png
+        // 提取 images/ 后面的部分
+        const pathMatch = imageUrl.match(/\/images\/(.*?)(?:\?|$)/);
+        if (pathMatch) {
+          filePath = `images/${pathMatch[1]}`;
+        } else {
+          // 如果没有 /images/ 前缀，直接使用去掉开头斜杠的路径
+          filePath = imageUrl.substring(1);
+          // 进一步处理，提取文件名部分
+          const segments = filePath.split('/');
+          if (segments.length >= 2) {
+            // 假设格式是 domain/images/filename
+            const imagesIndex = segments.indexOf('images');
+            if (imagesIndex !== -1 && imagesIndex < segments.length - 1) {
+              filePath = segments.slice(imagesIndex).join('/');
+            }
+          }
+        }
+      } else {
+        // 直接的文件路径
+        filePath = imageUrl;
       }
-
-      const filePath = decodeURIComponent(pathMatch[1]);
+      
+      console.log('提取的文件路径:', filePath);
+      
       const storageInstance = getStorageInstance();
       if (!storageInstance) {
         throw new Error('Storage 未初始化');
@@ -153,9 +192,16 @@ export class ImageStorageService {
       const storageRef = ref(storageInstance, filePath);
 
       await deleteObject(storageRef);
-    } catch (error) {
+      console.log('图片删除成功:', filePath);
+    } catch (error: any) {
       console.error('图片删除失败:', error);
-      throw new Error('图片删除失败');
+      
+      // 如果是URL解析错误，提供更详细的错误信息
+      if (error.message.includes('无效的图片URL')) {
+        throw error;
+      }
+      
+      throw new Error(`图片删除失败: ${error.message || '未知错误'}`);
     }
   }
 

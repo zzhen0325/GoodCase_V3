@@ -121,13 +121,13 @@ export function PromptBlock({
     <div className="relative group">
       {/* 非编辑模式下的复制按钮 - 放在滚动容器外面 */}
       {!isEditing && (
-        <div className="absolute -top-6 right-2 z-[100] opacity-0 group-hover:opacity-100 transition-all duration-200 transform group-hover:scale-100 scale-95">
+        <div className="absolute top-7 right-2 z-[100] opacity-0 group-hover:opacity-100 transition-all duration-200 transform group-hover:scale-100 scale-95">
           <div className="relative">
             <Button
               variant="ghost"
               size="icon"
               className={cn(
-                'h-8 w-8 rounded-full transition-colors bg-white hover:bg-gray-50 shadow-lg border border-gray-200',
+                'h-8 w-8 rounded-md transition-colors bg-white hover:bg-gray-50',
                 copyStatus === 'success'
                   ? 'text-green-600 hover:text-green-700'
                   : copyStatus === 'error'
@@ -182,7 +182,7 @@ export function PromptBlock({
       >
         {/* 标题和操作按钮区域 */}
         <div className="flex items-center justify-between w-full">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 mb-1">
             {isEditingTitle ? (
               <Input
                 value={tempTitle}
@@ -192,13 +192,13 @@ export function PromptBlock({
                   if (e.key === 'Enter') saveTitle();
                   if (e.key === 'Escape') cancelTitleEdit();
                 }}
-                className="text-sm font-semibold h-7 px-2 border-0 bg-transparent"
+                className="text-sm font-semibold h-4 px-2 border-0 bg-transparent"
                 style={{ color: currentTheme.text }}
                 autoFocus
               />
             ) : (
               <h5
-                className="text-sm text-gray-300 cursor-pointer"
+                className="text-sm font-regular text-[#a8a1bf] cursor-pointer"
                 title={prompt.title || '未命名提示词'}
                 onDoubleClick={() => {
                   if (isEditing) {
@@ -292,7 +292,15 @@ export function PromptBlock({
                   onChange={(e) => setTempContent(e.target.value)}
                   onBlur={saveContent}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.ctrlKey) saveContent();
+                    if (e.key === 'Enter') {
+                      if (e.ctrlKey) {
+                        saveContent();
+                      } else {
+                        // 阻止普通回车键的默认行为，避免创建新行
+                        e.preventDefault();
+                        saveContent();
+                      }
+                    }
                     if (e.key === 'Escape') cancelContentEdit();
                   }}
                   className="w-full text-sm  resize-none overflow-hidden focus:outline-none focus:ring-0 break-words min-h-[60px] rounded-lg"

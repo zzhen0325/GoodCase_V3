@@ -24,6 +24,8 @@ interface TagSelectorProps {
   maxSelectedTags?: number;
   disabled?: boolean;
   className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function TagSelector({
@@ -36,8 +38,12 @@ export function TagSelector({
   maxSelectedTags,
   disabled = false,
   className,
+  open: controlledOpen,
+  onOpenChange,
 }: TagSelectorProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -59,7 +65,7 @@ export function TagSelector({
     const grouped: Record<string, { group: TagGroup; tags: Tag[] }> = {};
 
     tagGroups.forEach((group) => {
-      const groupTags = filteredTags.filter((tag) => tag.groupId === group.id);
+      const groupTags = filteredTags.filter((tag) => tag.categoryId === group.id);
       if (groupTags.length > 0 || !searchQuery) {
         grouped[group.id] = { group, tags: groupTags };
       }
@@ -130,7 +136,7 @@ export function TagSelector({
               ) : (
                 <div className="flex flex-wrap gap-1 flex-1">
                   {selectedTags.map((tag) => {
-                    const group = tagGroups.find((g) => g.id === tag.groupId);
+                    const group = tagGroups.find((g) => g.id === tag.categoryId);
                     return (
                       <Badge
                         key={tag.id}

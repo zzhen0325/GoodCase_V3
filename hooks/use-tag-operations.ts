@@ -1,16 +1,42 @@
 import { useState, useEffect } from 'react';
 import { Tag, TagGroup } from '@/types';
-import { useTags } from './use-tags';
-import { database } from '@/lib/database';
+import { Database } from '@/lib/database';
 
+// 正确的标签和分类数据
 export function useTagOperations() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // 标签状态管理
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const [tagsError, setTagsError] = useState<string | null>(null);
 
   // 标签分组状态管理
   const [tagGroups, setTagGroups] = useState<TagGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
   const [groupsError, setGroupsError] = useState<string | null>(null);
+
+  // 使用实时订阅获取标签
+  useEffect(() => {
+    const database = Database.getInstance();
+    
+    const unsubscribe = database.subscribeToTags(
+      (tags) => {
+        setTags(tags);
+        setTagsLoading(false);
+        setTagsError(null);
+      },
+      (error) => {
+        console.error('获取标签失败:', error);
+        setTagsError('获取标签失败');
+        setTagsLoading(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // 获取所有标签分组
   const fetchTagGroups = async () => {
@@ -36,30 +62,45 @@ export function useTagOperations() {
     fetchTagGroups();
   }, []);
 
-  const {
-    tags,
-    isLoading: tagsLoading,
-    error: tagsError,
-    createTag: _createTag,
-    updateTag: _updateTag,
-    deleteTag: _deleteTag,
-    refetch: refreshTags,
-  } = useTags();
-
   // 标签操作方法
-  const createTag = async (data: any) => {
+  const createTag = async (data: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      await _createTag(data);
-      return { success: true };
+      const response = await fetch('/api/tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '创建标签失败');
+      }
+      
+      const { tag } = await response.json();
+      return { success: true, tag };
     } catch (error) {
       console.error('创建标签失败:', error);
       return { success: false, error: '创建标签失败' };
     }
   };
 
-  const updateTag = async (id: string, data: any) => {
+  const updateTag = async (id: string, data: Partial<Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>>) => {
     try {
-      await _updateTag(id, data);
+      const response = await fetch(`/api/tags/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '更新标签失败');
+      }
+      
       return { success: true };
     } catch (error) {
       console.error('更新标签失败:', error);
@@ -69,7 +110,15 @@ export function useTagOperations() {
 
   const deleteTag = async (id: string) => {
     try {
-      await _deleteTag(id);
+      const response = await fetch(`/api/tags/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '删除标签失败');
+      }
+      
       return { success: true };
     } catch (error) {
       console.error('删除标签失败:', error);
@@ -80,27 +129,12 @@ export function useTagOperations() {
   // 根据分组获取标签
   const getTagsByGroup = (groupId?: string) => {
     if (!groupId) {
-      return tags.filter(tag => !tag.groupId || tag.groupId === '');
+      return tags.filter(tag => !tag.categoryId || tag.categoryId === '');
     }
-    return tags.filter(tag => tag.groupId === groupId);
+    return tags.filter(tag => tag.categoryId === groupId);
   };
 
-  // 过滤标签（根据搜索查询）
-  const getFilteredTags = () => {
-    if (!searchQuery) return tags;
 
-    return tags.filter((tag) =>
-      tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  };
-
-  // 过滤标签分组（根据搜索查询）
-  const getFilteredTagGroups = () => {
-    if (!searchQuery) return tagGroups;
-    return tagGroups.filter(group => 
-      group.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  };
 
   // 切换标签选择状态
   const toggleTagSelection = (tagId: string) => {
@@ -135,7 +169,7 @@ export function useTagOperations() {
   // 批量删除选中的标签
   const deleteSelectedTags = async () => {
     try {
-      await Promise.all(selectedTags.map(tagId => _deleteTag(tagId)));
+      await Promise.all(selectedTags.map(tagId => deleteTag(tagId)));
       setSelectedTags([]);
       return { success: true };
     } catch (error) {
@@ -146,7 +180,7 @@ export function useTagOperations() {
 
   // 刷新数据
   const refreshAll = () => {
-    refreshTags();
+    // 实时订阅会自动更新标签数据，只需要刷新分组数据
     fetchTagGroups();
   };
 
@@ -162,12 +196,12 @@ export function useTagOperations() {
 
   // 获取标签所属的分组
   const getTagGroup = (tag: Tag) => {
-    if (!tag.groupId) return undefined;
-    return getTagGroupById(tag.groupId);
+    if (!tag.categoryId) return undefined;
+    return getTagGroupById(tag.categoryId);
   };
 
   // 创建标签分组
-  const createTagGroup = async (data: { name: string; color: string }) => {
+  const createTagGroup = async (data: { name: string }) => {
     try {
       const response = await fetch('/api/tag-groups', {
         method: 'POST',
@@ -181,8 +215,9 @@ export function useTagOperations() {
         throw new Error('创建标签分组失败');
       }
       
+      const result = await response.json();
       await fetchTagGroups();
-      return { success: true };
+      return { success: true, tagGroup: { id: result.id, name: result.name } };
     } catch (error) {
       console.error('创建标签分组失败:', error);
       return { success: false, error: '创建标签分组失败' };
@@ -190,7 +225,7 @@ export function useTagOperations() {
   };
 
   // 更新标签分组
-  const updateTagGroup = async (id: string, data: { name: string; color: string }) => {
+  const updateTagGroup = async (id: string, data: { name: string }) => {
     try {
       const response = await fetch(`/api/tag-groups/${id}`, {
         method: 'PUT',
@@ -207,7 +242,7 @@ export function useTagOperations() {
       await fetchTagGroups();
       return { success: true };
     } catch (error) {
-      console.error('更新标签分组失败:', error);
+      console.error('更新标签分组失败', error);
       return { success: false, error: '更新标签分组失败' };
     }
   };
@@ -236,7 +271,6 @@ export function useTagOperations() {
     tagGroups,
     tags,
     selectedTags,
-    searchQuery,
 
     // 加载状态
     loading: groupsLoading || tagsLoading,
@@ -265,13 +299,8 @@ export function useTagOperations() {
     selectTagsByGroup,
     deleteSelectedTags,
 
-    // 搜索
-    setSearchQuery,
-
     // 数据获取
     getTagsByGroup,
-    getFilteredTags,
-    getFilteredTagGroups,
     getSelectedTagObjects,
     getTagById,
     getTagGroupById,

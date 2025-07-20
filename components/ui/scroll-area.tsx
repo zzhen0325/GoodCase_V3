@@ -12,7 +12,7 @@ const ScrollArea = React.forwardRef<
     className={cn('relative overflow-hidden', className)}
     {...props}
   >
-    <div className="h-full w-full overflow-auto custom-scrollbar px-4 ">
+    <div className="h-full w-full overflow-auto custom-scrollbar ">
       {children}
     </div>
   </div>

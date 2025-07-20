@@ -46,3 +46,10 @@ next-env.d.ts
 # swc
 *.node 
 /generated/prisma
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

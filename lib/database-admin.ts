@@ -17,8 +17,11 @@ import type {
 const COLLECTIONS = {
   IMAGES: 'images',
   PROMPTS: 'prompts',
-  TAG_GROUPS: 'tag-groups',
+  CATEGORIES: 'categories', // 原 TAG_GROUPS
   TAGS: 'tags',
+  IMAGE_TAGS: 'image-tags', // 新增：图片标签关联表
+  // 保持向后兼容
+  TAG_GROUPS: 'categories',
 } as const;
 
 export class DatabaseAdmin {
@@ -36,7 +39,7 @@ export class DatabaseAdmin {
       for (const doc of imagesSnapshot.docs) {
         const imageData = doc.data() as ImageDocument;
 
-        // 获取关联的提示词（移除排序以避免复合索引）
+        // 获取关联的提示词
         const promptsSnapshot = await db
           .collection(COLLECTIONS.PROMPTS)
           .where('imageId', '==', doc.id)
@@ -57,12 +60,37 @@ export class DatabaseAdmin {
           }
         );
 
+        // 获取关联的标签（从image-tags关联表）
+        const imageTagsSnapshot = await db
+          .collection(COLLECTIONS.IMAGE_TAGS)
+          .where('imageId', '==', doc.id)
+          .get();
+
+        const tags: Tag[] = [];
+        for (const imageTagDoc of imageTagsSnapshot.docs) {
+          const imageTagData = imageTagDoc.data();
+          const tagDoc = await db.collection(COLLECTIONS.TAGS).doc(imageTagData.tagId).get();
+          if (tagDoc.exists) {
+            const tagData = tagDoc.data() as TagDocument;
+            tags.push({
+              id: tagDoc.id,
+              name: tagData.name,
+              color: tagData.color,
+              categoryId: tagData.categoryId,
+              usageCount: tagData.usageCount || 0,
+              order: tagData.order || 0,
+              createdAt: tagData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+              updatedAt: tagData.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            });
+          }
+        }
+
         images.push({
           id: doc.id,
           url: imageData.url,
           title: imageData.title,
           prompts: prompts,
-          tags: imageData.tags || [],
+          tags: tags,
           createdAt: imageData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
           updatedAt: imageData.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         });
@@ -154,7 +182,23 @@ export class DatabaseAdmin {
         batch.delete(doc.ref);
       });
 
-      // 标签现在存储在图片文档中，无需单独删除
+      // 删除所有分类
+      const categoriesSnapshot = await db.collection(COLLECTIONS.CATEGORIES).get();
+      categoriesSnapshot.docs.forEach((doc: any) => {
+        batch.delete(doc.ref);
+      });
+
+      // 删除所有标签
+      const tagsSnapshot = await db.collection(COLLECTIONS.TAGS).get();
+      tagsSnapshot.docs.forEach((doc: any) => {
+        batch.delete(doc.ref);
+      });
+
+      // 删除所有图片标签关联
+      const imageTagsSnapshot = await db.collection(COLLECTIONS.IMAGE_TAGS).get();
+      imageTagsSnapshot.docs.forEach((doc: any) => {
+        batch.delete(doc.ref);
+      });
 
       await batch.commit();
 
@@ -169,23 +213,35 @@ export class DatabaseAdmin {
   static async getStats(): Promise<{
     totalImages: number;
     totalPrompts: number;
+    totalCategories: number;
+    totalTags: number;
+    totalImageTags: number;
   }> {
     try {
       const { db } = await getServerFirebase();
-      const [imagesSnapshot, promptsSnapshot] = await Promise.all([
+      const [imagesSnapshot, promptsSnapshot, categoriesSnapshot, tagsSnapshot, imageTagsSnapshot] = await Promise.all([
         db.collection(COLLECTIONS.IMAGES).get(),
         db.collection(COLLECTIONS.PROMPTS).get(),
+        db.collection(COLLECTIONS.CATEGORIES).get(),
+        db.collection(COLLECTIONS.TAGS).get(),
+        db.collection(COLLECTIONS.IMAGE_TAGS).get(),
       ]);
 
       return {
         totalImages: imagesSnapshot.size,
         totalPrompts: promptsSnapshot.size,
+        totalCategories: categoriesSnapshot.size,
+        totalTags: tagsSnapshot.size,
+        totalImageTags: imageTagsSnapshot.size,
       };
     } catch (error) {
       console.error('获取统计信息失败:', error);
       return {
         totalImages: 0,
         totalPrompts: 0,
+        totalCategories: 0,
+        totalTags: 0,
+        totalImageTags: 0,
       };
     }
   }
@@ -204,7 +260,6 @@ export class DatabaseAdmin {
           url: imageData.url,
           title: imageData.title,
           prompts: imageData.prompts || [],
-          tags: imageData.tags || [],
           width: 0,
           height: 0,
           fileSize: 0,
@@ -217,7 +272,20 @@ export class DatabaseAdmin {
 
       await imageRef.set(imageDoc);
 
-      // 提示词和标签现在直接嵌套存储在图片文档中
+      // 如果有标签数据，创建图片标签关联
+      if (imageData.tags && imageData.tags.length > 0) {
+        const batch = db.batch();
+        imageData.tags.forEach((tag) => {
+          const imageTagRef = db.collection(COLLECTIONS.IMAGE_TAGS).doc();
+          batch.set(imageTagRef, {
+            id: imageTagRef.id,
+            imageId: imageRef.id,
+            tagId: tag.id,
+            createdAt: now,
+          });
+        });
+        await batch.commit();
+      }
 
       return imageRef.id;
     } catch (error) {
@@ -237,8 +305,6 @@ export class DatabaseAdmin {
       console.log('开始批量导入数据...');
 
       const { db } = await getServerFirebase();
-      // 标签现在直接存储在图片文档中，无需单独导入
-
       let importedImages = 0;
       let importedPrompts = 0;
 
@@ -250,7 +316,6 @@ export class DatabaseAdmin {
           url: image.url,
           title: image.title,
           prompts: image.prompts || [],
-          tags: image.tags || [],
           width: 0,
           height: 0,
           fileSize: 0,
@@ -269,7 +334,20 @@ export class DatabaseAdmin {
         await imageRef.set(imageDoc);
         importedImages++;
 
-        // 提示词和标签现在直接嵌套存储在图片文档中
+        // 如果有标签数据，创建图片标签关联
+        if (image.tags && image.tags.length > 0) {
+          const batch = db.batch();
+          image.tags.forEach((tag) => {
+            const imageTagRef = db.collection(COLLECTIONS.IMAGE_TAGS).doc();
+            batch.set(imageTagRef, {
+              id: imageTagRef.id,
+              imageId: imageRef.id,
+              tagId: tag.id,
+              createdAt: Timestamp.now(),
+            });
+          });
+          await batch.commit();
+        }
       }
 
       console.log(
@@ -292,186 +370,235 @@ export class DatabaseAdmin {
     }
   }
 
-  // ===== 标签分组相关方法 =====
+  // ===== 分类相关方法 =====
 
-  // 确保默认标签分组存在
-  static async ensureDefaultTagGroup(): Promise<string> {
+  // 确保默认分类存在
+  static async ensureDefaultCategory(): Promise<string> {
     try {
       const { db } = await getServerFirebase();
-      const DEFAULT_GROUP_ID = 'default';
+      const DEFAULT_CATEGORY_ID = 'default';
       
-      // 检查默认分组是否存在
-      const defaultGroupDoc = await db.collection(COLLECTIONS.TAG_GROUPS).doc(DEFAULT_GROUP_ID).get();
+      // 检查默认分类是否存在
+      const defaultCategoryDoc = await db.collection(COLLECTIONS.CATEGORIES).doc(DEFAULT_CATEGORY_ID).get();
       
-      if (!defaultGroupDoc.exists) {
-        // 创建默认分组
+      if (!defaultCategoryDoc.exists) {
+        // 创建默认分类
         const now = Timestamp.now();
-        const defaultGroupData: TagGroupDocument = {
-          id: DEFAULT_GROUP_ID,
-          name: '默认分组',
-          color: '#64748b',
-          order: 0, // 默认分组排在最前面
+        const defaultCategoryData = {
+          id: DEFAULT_CATEGORY_ID,
+          name: '默认分类',
+          description: '默认标签分类',
+          color: '#6b7280',
+          order: 0, // 默认分类排在最前面
           tagCount: 0,
           createdAt: now,
           updatedAt: now,
         };
         
-        await db.collection(COLLECTIONS.TAG_GROUPS).doc(DEFAULT_GROUP_ID).set(defaultGroupData);
-        console.log('已创建默认标签分组');
+        await db.collection(COLLECTIONS.CATEGORIES).doc(DEFAULT_CATEGORY_ID).set(defaultCategoryData);
+        console.log('已创建默认分类');
       }
       
-      return DEFAULT_GROUP_ID;
+      return DEFAULT_CATEGORY_ID;
     } catch (error) {
-      console.error('确保默认标签分组失败:', error);
+      console.error('确保默认分类失败:', error);
       return 'default'; // 返回默认ID，即使创建失败
     }
   }
 
-  // 获取所有标签分组
-  static async getAllTagGroups(): Promise<TagGroup[]> {
+  // 确保默认标签分组存在（向后兼容）
+
+
+  // 获取所有分类
+  static async getAllCategories(): Promise<TagGroup[]> {
     try {
       const { db } = await getServerFirebase();
       const snapshot = await db
-        .collection(COLLECTIONS.TAG_GROUPS)
-        .orderBy('createdAt', 'desc')
+        .collection(COLLECTIONS.CATEGORIES)
+        .orderBy('order', 'asc')
+        .orderBy('name', 'asc')
         .get();
 
-      const tagGroups: TagGroup[] = [];
+      const categories: TagGroup[] = [];
 
       for (const doc of snapshot.docs) {
-        const data = doc.data() as TagGroupDocument;
+        const data = doc.data();
 
-        // 获取该分组下的标签数量
+        // 获取该分类下的标签数量
         const tagsSnapshot = await db
           .collection(COLLECTIONS.TAGS)
-          .where('groupId', '==', doc.id)
+          .where('categoryId', '==', doc.id)
           .get();
 
-        tagGroups.push({
+        categories.push({
           id: doc.id,
           name: data.name,
+          description: data.description,
           color: data.color,
+          order: data.order || 0,
           tagCount: tagsSnapshot.size,
-          createdAt: data.createdAt?.toDate?.() || new Date(),
-          updatedAt: data.updatedAt?.toDate?.() || new Date(),
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         });
       }
 
-      return tagGroups;
+      return categories;
     } catch (error) {
-      console.error('获取标签分组失败:', error);
+      console.error('获取分类失败:', error);
       return [];
     }
   }
 
-  // 根据ID获取标签分组
-  static async getTagGroupById(id: string): Promise<TagGroup | null> {
+  // 获取所有标签分组（向后兼容）
+  static async getAllTagGroups(): Promise<TagGroup[]> {
+    return this.getAllCategories();
+  }
+
+  // 根据ID获取分类
+  static async getCategoryById(id: string): Promise<TagGroup | null> {
     try {
       const { db } = await getServerFirebase();
-      const doc = await db.collection(COLLECTIONS.TAG_GROUPS).doc(id).get();
+      const doc = await db.collection(COLLECTIONS.CATEGORIES).doc(id).get();
 
       if (!doc.exists) {
         return null;
       }
 
-      const data = doc.data() as TagGroupDocument;
+      const data = doc.data();
+      if (!data) {
+        return null;
+      }
 
-      // 获取该分组下的标签数量
+      // 获取该分类下的标签数量
       const tagsSnapshot = await db
         .collection(COLLECTIONS.TAGS)
-        .where('groupId', '==', doc.id)
+        .where('categoryId', '==', doc.id)
         .get();
 
       return {
         id: doc.id,
-        name: data.name,
-        color: data.color,
+        name: data.name || '',
+        description: data.description || '',
+        color: data.color || '#6b7280',
+        order: data.order || 0,
         tagCount: tagsSnapshot.size,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       };
     } catch (error) {
-      console.error('获取标签分组失败:', error);
+      console.error('获取分类失败:', error);
       return null;
     }
   }
 
-  // 创建标签分组
-  static async createTagGroup(data: {
+  // 根据ID获取标签分组（向后兼容）
+  static async getTagGroupById(id: string): Promise<TagGroup | null> {
+    return this.getCategoryById(id);
+  }
+
+  // 创建分类
+  static async createCategory(data: {
     name: string;
-    color: string;
+    description?: string;
+    color?: string;
+    order?: number;
   }): Promise<TagGroup> {
     try {
       const { db } = await getServerFirebase();
       const now = Timestamp.now();
-      const ref = db.collection(COLLECTIONS.TAG_GROUPS).doc();
+      const ref = db.collection(COLLECTIONS.CATEGORIES).doc();
 
-      const tagGroupDoc: TagGroupDocument = {
+      const categoryDoc = {
         id: ref.id,
         name: data.name,
-        color: data.color,
-        order: 0,
+        description: data.description || '',
+        color: data.color || '#6b7280',
+        order: data.order || 0,
         tagCount: 0,
         createdAt: now,
         updatedAt: now,
       };
 
-      await ref.set(tagGroupDoc);
+      await ref.set(categoryDoc);
 
       return {
         id: ref.id,
         name: data.name,
-        color: data.color,
-        order: 0,
+        description: data.description || '',
+        color: data.color || '#6b7280',
+        order: data.order || 0,
         tagCount: 0,
         createdAt: now.toDate().toISOString(),
         updatedAt: now.toDate().toISOString(),
       };
     } catch (error) {
-      console.error('创建标签分组失败:', error);
-      throw new Error('创建标签分组失败');
+      console.error('创建分类失败:', error);
+      throw new Error('创建分类失败');
     }
   }
 
-  // 更新标签分组
-  static async updateTagGroup(
+  // 创建标签分组（向后兼容）
+  static async createTagGroup(data: {
+    name: string;
+  }): Promise<TagGroup> {
+    return this.createCategory(data);
+  }
+
+  // 更新分类
+  static async updateCategory(
     id: string,
-    data: { name: string; color: string }
+    data: { name: string; description?: string; color?: string; order?: number }
   ): Promise<TagGroup> {
     try {
       const { db } = await getServerFirebase();
       const now = Timestamp.now();
 
-      const updateData = {
+      const updateData: any = {
         name: data.name,
-        color: data.color,
         updatedAt: now,
       };
 
-      await db.collection(COLLECTIONS.TAG_GROUPS).doc(id).update(updateData);
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.color !== undefined) updateData.color = data.color;
+      if (data.order !== undefined) updateData.order = data.order;
+
+      await db.collection(COLLECTIONS.CATEGORIES).doc(id).update(updateData);
 
       // 获取更新后的数据
-      const tagGroup = await this.getTagGroupById(id);
-      if (!tagGroup) {
-        throw new Error('标签分组不存在');
+      const category = await this.getCategoryById(id);
+      if (!category) {
+        throw new Error('分类不存在');
       }
 
-      return tagGroup;
+      return category;
     } catch (error) {
-      console.error('更新标签分组失败:', error);
-      throw new Error('更新标签分组失败');
+      console.error('更新分类失败:', error);
+      throw new Error('更新分类失败');
     }
   }
 
-  // 删除标签分组
-  static async deleteTagGroup(id: string): Promise<void> {
+  // 更新标签分组（向后兼容）
+  static async updateTagGroup(
+    id: string,
+    data: { name: string }
+  ): Promise<TagGroup> {
+    return this.updateCategory(id, data);
+  }
+
+  // 删除分类
+  static async deleteCategory(id: string): Promise<void> {
     try {
       const { db } = await getServerFirebase();
-      await db.collection(COLLECTIONS.TAG_GROUPS).doc(id).delete();
+      await db.collection(COLLECTIONS.CATEGORIES).doc(id).delete();
     } catch (error) {
-      console.error('删除标签分组失败:', error);
-      throw new Error('删除标签分组失败');
+      console.error('删除分类失败:', error);
+      throw new Error('删除分类失败');
     }
+  }
+
+  // 删除标签分组（向后兼容）
+  static async deleteTagGroup(id: string): Promise<void> {
+    return this.deleteCategory(id);
   }
 
   // ===== 标签相关方法 =====
@@ -485,14 +612,18 @@ export class DatabaseAdmin {
         .orderBy('createdAt', 'desc')
         .get();
 
+      // 确保默认分类存在
+      const defaultCategoryId = await this.ensureDefaultCategory();
+
       return snapshot.docs.map((doc: any) => {
         const data = doc.data() as TagDocument;
         return {
           id: doc.id,
           name: data.name,
           color: data.color,
-          groupId: data.groupId || '',
-  
+          categoryId: data.categoryId || defaultCategoryId, // 如果没有categoryId，使用默认分类
+          usageCount: data.usageCount || 0,
+          order: data.order || 0,
           createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
           updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
         };
@@ -503,15 +634,18 @@ export class DatabaseAdmin {
     }
   }
 
-  // 根据分组ID获取标签
-  static async getTagsByGroupId(groupId: string): Promise<Tag[]> {
+  // 根据分类ID获取标签
+  static async getTagsByCategoryId(categoryId: string): Promise<Tag[]> {
     try {
       const { db } = await getServerFirebase();
       const snapshot = await db
         .collection(COLLECTIONS.TAGS)
-        .where('groupId', '==', groupId)
+        .where('categoryId', '==', categoryId)
         .orderBy('createdAt', 'desc')
         .get();
+
+      // 确保默认分类存在
+      const defaultCategoryId = await this.ensureDefaultCategory();
 
       return snapshot.docs.map((doc: any) => {
         const data = doc.data() as TagDocument;
@@ -519,8 +653,9 @@ export class DatabaseAdmin {
           id: doc.id,
           name: data.name,
           color: data.color,
-          groupId: data.groupId || '',
-  
+          categoryId: data.categoryId || defaultCategoryId, // 如果没有categoryId，使用默认分类
+          usageCount: data.usageCount || 0,
+          order: data.order || 0,
           createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
           updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
         };
@@ -530,27 +665,30 @@ export class DatabaseAdmin {
       return [];
     }
   }
+
+
 
   // 创建标签
   static async createTag(data: {
     name: string;
     color: string;
-    groupId?: string;
+    categoryId?: string;
   }): Promise<Tag> {
     try {
       const { db } = await getServerFirebase();
       const now = Timestamp.now();
       const ref = db.collection(COLLECTIONS.TAGS).doc();
 
-      // 如果没有提供分组ID，确保默认分组存在并使用它
-      const finalGroupId = data.groupId || await this.ensureDefaultTagGroup();
+      // 如果没有提供分类ID，确保默认分类存在并使用它
+      const finalCategoryId = data.categoryId || await this.ensureDefaultCategory();
 
       const tagDoc: TagDocument = {
         id: ref.id,
         name: data.name,
         color: data.color,
-        groupId: finalGroupId,
-
+        categoryId: finalCategoryId,
+        usageCount: 0,
+        order: 0,
         createdAt: now,
         updatedAt: now,
       };
@@ -561,8 +699,9 @@ export class DatabaseAdmin {
         id: ref.id,
         name: data.name,
         color: data.color,
-        groupId: finalGroupId,
-
+        categoryId: finalCategoryId,
+        usageCount: 0,
+        order: 0,
         createdAt: now.toDate().toISOString(),
         updatedAt: now.toDate().toISOString(),
       };
@@ -575,18 +714,21 @@ export class DatabaseAdmin {
   // 更新标签
   static async updateTag(
     id: string,
-    data: { name: string; color: string; groupId: string }
+    data: { name?: string; color?: string; categoryId?: string | null }
   ): Promise<Tag> {
     try {
       const { db } = await getServerFirebase();
       const now = Timestamp.now();
 
-      const updateData = {
-        name: data.name,
-        color: data.color,
-        groupId: data.groupId,
+      const updateData: any = {
         updatedAt: now,
       };
+      
+      if (data.name !== undefined && data.name !== null) updateData.name = data.name;
+      if (data.color !== undefined && data.color !== null) updateData.color = data.color;
+      if (data.categoryId !== undefined) {
+        updateData.categoryId = data.categoryId === null ? null : data.categoryId;
+      }
 
       await db.collection(COLLECTIONS.TAGS).doc(id).update(updateData);
 
@@ -597,12 +739,16 @@ export class DatabaseAdmin {
       }
 
       const tagData = doc.data() as TagDocument;
+      // 确保默认分类存在
+      const defaultCategoryId = await this.ensureDefaultCategory();
+      
       return {
         id: doc.id,
         name: tagData.name,
         color: tagData.color,
-        groupId: tagData.groupId || '',
-
+        categoryId: tagData.categoryId || defaultCategoryId, // 如果没有categoryId，使用默认分类
+        usageCount: tagData.usageCount || 0,
+        order: tagData.order || 0,
         createdAt: (tagData.createdAt?.toDate?.() || new Date()).toISOString(),
         updatedAt: (tagData.updatedAt?.toDate?.() || new Date()).toISOString(),
       };
@@ -627,20 +773,21 @@ export class DatabaseAdmin {
   static async removeTagFromAllImages(tagId: string): Promise<void> {
     try {
       const { db } = await getServerFirebase();
-      const imagesSnapshot = await db
-        .collection(COLLECTIONS.IMAGES)
-        .where('tags', 'array-contains', tagId)
+      
+      // 删除所有与该标签相关的图片-标签关联记录
+      const imageTagsSnapshot = await db
+        .collection(COLLECTIONS.IMAGE_TAGS)
+        .where('tagId', '==', tagId)
         .get();
+
+      if (imageTagsSnapshot.empty) {
+        return;
+      }
 
       const batch = db.batch();
 
-      imagesSnapshot.docs.forEach((doc: any) => {
-        const imageData = doc.data() as ImageDocument;
-        const updatedTags = imageData.tags.filter((tag) => tag.id !== tagId);
-        batch.update(doc.ref, {
-          tags: updatedTags,
-          updatedAt: Timestamp.now(),
-        });
+      imageTagsSnapshot.docs.forEach((doc: any) => {
+        batch.delete(doc.ref);
       });
 
       await batch.commit();

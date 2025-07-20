@@ -128,9 +128,9 @@ export function TagGroupItem({
             onClick={handleToggleExpand}
           >
             {expanded ? (
-              <FolderOpen className="w-4 h-4" style={{ color: group.color }} />
+              <FolderOpen className="w-4 h-4 text-black" />
             ) : (
-              <Folder className="w-4 h-4" style={{ color: group.color }} />
+              <Folder className="w-4 h-4 text-black" />
             )}
 
             {isEditing ? (
@@ -150,11 +150,7 @@ export function TagGroupItem({
           <div className="flex items-center gap-2">
             <Badge
               variant="secondary"
-              className="text-xs"
-              style={{
-                backgroundColor: group.color + '20',
-                color: group.color,
-              }}
+              className="text-xs text-black"
             >
               {group.tagCount} 个标签
             </Badge>
@@ -192,14 +188,14 @@ export function TagGroupItem({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleEdit}>
-                <Edit className="w-4 h-4 mr-2" />
+                <Edit className="w-4 h-4" />
                 编辑分组
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onGroupDelete?.(group)}
                 className="text-red-600"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="w-4 h-4" />
                 删除分组
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -209,7 +205,7 @@ export function TagGroupItem({
 
       {/* 标签列表 */}
       {expanded && (
-        <div className="p-3">
+        <div className="p-4">
           {tags.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground text-sm">
               暂无标签

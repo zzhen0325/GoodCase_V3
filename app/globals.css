@@ -1,6 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 引入 Tailwind 基础样式 */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* 引入边栏主题样式 */
+@import '../styles/sidebar-theme.css';
 
 /* 现代化滚动条样式 - shadcn风格 */
 @layer utilities {
@@ -45,121 +49,119 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 20%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 20%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 20%;
-    --primary: 58.0328 100% 76.0784%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 253.8462 100% 94.902%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 253.3333 29.0323% 93.9216%;
-    --muted-foreground: 0 0% 43.1373%;
-    --accent: 311.5385 100% 94.902%;
-    --accent-foreground: 0 0% 0%;
-    --destructive: 57.0732 84.5361% 61.9608%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 300 26% 91%;
-    --input: 0 0% 83.1373%;
-    --ring: 312 100% 90.1961%;
-    --chart-1: 46.8 100% 90.1961%;
-    --chart-2: 254.3478 71.875% 74.902%;
-    --chart-3: 253.3333 29.0323% 93.9216%;
-    --chart-4: 27.3333 100% 82.3529%;
-    --chart-5: 176.7785 60.3239% 51.5686%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    --grid-background: 0 0% 100%;
-    --sidebar-height: 100vh;
-    --font-sans: Poppins, sans-serif;
-    --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-    --font-mono: Roboto Mono, monospace;
-    --radius: 0.75rem;
-    --shadow-2xs: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0);
-    --shadow-xs: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0);
-    --shadow-sm:
-      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
-      0 1px 2px -1px hsl(0 12.1693% 62.9412% / 0);
-    --shadow:
-      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
-      0 1px 2px -1px hsl(0 12.1693% 62.9412% / 0);
-    --shadow-md:
-      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
-      0 2px 4px -1px hsl(0 12.1693% 62.9412% / 0);
-    --shadow-lg:
-      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
-      0 4px 6px -1px hsl(0 12.1693% 62.9412% / 0);
-    --shadow-xl:
-      0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0),
-      0 8px 10px -1px hsl(0 12.1693% 62.9412% / 0);
-    --shadow-2xl: 0 1px 25px 0px hsl(0 12.1693% 62.9412% / 0);
-    --tracking-normal: 0em;
-    --spacing: 1.25rem;
+   
+  --background: 0 0% 100%;
+  --foreground: 0 0% 20%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 20%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 20%;
+  --primary: 58 100% 76%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 254 100% 95%;
+  --secondary-foreground: 0 0% 0%;
+  --muted: 253 29% 94%;
+  --muted-foreground: 0 0% 43%;
+  --accent: 312 100% 95%;
+  --accent-foreground: 313 35% 44%;
+  --destructive: 0 100% 68%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 313 32% 89%;
+  --input: 0 0% 83%;
+  --ring: 312 100% 95%;
+  --chart-1: 47 100% 90%;
+  --chart-2: 254 72% 75%;
+  --chart-3: 253 29% 94%;
+  --chart-4: 27 100% 82%;
+  --chart-5: 177 60% 52%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 0 0% 20%;
+  --sidebar-primary: 61 100% 79%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 312 100% 95%;
+  --sidebar-accent-foreground: 0 0% 0%;
+  --sidebar-border: 0 0% 83%;
+  --sidebar-ring: 47 100% 75%;
+  --sidebar-min-width: max(20%, 22rem);
+  --sidebar-max-width: 40rem;
+  --font-sans: Poppins, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: Roboto Mono, monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0 1px 25px 0px hsl(0 12% 63% / 0.00);
+  --shadow-xs: 0 1px 25px 0px hsl(0 12% 63% / 0.00);
+  --shadow-sm: 0 1px 25px 0px hsl(0 12% 63% / 0.00), 0 1px 2px -1px hsl(0 12% 63% / 0.00);
+  --shadow: 0 1px 25px 0px hsl(0 12% 63% / 0.00), 0 1px 2px -1px hsl(0 12% 63% / 0.00);
+  --shadow-md: 0 1px 25px 0px hsl(0 12% 63% / 0.00), 0 2px 4px -1px hsl(0 12% 63% / 0.00);
+  --shadow-lg: 0 1px 25px 0px hsl(0 12% 63% / 0.00), 0 4px 6px -1px hsl(0 12% 63% / 0.00);
+  --shadow-xl: 0 1px 25px 0px hsl(0 12% 63% / 0.00), 0 8px 10px -1px hsl(0 12% 63% / 0.00);
+  --shadow-2xl: 0 1px 25px 0px hsl(0 12% 63% / 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.3rem;
+   
   }
 
   .dark {
-    --background: 273.3333 14.2857% 12.3529%;
-    --foreground: 0 0% 89.8039%;
-    --card: 255 7.6923% 20.3922%;
-    --card-foreground: 0 0% 89.8039%;
-    --popover: 255 7.6923% 20.3922%;
-    --popover-foreground: 0 0% 89.8039%;
-    --primary: 27.3333 100% 82.3529%;
+    --background: 240 6% 24%;
+    --foreground: 0 0% 92%;
+    --card: 240 6% 33%;
+    --card-foreground: 0 0% 92%;
+    --popover: 240 6% 33%;
+    --popover-foreground: 0 0% 92%;
+    --primary: 35 100% 85%;
     --primary-foreground: 0 0% 0%;
-    --secondary: 176.7785 60.3239% 51.5686%;
+    --secondary: 200 100% 85%;
     --secondary-foreground: 0 0% 0%;
-    --muted: 0 0% 26.6667%;
-    --muted-foreground: 0 0% 63.9216%;
-    --accent: 254.3478 71.875% 74.902%;
+    --muted: 0 0% 39%;
+    --muted-foreground: 0 0% 71%;
+    --accent: 240 100% 85%;
     --accent-foreground: 0 0% 0%;
-    --destructive: 57 66% 78%;
+    --destructive: 25 100% 85%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 26.6667%;
-    --input: 0 0% 26.6667%;
-    --ring: 27.3333 100% 82.3529%;
-    --chart-1: 27.3333 100% 82.3529%;
-    --chart-2: 176.7785 60.3239% 51.5686%;
-    --chart-3: 254.3478 71.875% 74.902%;
-    --chart-4: 117.085 100% 51.5686%;
-    --chart-5: 105.1822 100% 51.5686%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 39%;
+    --input: 0 0% 39%;
+    --ring: 35 100% 85%;
+    --chart-1: 35 100% 85%;
+    --chart-2: 200 100% 85%;
+    --chart-3: 240 100% 85%;
+    --chart-4: 150 100% 85%;
+    --chart-5: 180 100% 85%;
+    --sidebar: 240 6% 24%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 35 100% 85%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 240 100% 85%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 39%;
+    --sidebar-ring: 35 100% 85%;
+    --sidebar-min-width: max(20%, 22rem);
+    --sidebar-max-width: 40rem;
     --font-sans: Poppins, sans-serif;
-    --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: Roboto Mono, monospace;
     --radius: 0.75rem;
-    --shadow-2xs: 0 1px 25px 0px hsl(0 0% 0% / 0);
-    --shadow-xs: 0 1px 25px 0px hsl(0 0% 0% / 0);
-    --shadow-sm:
-      0 1px 25px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
-    --shadow: 0 1px 25px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
-    --shadow-md:
-      0 1px 25px 0px hsl(0 0% 0% / 0), 0 2px 4px -1px hsl(0 0% 0% / 0);
-    --shadow-lg:
-      0 1px 25px 0px hsl(0 0% 0% / 0), 0 4px 6px -1px hsl(0 0% 0% / 0);
-    --shadow-xl:
-      0 1px 25px 0px hsl(0 0% 0% / 0), 0 8px 10px -1px hsl(0 0% 0% / 0);
-    --shadow-2xl: 0 1px 25px 0px hsl(0 0% 0% / 0);
-    --sidebar-background: 240 5.9% 10%;
+    --shadow-2xs: 0 1px 25px 0px hsl(0 0% 0% / 0.00);
+    --shadow-xs: 0 1px 25px 0px hsl(0 0% 0% / 0.00);
+    --shadow-sm: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 1px 2px -1px hsl(0 0% 0% / 0.00);
+    --shadow: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 1px 2px -1px hsl(0 0% 0% / 0.00);
+    --shadow-md: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 2px 4px -1px hsl(0 0% 0% / 0.00);
+    --shadow-lg: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 4px 6px -1px hsl(0 0% 0% / 0.00);
+    --shadow-xl: 0 1px 25px 0px hsl(0 0% 0% / 0.00), 0 8px 10px -1px hsl(0 0% 0% / 0.00);
+    --shadow-2xl: 0 1px 25px 0px hsl(0 0% 0% / 0.00);
+    --sidebar: 240 6% 24%;
+    --shadow-color: 0 0% 0%;
+    --shadow-opacity: 0;
+    --shadow-blur: 25px;
+    --shadow-spread: 0px;
+    --shadow-offset-x: 0;
+    --shadow-offset-y: 1px;
+    --letter-spacing: 0em;
+    --spacing: 0.3rem;
   }
   .theme {
     --font-sans: Poppins, sans-serif;
     --font-mono: Roboto Mono, monospace;
-    --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --radius: 0.75rem;
     --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
     --tracking-tight: calc(var(--tracking-normal) - 0.025em);
@@ -174,10 +176,11 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     overflow: hidden; /* 取消整体页面滑动 */
   }
 }

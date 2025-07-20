@@ -21,7 +21,11 @@ import { ImageData, Tag, TagGroup, Prompt, DBResult } from '@/types';
 const COLLECTIONS = {
   IMAGES: 'images',
   PROMPTS: 'prompts',
-  TAG_GROUPS: 'tagGroups',
+  CATEGORIES: 'categories', // 原 TAG_GROUPS
+  TAGS: 'tags',
+  IMAGE_TAGS: 'image-tags', // 新增：图片标签关联表
+  // 保持向后兼容
+  TAG_GROUPS: 'categories',
 } as const;
 
 // 客户端数据库操作类
@@ -82,7 +86,7 @@ export class Database {
     );
   }
 
-  // 获取所有标签（实时监听）- 从图片数据中动态提取
+  // 获取所有标签（实时监听）- 从独立的tags集合获取
   subscribeToTags(
     callback: (tags: Tag[]) => void,
     onError?: (error: Error) => void
@@ -92,67 +96,55 @@ export class Database {
       onError?.(new Error('Firestore 未初始化'));
       return () => {};
     }
-    const imagesRef = collection(dbInstance, COLLECTIONS.IMAGES);
-    const q = query(imagesRef, orderBy('createdAt', 'desc'));
+    const tagsRef = collection(dbInstance, COLLECTIONS.TAGS);
+    // 临时使用单一排序避免索引问题，等待手动创建复合索引后可恢复
+    // const q = query(tagsRef, orderBy('usageCount', 'desc'), orderBy('name', 'asc'));
+    const q = query(tagsRef, orderBy('name', 'asc'));
 
     return onSnapshot(
       q,
-      (snapshot) => {
-        const tagMap = new Map<string, Tag>();
-        const tagUsageCount = new Map<string, number>();
+      async (snapshot) => {
+        const tags: Tag[] = [];
+        const categoryIds = new Set<string>();
 
-        // 从所有图片中提取标签
+        // 收集所有分类ID
         snapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          const imageTags = data.tags || [];
-
-          imageTags.forEach((tag: Tag) => {
-            // 检查tag是否为null或undefined，以及是否有name属性
-            if (!tag || !tag.name) {
-              return;
-            }
-            
-            // 统计标签使用次数
-            tagUsageCount.set(tag.name, (tagUsageCount.get(tag.name) || 0) + 1);
-            
-            if (tagMap.has(tag.name)) {
-              const existingTag = tagMap.get(tag.name)!;
-      
-              // 保持最新的更新时间和分组信息
-              if (
-                tag.updatedAt &&
-                (!existingTag.updatedAt ||
-                  tag.updatedAt > existingTag.updatedAt)
-              ) {
-                existingTag.updatedAt = tag.updatedAt;
-                // 更新分组信息（使用最新的）
-                if (tag.groupId) existingTag.groupId = tag.groupId;
-                if (tag.groupName) existingTag.groupName = tag.groupName;
-                if (tag.groupColor) existingTag.groupColor = tag.groupColor;
-              }
-            } else {
-              tagMap.set(tag.name, {
-                ...tag,
-                // 确保有默认分组信息
-                groupId: tag.groupId || 'default',
-                groupName: tag.groupName || '默认分组',
-                groupColor: tag.groupColor || '#64748b'
-              });
-            }
-          });
+          const tagData = doc.data();
+          if (tagData.categoryId) {
+            categoryIds.add(tagData.categoryId);
+          }
         });
 
-        // 转换为数组并按使用次数排序
-        const tags = Array.from(tagMap.values())
-          .sort((a, b) => {
-            const countA = tagUsageCount.get(a.name) || 0;
-            const countB = tagUsageCount.get(b.name) || 0;
-            // 先按使用次数降序，再按名称升序
-            if (countA !== countB) {
-              return countB - countA;
-            }
-            return a.name.localeCompare(b.name);
+        // 获取分类信息
+        const categoryMap = new Map<string, string>();
+        if (categoryIds.size > 0) {
+          const categoriesRef = collection(dbInstance, COLLECTIONS.CATEGORIES);
+          const categoriesQuery = query(categoriesRef, where('__name__', 'in', Array.from(categoryIds)));
+          const categoriesSnapshot = await getDocs(categoriesQuery);
+          
+          categoriesSnapshot.docs.forEach((doc) => {
+            const categoryData = doc.data();
+            categoryMap.set(doc.id, categoryData.name);
           });
+        }
+
+        // 构建标签数据
+        snapshot.docs.forEach((doc) => {
+          const tagData = doc.data();
+          const tag: Tag = {
+            id: doc.id,
+            name: tagData.name,
+            color: tagData.color || '#3b82f6',
+            categoryId: tagData.categoryId,
+            usageCount: tagData.usageCount || 0,
+            order: tagData.order || 0,
+            createdAt: tagData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            updatedAt: tagData.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            // 添加分类名称用于显示
+            categoryName: tagData.categoryId ? categoryMap.get(tagData.categoryId) : undefined,
+          };
+          tags.push(tag);
+        });
 
         callback(tags);
       },
@@ -163,7 +155,7 @@ export class Database {
     );
   }
 
-  // 获取所有标签分组（实时监听）- 从图片数据中动态提取
+  // 获取所有分类（实时监听）- 从独立的categories集合获取
   subscribeToTagGroups(
     callback: (tagGroups: TagGroup[]) => void,
     onError?: (error: Error) => void
@@ -173,74 +165,43 @@ export class Database {
       onError?.(new Error('Firestore 未初始化'));
       return () => {};
     }
-    const imagesRef = collection(dbInstance, COLLECTIONS.IMAGES);
-    const q = query(imagesRef, orderBy('createdAt', 'desc'));
+    const categoriesRef = collection(dbInstance, COLLECTIONS.CATEGORIES);
+    // 临时使用单一排序避免索引问题，等待手动创建复合索引后可恢复
+    // const q = query(categoriesRef, orderBy('order', 'asc'), orderBy('name', 'asc'));
+    const q = query(categoriesRef, orderBy('name', 'asc'));
 
     return onSnapshot(
       q,
       (snapshot) => {
-        const groupMap = new Map<string, TagGroup>();
-        const groupTagCount = new Map<string, number>();
-
-        // 从所有图片中提取标签分组信息
-        snapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          const imageTags = data.tags || [];
-
-          imageTags.forEach((tag: Tag) => {
-            if (!tag || !tag.name) {
-              return;
-            }
-
-            const groupId = tag.groupId || 'default';
-            const groupName = tag.groupName || '默认分组';
-            const groupColor = tag.groupColor || '#64748b';
-
-            // 统计分组中的标签数量
-            groupTagCount.set(groupId, (groupTagCount.get(groupId) || 0) + 1);
-
-            if (!groupMap.has(groupId)) {
-              groupMap.set(groupId, {
-                id: groupId,
-                name: groupName,
-                color: groupColor,
-                order: groupId === 'default' ? 0 : 1,
-                tagCount: 0,
-                createdAt: tag.createdAt || new Date().toISOString(),
-                updatedAt: tag.updatedAt || new Date().toISOString(),
-              });
-            } else {
-              // 更新分组信息（使用最新的）
-              const existingGroup = groupMap.get(groupId)!;
-              if (tag.updatedAt && (!existingGroup.updatedAt || tag.updatedAt > existingGroup.updatedAt)) {
-                existingGroup.name = groupName;
-                existingGroup.color = groupColor;
-                existingGroup.updatedAt = tag.updatedAt;
-              }
-            }
-          });
+        const tagGroups: TagGroup[] = snapshot.docs.map((doc) => {
+          const categoryData = doc.data();
+          return {
+            id: doc.id,
+            name: categoryData.name,
+            description: categoryData.description,
+            color: categoryData.color,
+            order: categoryData.order || 0,
+            tagCount: categoryData.tagCount || 0,
+            createdAt: categoryData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            updatedAt: categoryData.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          };
         });
-
-        // 更新标签数量并转换为数组
-        const tagGroups = Array.from(groupMap.values())
-          .map(group => ({
-            ...group,
-            tagCount: groupTagCount.get(group.id) || 0
-          }))
-          .sort((a, b) => {
-            // 默认分组排在最前面，其他按名称排序
-            if (a.id === 'default') return -1;
-            if (b.id === 'default') return 1;
-            return a.name.localeCompare(b.name);
-          });
 
         callback(tagGroups);
       },
       (error) => {
-        console.error('标签分组监听错误:', error);
+        console.error('分类监听错误:', error);
         if (onError) onError(error);
       }
     );
+  }
+
+  // 获取分类（别名方法，保持向后兼容）
+  subscribeToCategories(
+    callback: (categories: TagGroup[]) => void,
+    onError?: (error: Error) => void
+  ): () => void {
+    return this.subscribeToTagGroups(callback, onError);
   }
 
   // 监听特定图片的变化
@@ -582,17 +543,17 @@ export class Database {
         throw new Error('Firestore 未初始化');
       }
 
-      // 确保默认分组存在
-      const DatabaseAdmin = (await import('./database-admin')).DatabaseAdmin;
-      const finalGroupId = data.groupId || await DatabaseAdmin.ensureDefaultTagGroup();
+      // 如果没有指定分类ID，使用null（未分类）
+      const finalCategoryId = data.groupId || null;
 
       const tagRef = await addDoc(
-        collection(dbInstance, 'tags'),
+        collection(dbInstance, COLLECTIONS.TAGS),
         {
           name: data.name,
           color: data.color,
-          groupId: finalGroupId,
-  
+          categoryId: finalCategoryId,
+          usageCount: 0,
+          order: 0,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }

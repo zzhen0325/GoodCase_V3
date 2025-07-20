@@ -1,0 +1,184 @@
+/* 边栏主题样式文件 */
+/* 所有边栏相关的样式都在这里统一管理 */
+
+@tailwind components;
+
+@layer components {
+  /* 边栏基础样式 */
+  .sidebar-base {
+    @apply bg-sidebar text-sidebar-foreground;
+  }
+
+  /* 边栏头部样式 */
+  .sidebar-header {
+    @apply h-16 flex items-center border-b;
+  }
+
+  /* 边栏内容区域样式 */
+  .sidebar-content {
+    @apply flex min-h-0 flex-1 flex-col gap-2 overflow-auto custom-scrollbar;
+  }
+
+  /* 边栏底部样式 */
+  .sidebar-footer {
+    @apply flex flex-col gap-2;
+  }
+
+  /* 边栏分组样式 */
+  .sidebar-group {
+    @apply relative flex w-full min-w-0  bg-gray flex-col p-2;
+  }
+
+  /* 边栏分组标签样式 */
+  .sidebar-group-label {
+    @apply flex h-8 shrink-0 items-center rounded-md px-2   text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2;
+  }
+
+  /* 边栏菜单样式 */
+  .sidebar-menu {
+    @apply flex w-full min-w-0 flex-col gap-1;
+  }
+
+  /* 边栏菜单项样式 */
+  .sidebar-menu-item {
+    @apply group/menu-item relative;
+  }
+
+  /* 边栏菜单按钮基础样式 */
+  .sidebar-menu-button {
+    @apply peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* 边栏菜单按钮激活状态 */
+  .sidebar-menu-button-active {
+    @apply bg-sidebar-accent font-medium text-sidebar-accent-foreground;
+  }
+
+  /* 边栏主要元素样式 */
+  .sidebar-primary {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground;
+  }
+
+  /* 边栏强调色样式 */
+  .sidebar-accent {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+  }
+
+  /* 边栏边框样式 */
+  .sidebar-border {
+    @apply border-sidebar-border;
+  }
+
+  /* 边栏输入框样式 */
+  .sidebar-input {
+    @apply h-8 w-full bg-background shadow-none focus-visible:ring-2 focus-visible:ring-sidebar-ring;
+  }
+
+  /* 边栏分隔符样式 */
+  .sidebar-separator {
+    @apply mx-2 w-auto bg-sidebar-border;
+  }
+
+  /* 边栏触发器样式 */
+  .sidebar-trigger {
+    @apply h-7 w-7;
+  }
+
+  /* 边栏操作按钮样式 */
+  .sidebar-action {
+    @apply absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2;
+  }
+
+  /* 边栏徽章样式 */
+  .sidebar-badge {
+    @apply pointer-events-none absolute right-1 flex h-5 min-w-5 select-none items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums text-sidebar-foreground;
+  }
+
+  /* 边栏骨架屏样式 */
+  .sidebar-skeleton {
+    @apply flex h-8 items-center gap-2 px-2;
+  }
+
+  /* 标签相关样式已移至标准 Sidebar 组件 */
+
+  /* 上传按钮样式 */
+  .upload-button {
+    @apply w-full bg-black hover:bg-gray-800 text-white font-medium py-3 mb-6 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors;
+  }
+
+  /* 工具按钮样式 */
+  .tool-button {
+    @apply w-full;
+  }
+
+  /* 品牌标识样式 */
+  .brand-icon {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-xl;
+  }
+
+  /* 下拉菜单触发器样式 */
+  .dropdown-trigger {
+    @apply h-8 w-8 p-0;
+  }
+
+  /* 搜索区域样式 */
+  .search-area {
+    @apply px-4 mt-6;
+  }
+
+  /* 标签分组区域样式 */
+  .tag-groups-area {
+    @apply mt-6;
+  }
+
+  /* 响应式样式 */
+  @media (max-width: 768px) {
+    .sidebar-mobile {
+      @apply w-[--sidebar-width-mobile];
+    }
+  }
+
+  /* 暗色主题适配 */
+  .dark .sidebar-base {
+    @apply bg-sidebar text-sidebar-foreground;
+  }
+
+  .dark .upload-button {
+    @apply bg-white hover:bg-gray-200 text-black;
+  }
+}
+
+/* CSS 变量覆盖 - 可以在这里统一调整边栏的颜色主题 */
+:root {
+  /* 边栏尺寸变量 */
+  --sidebar-width: 16rem;
+  --sidebar-width-mobile: 18rem;
+  --sidebar-width-icon: 3rem;
+  --sidebar-height: 100vh;
+  
+  /* 边栏间距变量 */
+  --sidebar-padding: 0.5rem;
+  --sidebar-gap: 0.5rem;
+  
+  /* 边栏动画变量 */
+  --sidebar-transition-duration: 200ms;
+  --sidebar-transition-easing: ease-linear;
+}
+
+/* 暗色主题变量覆盖 */
+.dark {
+  /* 可以在这里覆盖暗色主题下的边栏样式变量 */
+}
+
+/* 自定义主题变量 - 可以通过修改这些变量来快速调整整个边栏的外观 */
+.sidebar-theme-custom {
+  /* 自定义颜色主题示例 */
+  --sidebar-background: hsl(220, 13%, 18%);
+  --sidebar-foreground: hsl(220, 9%, 46%);
+  --sidebar-primary: hsl(220, 14%, 96%);
+  --sidebar-primary-foreground: hsl(220, 13%, 18%);
+  --sidebar-accent: hsl(220, 14%, 96%);
+  --sidebar-accent-foreground: hsl(220, 13%, 18%);
+  --sidebar-border: hsl(220, 13%, 28%);
+  --sidebar-ring: hsl(220, 14%, 96%);
+}

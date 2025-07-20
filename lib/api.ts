@@ -388,65 +388,7 @@ class ApiClient {
     }
   }
 
-  // ==================== 标签相关 ====================
 
-  // 获取所有标签
-  async getAllTags(): Promise<DBResult<Tag[]>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/tags`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: result.error || '获取标签失败',
-          timestamp: new Date(),
-        };
-      }
-
-      return {
-        ...result,
-        timestamp: new Date(),
-      };
-    } catch (error) {
-      console.error('获取标签失败:', error);
-      return {
-        success: false,
-        error: '网络错误',
-        timestamp: new Date(),
-      };
-    }
-  }
-
-  // ==================== 标签分组相关 ====================
-
-  // 获取所有标签分组
-  async getAllTagGroups(): Promise<DBResult<TagGroup[]>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/tag-groups`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: result.error || '获取标签分组失败',
-          timestamp: new Date(),
-        };
-      }
-
-      return {
-        ...result,
-        timestamp: new Date(),
-      };
-    } catch (error) {
-      console.error('获取标签分组失败:', error);
-      return {
-        success: false,
-        error: '网络错误',
-        timestamp: new Date(),
-      };
-    }
-  }
 }
 
 export const apiClient = ApiClient.getInstance();

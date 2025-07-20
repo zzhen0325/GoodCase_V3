@@ -120,7 +120,7 @@ export function filterImages(
       const searchableText = [
         image.title,
         image.prompts?.[0]?.content || '',
-        ...image.tags.map(tag => typeof tag === 'string' ? tag : tag.name),
+        ...(image.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name),
       ]
         .join(' ')
         .toLowerCase();
@@ -134,7 +134,7 @@ export function filterImages(
   if (filters.tags && filters.tags.length > 0) {
     filtered = filtered.filter((image) =>
       filters.tags.some((filterTag) => 
-        image.tags.some(imageTag => 
+        (image.tags || []).some(imageTag => 
           typeof imageTag === 'string' ? imageTag === filterTag : imageTag.name === filterTag
         )
       )
@@ -217,7 +217,7 @@ export function searchImagesOptimized(
       const searchableText = [
         image.title,
         image.prompts?.[0]?.content || '',
-        ...image.tags.map(tag => typeof tag === 'string' ? tag : tag.name),
+        ...(image.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name),
       ]
         .join(' ')
         .toLowerCase();

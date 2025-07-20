@@ -82,19 +82,8 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     initializeFirebase();
   }, []);
 
-  // 显示加载状态
-  if (!isInitialized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">
-            正在初始化 Firebase...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // 移除加载状态，直接渲染子组件
+  // Firebase 初始化在后台进行，不阻塞 UI 渲染
 
   // 显示错误状态（但仍然渲染子组件）
   if (error) {
