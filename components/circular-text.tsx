@@ -101,9 +101,10 @@ const CircularText = ({
       style={{ rotate: rotation }}
       initial={{ rotate: 0 }}
       animate={controls}
+      className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none"
     >
       <div
-        className={`m-0 mx-auto rounded-full w-[100px] h-[100px] relative text-black font-black text-center cursor-pointer origin-center ${className}`}
+        className={`m-0 mx-auto rounded-full w-[100px] h-[100px] relative text-black font-black text-center cursor-pointer origin-center pointer-events-auto ${className}`}
         onMouseEnter={handleHoverStart}
         onMouseLeave={handleHoverEnd}
       >
