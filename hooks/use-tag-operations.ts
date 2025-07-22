@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useDataContext } from '@/components/shared/DataContext';
 import { Tag, TagGroup } from '@/types';
 import { Database } from '@/lib/database';
 
@@ -6,15 +7,28 @@ import { Database } from '@/lib/database';
 export function useTagOperations() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // 标签状态管理
-  const [tags, setTags] = useState<Tag[]>([]);
+  const { tags, setTags, categories: tagGroups, setCategories } = useDataContext();
   const [tagsLoading, setTagsLoading] = useState(true);
   const [tagsError, setTagsError] = useState<string | null>(null);
-
-  // 标签分组状态管理
-  const [tagGroups, setTagGroups] = useState<TagGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
   const [groupsError, setGroupsError] = useState<string | null>(null);
+
+  // 获取标签分组数据
+  const fetchTagGroups = async () => {
+    try {
+      setGroupsLoading(true);
+      const response = await fetch('/api/categories');
+      if (!response.ok) throw new Error('拉取分组失败');
+      const { tagGroups } = await response.json();
+      setCategories(tagGroups || []);
+      setGroupsError(null);
+    } catch (e) {
+      console.error('拉取分组失败:', e);
+      setGroupsError('拉取分组失败');
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
 
   // 使用实时订阅获取标签
   useEffect(() => {
@@ -38,29 +52,12 @@ export function useTagOperations() {
     };
   }, []);
 
-  // 获取所有标签分组
-  const fetchTagGroups = async () => {
-    try {
-      setGroupsLoading(true);
-      const response = await fetch('/api/tag-groups');
-      if (!response.ok) {
-        throw new Error('获取标签分组失败');
-      }
-      const data = await response.json();
-      setTagGroups(data.tagGroups || []);
-      setGroupsError(null);
-    } catch (err) {
-      console.error('获取标签分组失败:', err);
-      setGroupsError('获取标签分组失败');
-    } finally {
-      setGroupsLoading(false);
-    }
-  };
-
-  // 初始化时获取标签分组
+  // 初始化获取标签分组数据
   useEffect(() => {
     fetchTagGroups();
   }, []);
+
+  // getTagGroups 不再独立请求，数据由 DataContext 初始化
 
   // 标签操作方法
   const createTag = async (data: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -79,6 +76,7 @@ export function useTagOperations() {
       }
       
       const { tag } = await response.json();
+      setTags(prev => [...prev, tag]);
       return { success: true, tag };
     } catch (error) {
       console.error('创建标签失败:', error);
@@ -100,7 +98,7 @@ export function useTagOperations() {
         const errorData = await response.json();
         throw new Error(errorData.error || '更新标签失败');
       }
-      
+      setTags(prev => prev.map(tag => tag.id === id ? { ...tag, ...data } : tag));
       return { success: true };
     } catch (error) {
       console.error('更新标签失败:', error);
@@ -118,7 +116,7 @@ export function useTagOperations() {
         const errorData = await response.json();
         throw new Error(errorData.error || '删除标签失败');
       }
-      
+      setTags(prev => prev.filter(tag => tag.id !== id));
       return { success: true };
     } catch (error) {
       console.error('删除标签失败:', error);
@@ -203,7 +201,7 @@ export function useTagOperations() {
   // 创建标签分组
   const createTagGroup = async (data: { name: string }) => {
     try {
-      const response = await fetch('/api/tag-groups', {
+      const response = await fetch('/api/categories', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -227,7 +225,7 @@ export function useTagOperations() {
   // 更新标签分组
   const updateTagGroup = async (id: string, data: { name: string }) => {
     try {
-      const response = await fetch(`/api/tag-groups/${id}`, {
+      const response = await fetch(`/api/categories/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -250,7 +248,7 @@ export function useTagOperations() {
   // 删除标签分组
   const deleteTagGroup = async (id: string) => {
     try {
-      const response = await fetch(`/api/tag-groups/${id}`, {
+      const response = await fetch(`/api/categories/${id}`, {
         method: 'DELETE',
       });
       

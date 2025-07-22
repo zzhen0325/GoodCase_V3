@@ -1,0 +1,84 @@
+## use-tag-operations.ts 标签数据分析报告
+### 📊 数据获取逻辑
+1. 标签数据获取
+
+- 方式 : 通过 Database.subscribeToTags() 实时订阅 Firestore
+- 集合 : tags 集合（独立存储）
+- 排序 : 按 name 字段升序排列
+- 特点 : 实时同步，数据变化时自动更新
+2. 标签分组数据获取
+
+- 方式 : 通过 fetchTagGroups() 调用 /api/tag-groups REST API
+- 集合 : categories 集合（原 tag-groups ）
+- 特点 : 按需获取，手动刷新
+### 🗄️ 数据存储位置
+Firestore 集合结构:
+
+```
+├── tags (标签集合)
+│   ├── id: string
+│   ├── name: string
+│   ├── color: string
+│   ├── categoryId?: string  // 关联分组ID
+│   ├── usageCount?: number
+│   └── order?: number
+│
+├── categories (分组集合)
+│   ├── id: string
+│   ├── name: string
+│   ├── color?: string
+│   ├── order?: number
+│   └── tagCount?: number
+│
+├── images (图片集合)
+│   ├── id: string
+│   ├── url: string
+│   ├── title: string
+│   ├── prompts: Prompt[]
+│   └── tags?: Tag[]  // 运行时添加
+│
+└── image-tags (关联表，设计中)
+    ├── imageId: string
+    ├── tagId: string
+    └── timestamps
+```
+### 🔗 关联关系分析
+1. 标签与分组关联 (一对多)
+
+- Tag.categoryId → Category.id
+- 通过 getTagsByGroup(groupId) 获取分组下的标签
+- 支持无分组标签（ categoryId 为空）
+2. 标签与图片关联 (多对多)
+
+- 当前实现 : 图片对象包含 tags 数组（运行时添加）
+- 设计目标 : 通过 image-tags 关联表实现
+- 上传流程 : selectedTagIds → onUpload(tagIds) → 保存关联
+3. 数据流向
+
+```
+用户选择标签 → selectedTagIds 状态
+     ↓
+上传图片时 → 验证标签必填
+     ↓
+调用 onUpload(tagIds) → 保存图片和标签关联
+     ↓
+实时订阅更新 → UI 自动刷新
+```
+### 🔄 状态管理策略
+混合同步策略:
+
+- 标签 : 实时订阅（高频变化，需要实时性）
+- 分组 : 按需获取（相对稳定，减少资源消耗）
+- 错误处理 : 分离的错误状态管理
+- 加载状态 : 细粒度的加载状态控制
+### 💡 架构优势
+1. 数据一致性 : 实时订阅确保标签数据同步
+2. 性能优化 : 分组数据按需加载，减少不必要的网络请求
+3. 扩展性 : 独立的标签和分组集合，支持复杂查询
+4. 用户体验 : 必填标签验证，确保数据完整性
+5. 状态管理 : 统一的 hook 接口，简化组件使用
+### 🔧 建议改进
+1. 实现 image-tags 关联表 : 支持更复杂的标签查询
+2. 标签使用统计 : 自动更新 usageCount 字段
+3. 缓存策略 : 为分组数据添加本地缓存
+4. 批量操作 : 优化大量标签的处理性能
