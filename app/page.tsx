@@ -4,7 +4,6 @@ import _ from 'lodash';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OptimizedImageGrid } from '@/components/optimized-image-grid';
-import { PerformanceMonitor, usePerformanceMonitor } from '@/components/performance-monitor';
 import { ImageModal } from '@/components/image-modal/image-modal';
 import { UploadModal } from '@/components/upload-modal/upload-modal';
 import { ConnectionStatus } from '@/components/connection-status';
@@ -28,13 +27,11 @@ import { useEditMode } from '@/hooks/use-edit-mode';
 import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bot, Wrench, FileText, ArrowUp, Search, X, Upload } from 'lucide-react';
+import { Bot, FileText, ArrowUp, Search, X, Upload } from 'lucide-react';
 
 // 主页面内容组件
 function HomePageContent() {
-  // 性能监控
-  const performanceMonitor = usePerformanceMonitor();
-  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
+
 
   // 使用组合的 hooks 管理所有状态和操作
 
@@ -304,14 +301,7 @@ function HomePageContent() {
           <Separator orientation="vertical" className="mx-2 h-4" />
           {/* 右侧按钮组 */}
           <div className="flex items-center gap-2 ">
-            <Button
-              onClick={() => setShowPerformanceMonitor(!showPerformanceMonitor)}
-              variant="outline"
-              className="h-12 rounded-2xl font-bold px-4 hover:bg-accent transition-colors"
-              size="sm"
-            >
-              <Wrench className="w-4 h-4" />
-            </Button>
+
             <Button
               onClick={handleUpload}
               className="bg-black h-12 rounded-2xl text-white  font-bold px-8 hover:bg-accent hover:text-black transition-colors"
@@ -402,12 +392,7 @@ function HomePageContent() {
         onClose={downloadProgress.hideProgress}
       />
 
-      {/* 性能监控 */}
-      <PerformanceMonitor
-        show={showPerformanceMonitor}
-        position="bottom-right"
-        onClose={() => setShowPerformanceMonitor(false)}
-      />
+
     </>
   );
 }

@@ -18,7 +18,8 @@ import { PromptBlock, getColorTheme } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { generateId } from '@/lib/utils';
 import { FileUploadArea } from './FileUploadArea';
-import { TagSelectorDropdown } from '../image-modal/TagSelectorDropdown';
+import { TagSelectorDropdown } from 'components/image-modal/TagSelectorDropdown';
+import { Separator } from '@/components/ui/separator';
 import { UploadActions } from './UploadActions';
 import { PromptList } from '../image-modal/PromptList';
 
@@ -158,7 +159,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-[70vw] h-[75vh] p-0 flex flex-col rounded-2xl overflow-hidden gap-0 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
-          <DialogHeader className="px-6 py-4 border-b">
+          <DialogHeader className="mt-4 px-6 py-4 border-b">
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle>上传图片</DialogTitle>
@@ -166,12 +167,22 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                   选择图片文件，添加提示词，然后上传到图库
                 </DialogDescription>
               </div>
-              <div className="flex items-center gap-2">
-              
+              <div className="flex items-center gap-2 ">
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="lg"
+                  onClick={() => setTagSelectorOpen(true)}
+                  className="px-3 text-black font-medium"
+                >
+                  <TagIcon className="h-3 w-3 " />
+                  Add Tag
+                </Button>
+                <Separator orientation="vertical" className="h-6 mx-4" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
                   onClick={() => {
                     const newBlock: PromptBlock = {
                       id: generateId(),
@@ -181,10 +192,10 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                     };
                     setPromptBlocks([...promptBlocks, newBlock]);
                   }}
-                  className="h-8 px-3 text-xs"
+                  className="px-3 text-black font-medium"
                 >
-                  <Plus className="h-3 w-3 mr-1" />
-                  添加提示词
+                  <Plus className="h-3 w-3" />
+                  Add Prompt
                 </Button>
               </div>
             </div>
@@ -208,7 +219,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               
                 
                 {/* 提示词显示区域 */}
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 bg-white">
                   <PromptList
                     promptBlocks={promptBlocks}
                     isEditing={true}
@@ -273,7 +284,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               </div>
 
               {/* 操作按钮 */}
-              <div className="p-6 border-t bg-white">
+              <div className="p-6 border-t bg-white flex justify-end">
                 <UploadActions
                   onUpload={handleUpload}
                   onCancel={handleCancel}
@@ -286,16 +297,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         </DialogContent>
       </Dialog>
       
-      {/* 标签选择弹窗 */}
-      <TagSelectorDropdown
-        tags={tags}
-        tagCategories={tagCategories}
-        selectedTagIds={selectedTagIds}
-        onTagsChange={setSelectedTagIds}
-        open={tagSelectorOpen}
-        onOpenChange={setTagSelectorOpen}
-        onRefetch={refreshAll}
-      />
+
     </>
   );
 }

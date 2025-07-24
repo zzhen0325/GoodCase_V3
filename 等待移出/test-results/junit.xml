@@ -1,0 +1,142 @@
+<testsuites id="" name="" tests="5" failures="5" skipped="0" errors="0" time="11.458749">
+<testsuite name="quick-smoke.spec.ts" timestamp="2025-07-24T08:34:06.476Z" hostname="chromium" tests="1" failures="1" skipped="0" time="3.398" errors="0">
+<testcase name="快速冒烟测试 › 验证文件上传功能" classname="quick-smoke.spec.ts" time="3.398">
+<failure message="quick-smoke.spec.ts:251:7 验证文件上传功能" type="FAILURE">
+<![CDATA[  [chromium] › quick-smoke.spec.ts:251:7 › 快速冒烟测试 › 验证文件上传功能 ───────────────────────────────────────
+
+    Error: 上传测试图片失败: 500 {"success":false,"error":"UPLOAD_FAILED","message":"图片上传失败，请稍后重试"}
+
+       at utils/TestDataManager.ts:98
+
+       96 |     
+       97 |     if (!response.ok()) {
+    >  98 |       throw new Error(`上传测试图片失败: ${response.status()} ${await response.text()}`);
+          |             ^
+       99 |     }
+      100 |     
+      101 |     const result = await response.json();
+        at TestDataManager.uploadTestImage (/Users/bytedance/Desktop/seeseezz/good3/tests/e2e/utils/TestDataManager.ts:98:13)
+        at /Users/bytedance/Desktop/seeseezz/good3/tests/e2e/quick-smoke.spec.ts:258:24
+]]>
+</failure>
+<system-out>
+<![CDATA[快速测试环境初始化完成
+测试多种格式文件上传
+快速测试环境清理完成
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="quick-smoke.spec.ts" timestamp="2025-07-24T08:34:06.476Z" hostname="firefox" tests="1" failures="1" skipped="0" time="3.669" errors="0">
+<testcase name="快速冒烟测试 › 验证文件上传功能" classname="quick-smoke.spec.ts" time="3.669">
+<failure message="quick-smoke.spec.ts:251:7 验证文件上传功能" type="FAILURE">
+<![CDATA[  [firefox] › quick-smoke.spec.ts:251:7 › 快速冒烟测试 › 验证文件上传功能 ────────────────────────────────────────
+
+    Error: 上传测试图片失败: 500 {"success":false,"error":"UPLOAD_FAILED","message":"图片上传失败，请稍后重试"}
+
+       at utils/TestDataManager.ts:98
+
+       96 |     
+       97 |     if (!response.ok()) {
+    >  98 |       throw new Error(`上传测试图片失败: ${response.status()} ${await response.text()}`);
+          |             ^
+       99 |     }
+      100 |     
+      101 |     const result = await response.json();
+        at TestDataManager.uploadTestImage (/Users/bytedance/Desktop/seeseezz/good3/tests/e2e/utils/TestDataManager.ts:98:13)
+        at /Users/bytedance/Desktop/seeseezz/good3/tests/e2e/quick-smoke.spec.ts:258:24
+]]>
+</failure>
+<system-out>
+<![CDATA[快速测试环境初始化完成
+测试多种格式文件上传
+快速测试环境清理完成
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="quick-smoke.spec.ts" timestamp="2025-07-24T08:34:06.476Z" hostname="webkit" tests="1" failures="1" skipped="0" time="3.195" errors="0">
+<testcase name="快速冒烟测试 › 验证文件上传功能" classname="quick-smoke.spec.ts" time="3.195">
+<failure message="quick-smoke.spec.ts:251:7 验证文件上传功能" type="FAILURE">
+<![CDATA[  [webkit] › quick-smoke.spec.ts:251:7 › 快速冒烟测试 › 验证文件上传功能 ─────────────────────────────────────────
+
+    Error: 上传测试图片失败: 500 {"success":false,"error":"UPLOAD_FAILED","message":"图片上传失败，请稍后重试"}
+
+       at utils/TestDataManager.ts:98
+
+       96 |     
+       97 |     if (!response.ok()) {
+    >  98 |       throw new Error(`上传测试图片失败: ${response.status()} ${await response.text()}`);
+          |             ^
+       99 |     }
+      100 |     
+      101 |     const result = await response.json();
+        at TestDataManager.uploadTestImage (/Users/bytedance/Desktop/seeseezz/good3/tests/e2e/utils/TestDataManager.ts:98:13)
+        at /Users/bytedance/Desktop/seeseezz/good3/tests/e2e/quick-smoke.spec.ts:258:24
+]]>
+</failure>
+<system-out>
+<![CDATA[快速测试环境初始化完成
+测试多种格式文件上传
+快速测试环境清理完成
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="quick-smoke.spec.ts" timestamp="2025-07-24T08:34:06.476Z" hostname="mobile-chrome" tests="1" failures="1" skipped="0" time="3.132" errors="0">
+<testcase name="快速冒烟测试 › 验证文件上传功能" classname="quick-smoke.spec.ts" time="3.132">
+<failure message="quick-smoke.spec.ts:251:7 验证文件上传功能" type="FAILURE">
+<![CDATA[  [mobile-chrome] › quick-smoke.spec.ts:251:7 › 快速冒烟测试 › 验证文件上传功能 ──────────────────────────────────
+
+    Error: 上传测试图片失败: 500 {"success":false,"error":"UPLOAD_FAILED","message":"图片上传失败，请稍后重试"}
+
+       at utils/TestDataManager.ts:98
+
+       96 |     
+       97 |     if (!response.ok()) {
+    >  98 |       throw new Error(`上传测试图片失败: ${response.status()} ${await response.text()}`);
+          |             ^
+       99 |     }
+      100 |     
+      101 |     const result = await response.json();
+        at TestDataManager.uploadTestImage (/Users/bytedance/Desktop/seeseezz/good3/tests/e2e/utils/TestDataManager.ts:98:13)
+        at /Users/bytedance/Desktop/seeseezz/good3/tests/e2e/quick-smoke.spec.ts:258:24
+]]>
+</failure>
+<system-out>
+<![CDATA[快速测试环境初始化完成
+测试多种格式文件上传
+快速测试环境清理完成
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="quick-smoke.spec.ts" timestamp="2025-07-24T08:34:06.476Z" hostname="mobile-safari" tests="1" failures="1" skipped="0" time="3.091" errors="0">
+<testcase name="快速冒烟测试 › 验证文件上传功能" classname="quick-smoke.spec.ts" time="3.091">
+<failure message="quick-smoke.spec.ts:251:7 验证文件上传功能" type="FAILURE">
+<![CDATA[  [mobile-safari] › quick-smoke.spec.ts:251:7 › 快速冒烟测试 › 验证文件上传功能 ──────────────────────────────────
+
+    Error: 上传测试图片失败: 500 {"success":false,"error":"UPLOAD_FAILED","message":"图片上传失败，请稍后重试"}
+
+       at utils/TestDataManager.ts:98
+
+       96 |     
+       97 |     if (!response.ok()) {
+    >  98 |       throw new Error(`上传测试图片失败: ${response.status()} ${await response.text()}`);
+          |             ^
+       99 |     }
+      100 |     
+      101 |     const result = await response.json();
+        at TestDataManager.uploadTestImage (/Users/bytedance/Desktop/seeseezz/good3/tests/e2e/utils/TestDataManager.ts:98:13)
+        at /Users/bytedance/Desktop/seeseezz/good3/tests/e2e/quick-smoke.spec.ts:258:24
+]]>
+</failure>
+<system-out>
+<![CDATA[快速测试环境初始化完成
+测试多种格式文件上传
+快速测试环境清理完成
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Upload, FileImage } from 'lucide-react';
+import { Upload, FileImage, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 
@@ -44,25 +44,29 @@ export const FileUploadArea: React.FC<FileUploadAreaProps> = ({
       {/* 拖放区域 */}
       <div className="flex-1 p-6">
         <div
-          className="h-full border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center relative overflow-hidden bg-gray-50/50 hover:bg-gray-50 transition-colors"
+          className={`h-full flex flex-col items-center justify-center relative overflow-hidden transition-colors ${
+            previewUrl 
+              ? 'rounded-2xl' 
+              : 'border-2 border-dashed border-gray-300 rounded-lg bg-gray-50/50 hover:bg-gray-50'
+          }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
         >
           {previewUrl ? (
-            <div className="relative w-full h-full">
+            <div className="relative w-full h-auto max-h-[80%] rounded-2xl">
               <img
                 src={previewUrl}
                 alt="预览"
-                className="w-full h-full object-contain rounded-lg"
+                className="w-full max-h-[80%] object-contain rounded-2xl"
               />
               <Button
                 type="button"
-                variant="destructive"
+                variant="outline"
                 size="sm"
-                className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
+                className="absolute top-2 right-2 h-8 w-8 p-0 rounded-xl bg-white/80 hover:bg-white"
                 onClick={onClearFile}
               >
-                ×
+                <X className="h-4 w-4" />
               </Button>
             </div>
           ) : (
@@ -76,14 +80,16 @@ export const FileUploadArea: React.FC<FileUploadAreaProps> = ({
                 <Upload className="h-full w-full" />
               </div>
               <div className="text-sm text-gray-600 mb-2">
-                拖拽图片到此处，或
-                <button
+               
+                <Button
                   type="button"
-                  className="text-blue-600 hover:text-blue-500 ml-1"
+                  variant="outline"
+                  size="lg"
+                  className="text-white bg-black hover:text-black mb-10  rounded-xl"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  点击选择
-                </button>
+                Select
+                </Button>
               </div>
               <p className="text-xs text-gray-500">
                 支持 JPG、PNG、WebP 格式

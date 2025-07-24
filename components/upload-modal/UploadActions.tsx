@@ -18,16 +18,16 @@ export const UploadActions: React.FC<UploadActionsProps> = ({
   isUploading
 }) => {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2  justify-end">
       <Button
         type="button"
         variant="ghost"
         onClick={onCancel}
         disabled={isUploading}
-        size="sm"
-        className="px-4"
+        size="lg"
+        className="px-4 border"
       >
-        取消
+        Cancel
       </Button>
       
       <Separator orientation="vertical" className="h-6 mx-2" />
@@ -37,9 +37,9 @@ export const UploadActions: React.FC<UploadActionsProps> = ({
         onClick={(e) => onUpload(e)} 
         className="bg-black px-4 hover:bg-gray-800 text-white rounded-xl"
         disabled={!canUpload || isUploading}
-        size="sm"
+        size="lg"
       >
-        {isUploading ? '上传中...' : '提交'}
+        {isUploading ? 'Uploading...' : 'Submit'}
       </Button>
     </div>
   );

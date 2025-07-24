@@ -90,33 +90,9 @@ const OptimizedImageCard = React.memo(({
           )}
           
           {/* 覆盖层 */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300" />
           
-          {/* 标题和标签 */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
-            <h3 className="text-white font-medium text-sm mb-2 line-clamp-2">
-              {image.title || '未命名图片'}
-            </h3>
-            
-            {image.tags && image.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {image.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={typeof tag === "string" ? tag : (tag as any).id}
-                    className="px-2 py-1 text-xs rounded-full text-white"
-                    style={{ backgroundColor: (typeof tag === "string" ? "#6B7280" : (tag as any).color) || '#6B7280' }}
-                  >
-                    {(typeof tag === "string" ? tag : (tag as any).name)}
-                  </span>
-                ))}
-                {image.tags.length > 3 && (
-                  <span className="px-2 py-1 text-xs rounded-full bg-gray-600 text-white">
-                    +{image.tags.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          
+
         </>
       )}
     </motion.div>

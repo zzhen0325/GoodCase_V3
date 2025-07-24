@@ -101,17 +101,19 @@ export const ImageCard = React.memo(function ImageCard({
             </div>
           )}
 
-          <div className="w-full bg-gray-100 rounded-2xl relative overflow-hidden">
+          <div className="w-full rounded-2xl relative overflow-hidden bg-muted/20">
             {image.url ? (
               <React.Fragment>
                 {!imageLoaded && (
-                  <Skeleton className="w-full h-64 rounded-2xl" />
+                  <div className="absolute inset-0 z-10">
+                    <Skeleton className="w-full h-64 rounded-2xl" />
+                  </div>
                 )}
                 <motion.img
                   key="image"
                   src={image.url}
-         
-                  className={`w-full h-auto object-cover transition-all duration-300 ${
+                  alt={image.title || 'Image'}
+                  className={`w-full h-auto object-cover transition-all duration-300 relative z-20 ${
                     imageLoaded ? 'opacity-100' : 'opacity-0'
                   }`}
                   loading="lazy"
