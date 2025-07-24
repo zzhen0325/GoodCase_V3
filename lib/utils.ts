@@ -119,8 +119,8 @@ export function filterImages(
     filtered = filtered.filter((image) => {
       const searchableText = [
         image.title,
-        image.prompts?.[0]?.content || '',
-        ...(image.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name),
+        image.promptBlocks?.[0]?.content || '',
+        ...(image.tags || []).map(tag => typeof tag === 'string' ? tag : (typeof tag === "string" ? tag : (tag as any).name)),
       ]
         .join(' ')
         .toLowerCase();
@@ -133,9 +133,9 @@ export function filterImages(
   // 标签筛选 - 支持多标签筛选
   if (filters.tags && filters.tags.length > 0) {
     filtered = filtered.filter((image) =>
-      filters.tags.some((filterTag) => 
+      filters.tags?.some((filterTag) => 
         (image.tags || []).some(imageTag => 
-          typeof imageTag === 'string' ? imageTag === filterTag : imageTag.name === filterTag
+          typeof imageTag === 'string' ? imageTag === filterTag : (typeof imageTag === "string" ? imageTag : (imageTag as any).name) === filterTag
         )
       )
     );
@@ -165,9 +165,9 @@ export function filterImages(
       let aValue: any, bValue: any;
 
       switch (filters.sortBy) {
-        case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
+        case 'name':
+          aValue = a.name?.toLowerCase();
+          bValue = b.name?.toLowerCase();
           break;
         case 'createdAt':
           aValue = new Date(a.createdAt).getTime();
@@ -177,7 +177,7 @@ export function filterImages(
           aValue = new Date(a.updatedAt).getTime();
           bValue = new Date(b.updatedAt).getTime();
           break;
-        case 'size':
+        case 'createdAt':
           // ImageData 类型中没有 size 属性，使用默认排序
           aValue = 0;
           bValue = 0;
@@ -216,8 +216,8 @@ export function searchImagesOptimized(
     .map((image) => {
       const searchableText = [
         image.title,
-        image.prompts?.[0]?.content || '',
-        ...(image.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name),
+        image.promptBlocks?.[0]?.content || '',
+        ...(image.tags || []).map(tag => typeof tag === 'string' ? tag : (typeof tag === "string" ? tag : (tag as any).name)),
       ]
         .join(' ')
         .toLowerCase();

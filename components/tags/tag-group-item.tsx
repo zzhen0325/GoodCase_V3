@@ -21,12 +21,12 @@ import {
   Folder,
   FolderOpen,
 } from 'lucide-react';
-import { TagGroup, Tag } from '@/types';
+import { TagCategory, Tag } from '@/types';
 import { TagItem } from './tag-item';
 import { cn } from '@/lib/utils';
 
 interface TagGroupItemProps {
-  group: TagGroup;
+  group: TagCategory;
   tags: Tag[];
   expanded?: boolean;
   selectedTags?: string[];
@@ -35,8 +35,8 @@ interface TagGroupItemProps {
   onTagClick?: (tag: Tag) => void;
   onTagRemove?: (tag: Tag) => void;
   onTagEdit?: (tag: Tag) => void;
-  onGroupEdit?: (group: TagGroup) => void;
-  onGroupDelete?: (group: TagGroup) => void;
+  onGroupEdit?: (group: TagCategory) => void;
+  onGroupDelete?: (group: TagCategory) => void;
   onAddTag?: (groupId: string) => void;
   onGroupSelect?: (groupId: string) => void;
   className?: string;
@@ -97,7 +97,7 @@ export function TagGroupItem({
     }
   };
 
-  const selectedTagsInGroup = tags.filter((tag) =>
+  const selectedTagsInGroup = tags.filter((tag: Tag) =>
     selectedTags.includes(tag.id)
   ).length;
   const allTagsSelected =
@@ -152,7 +152,7 @@ export function TagGroupItem({
               variant="secondary"
               className="text-xs text-black"
             >
-              {group.tagCount} 个标签
+              {(group as any).tagCount || 0} 个标签
             </Badge>
 
             {someTagsSelected && (

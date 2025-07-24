@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { ImageData } from '@/types';
-import { database } from '@/lib/database';
 
 interface UseDataSyncProps {
   setImages: React.Dispatch<React.SetStateAction<ImageData[]>>;
@@ -22,14 +21,16 @@ export function useDataSync({
     console.log('🔄 手动刷新数据...');
     setConnectionStatus('reconnecting');
     try {
-      const result = await database.getAllImages();
-      if (result.success && result.data) {
-        setImages(result.data);
-        console.log('📸 手动刷新图片成功');
-        setConnectionStatus('connected');
-      } else {
-        throw new Error(result.error);
+      // 添加时间戳避免缓存
+      const response = await fetch('/api/images?t=' + Date.now());
+      if (!response.ok) {
+        throw new Error('获取图片失败');
       }
+      const result = await response.json();
+      const images = result.data || result.images || [];
+      setImages(images);
+      console.log('📸 手动刷新图片成功，获取到', images.length, '张图片');
+      setConnectionStatus('connected');
     } catch (error) {
       console.error('手动刷新数据失败:', error);
       setConnectionStatus('disconnected');

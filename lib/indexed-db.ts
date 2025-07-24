@@ -2,7 +2,7 @@
 import {
   ImageData,
   Tag,
-  TagGroup,
+  TagCategory,
   PromptBlock,
   DEFAULT_PROMPT_BLOCKS,
 } from '@/types';
@@ -129,31 +129,25 @@ class IndexedDBManager {
     const promptStore = transaction.objectStore(STORES.PROMPT_BLOCKS);
 
     // 确保图片有sortOrder
-    if (image.sortOrder === undefined) {
+    if ((image as any).order === undefined) {
       const maxSortOrder = await this.getMaxSortOrder(STORES.IMAGES);
-      image.sortOrder = maxSortOrder + 1;
+      (image as any).order = maxSortOrder + 1;
     }
 
     // 添加图片
     imageStore.put(image);
 
     // 创建默认提示词块
-    if (!image.prompts || image.prompts.length === 0) {
-      const defaultPrompts = DEFAULT_PROMPT_BLOCKS.map((template, index) => ({
+    if (!image.promptBlocks || image.promptBlocks.length === 0) {
+      const defaultPrompts: PromptBlock[] = DEFAULT_PROMPT_BLOCKS.map((template, index) => ({
         id: `${image.id}_prompt_${index}`,
-        title: template.title,
-        text: template.text,
-        content: template.text,
-        color: '#3b82f6',
-        imageId: image.id,
-        sortOrder: index,
-        order: index,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        content: template.content,
+        color: 'pink' as const,
+        order: index
       }));
 
       defaultPrompts.forEach((prompt) => promptStore.put(prompt));
-      image.prompts = defaultPrompts;
+      image.promptBlocks = defaultPrompts;
     }
 
     return new Promise((resolve, reject) => {
@@ -184,7 +178,7 @@ class IndexedDBManager {
 
     // 为每个图片加载提示词块
     for (const image of images) {
-      const prompts = await new Promise<PromptBlock[]>((resolve, reject) => {
+      const promptBlocks = await new Promise<PromptBlock[]>((resolve, reject) => {
         const request = promptStore.index('imageId').getAll(image.id);
         request.onsuccess = () => {
           const result = request.result.sort(
@@ -194,14 +188,14 @@ class IndexedDBManager {
         };
         request.onerror = () => reject(request.error);
       });
-      image.prompts = prompts.map(prompt => ({
+      image.promptBlocks = promptBlocks.map(prompt => ({
         id: prompt.id,
-        title: prompt.title || '',
-        content: prompt.content,
-        color: prompt.color || '#ef4444',
+        content: prompt.content || '',
+        color: prompt.color,
+        
         order: prompt.order || 0,
-        createdAt: prompt.createdAt?.toString(),
-        updatedAt: prompt.updatedAt?.toString()
+        
+        
       }));
     }
 
@@ -229,7 +223,7 @@ class IndexedDBManager {
     });
 
     if (image) {
-      const prompts = await new Promise<PromptBlock[]>((resolve, reject) => {
+      const promptBlocks = await new Promise<PromptBlock[]>((resolve, reject) => {
         const request = promptStore.index('imageId').getAll(id);
         request.onsuccess = () => {
           const result = request.result.sort(
@@ -239,14 +233,14 @@ class IndexedDBManager {
         };
         request.onerror = () => reject(request.error);
       });
-      image.prompts = prompts.map(prompt => ({
+      image.promptBlocks = promptBlocks.map(prompt => ({
         id: prompt.id,
-        title: prompt.title || '',
-        content: prompt.content,
-        color: prompt.color || '#ef4444',
+        content: prompt.content || '',
+        color: prompt.color,
+        
         order: prompt.order || 0,
-        createdAt: prompt.createdAt?.toString(),
-        updatedAt: prompt.updatedAt?.toString()
+        
+        
       }));
     }
 
@@ -274,8 +268,8 @@ class IndexedDBManager {
     // 删除关联的提示词块
     const promptRequest = promptStore.index('imageId').getAll(id);
     promptRequest.onsuccess = () => {
-      promptRequest.result.forEach((prompt) => {
-        promptStore.delete(prompt.id);
+      promptRequest.result.forEach((promptBlock) => {
+        promptStore.delete(promptBlock.id);
       });
     };
 
@@ -359,11 +353,11 @@ class IndexedDBManager {
     const store = transaction.objectStore(STORES.PROMPT_BLOCKS);
 
     // 确保提示词块有sortOrder
-    if (promptBlock.sortOrder === undefined) {
+    if (promptBlock.order === undefined) {
       const maxSortOrder = await this.getMaxSortOrderForImage(
-        promptBlock.imageId || ''
+        promptBlock.id || ''
       );
-      promptBlock.sortOrder = maxSortOrder + 1;
+      promptBlock.order = maxSortOrder + 1;
     }
 
     store.put(promptBlock);
@@ -404,7 +398,7 @@ class IndexedDBManager {
     const transaction = db.transaction([STORES.PROMPT_BLOCKS], 'readwrite');
     const store = transaction.objectStore(STORES.PROMPT_BLOCKS);
 
-    promptBlock.updatedAt = new Date().toISOString();
+    promptBlock.id = new Date().toISOString();
     store.put(promptBlock);
 
     return new Promise((resolve, reject) => {
@@ -464,12 +458,11 @@ class IndexedDBManager {
     // 转换PromptBlock为Prompt格式
     const prompts = promptBlocks.map(block => ({
       id: block.id,
-      title: block.title || '',
-      content: block.text || block.content || '',
+      content: block.content || '',
       color: block.color || '#3b82f6',
-      order: block.sortOrder || 0,
-      createdAt: block.createdAt,
-      updatedAt: block.updatedAt
+      order: block.order || 0,
+      
+      
     }));
     return prompts;
   }
@@ -484,16 +477,11 @@ class IndexedDBManager {
     const maxSortOrder = await this.getMaxSortOrderForImage(imageId);
     
     const promptBlock: PromptBlock = {
-      id: prompt.id || `${imageId}_prompt_${Date.now()}`,
-      title: prompt.title || '',
-      text: prompt.content || '',
+      id: `${imageId}_prompt_${Date.now()}`,
       content: prompt.content || '',
-      color: prompt.color || '#3b82f6',
-      imageId: imageId,
-      sortOrder: prompt.order !== undefined ? prompt.order : maxSortOrder + 1,
+      color: 'pink' as const,
       order: prompt.order !== undefined ? prompt.order : maxSortOrder + 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      
     };
 
     await this.addPromptBlock(promptBlock);
@@ -508,15 +496,9 @@ class IndexedDBManager {
 
     const promptBlock: PromptBlock = {
       id: prompt.id,
-      title: prompt.title || '',
-      text: prompt.content || '',
       content: prompt.content || '',
-      color: prompt.color || '#3b82f6',
-      imageId: prompt.imageId || '',
-      sortOrder: prompt.order || 0,
-      order: prompt.order || 0,
-      createdAt: typeof prompt.createdAt === 'string' ? prompt.createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      color: 'pink' as const,
+      order: prompt.order || 0
     };
 
     await this.updatePromptBlock(promptBlock);
@@ -537,9 +519,9 @@ class IndexedDBManager {
     return new Promise((resolve, reject) => {
       const request = store.index('imageId').getAll(imageId);
       request.onsuccess = () => {
-        const prompts = request.result;
-        const maxOrder = prompts.reduce((max, prompt) => {
-          return Math.max(max, prompt.sortOrder || 0);
+        const promptBlocks = request.result;
+        const maxOrder = promptBlocks.reduce((max, promptBlock) => {
+          return Math.max(max, promptBlock.order || 0);
         }, 0);
         resolve(maxOrder);
       };
@@ -585,12 +567,12 @@ class IndexedDBManager {
       // 文本搜索
       const textMatch =
         !query ||
-        image.title.toLowerCase().includes(query.toLowerCase()) ||
+        image.name?.toLowerCase().includes(query.toLowerCase()) ||
         (image as any).description?.toLowerCase().includes(query.toLowerCase()) ||
-        image.prompts.some(
-          (prompt) =>
-            prompt.title.toLowerCase().includes(query.toLowerCase()) ||
-            (prompt.content || '').toLowerCase().includes(query.toLowerCase())
+        image.promptBlocks.some(
+          (promptBlock) =>
+            promptBlock.content.toLowerCase().includes(query.toLowerCase()) ||
+            (promptBlock.content || '').toLowerCase().includes(query.toLowerCase())
         );
 
       // 标签过滤

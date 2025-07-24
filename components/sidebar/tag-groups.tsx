@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { TagGroup, Tag } from '@/types';
+import { TagCategory, Tag } from '@/types';
 import { useTagFilter } from '@/hooks/use-tag-filter';
 import { SearchFilters } from '@/types';
 import {
@@ -18,7 +18,7 @@ import {
 import { ChevronRight, Check } from 'lucide-react';
 
 interface TagGroupsProps {
-  tagGroups: TagGroup[];
+  tagCategories: TagCategory[];
   tags: Tag[];
   currentFilters?: SearchFilters;
   onSearch?: (filters: SearchFilters) => void;
@@ -33,7 +33,7 @@ const TagGroupItem = React.memo(({
   handleTagClick, 
   isTagSelected 
 }: {
-  group: TagGroup;
+  group: TagCategory;
   groupTags: Tag[];
   isExpanded: boolean;
   onToggleExpanded: (groupId: string) => void;
@@ -92,22 +92,22 @@ const TagGroupItem = React.memo(({
 TagGroupItem.displayName = 'TagGroupItem';
 
 export function TagGroups({ 
-  tagGroups, 
+  tagCategories, 
   tags, 
   currentFilters, 
   onSearch, 
   loading 
 }: TagGroupsProps) {
   const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(
-    new Set(tagGroups.map(group => group.id))
+    new Set(tagCategories.map(group => group.id))
   );
 
   // 当tagGroups变化时，确保所有分组都展开
   React.useEffect(() => {
-    if (tagGroups.length > 0) {
-      setExpandedGroups(new Set(tagGroups.map(group => group.id)));
+    if (tagCategories.length > 0) {
+      setExpandedGroups(new Set(tagCategories.map(group => group.id)));
     }
-  }, [tagGroups]);
+  }, [tagCategories]);
 
   // 使用自定义hook管理标签筛选逻辑
   const { handleTagClick, isTagSelected } = useTagFilter({
@@ -148,7 +148,7 @@ export function TagGroups({
 
   // 获取分组的标签
   const getGroupTags = React.useCallback((groupId: string) => {
-    return tags.filter((tag) => tag.categoryId === groupId);
+    return tags.filter((tag: Tag) => tag && tag.categoryId === groupId);
   }, [tags]);
 
   if (loading) {
@@ -179,7 +179,7 @@ export function TagGroups({
         </SidebarGroupContent>
       </SidebarGroup>
       
-      {tagGroups.map((group) => {
+      {tagCategories.map((group) => {
         const groupTags = getGroupTags(group.id);
         const isExpanded = expandedGroups.has(group.id);
 

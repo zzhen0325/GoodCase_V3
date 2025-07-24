@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { ImageData } from '@/types';
-import { database } from '@/lib/database';
 
 interface UseBatchOperationsProps {
   selectedImageIds: Set<string>;
@@ -41,11 +40,14 @@ export function useBatchOperations({
 
     try {
       const deletePromises = Array.from(selectedImageIds).map(async (id) => {
-        const result = await database.deleteImage(id);
-        if (!result.success) {
-          throw new Error(result.error);
+        const response = await fetch(`/api/images/${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '删除失败');
         }
-        return result;
+        return { success: true };
       });
       await Promise.all(deletePromises);
       setSelectedImageIds(new Set());

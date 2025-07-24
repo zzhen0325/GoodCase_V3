@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Copy, Trash2, Palette, Check, X } from 'lucide-react';
-import { type PromptBlock, COLOR_THEMES, getColorTheme } from '@/types';
+import { type PromptBlock, COLOR_THEMES, getColorTheme, ThemeColor } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,37 +14,50 @@ import { copyToClipboard, cn } from '@/lib/utils';
 
 // 提示词块组件属性
 interface PromptBlockProps {
-  prompt: {
+  promptBlock: {
     id: string;
     title?: string;
     content: string;
-    color?: string;
+    color?: ThemeColor;
   };
   isEditing: boolean;
-  onUpdate: (id: string, updates: { title?: string; content?: string; color?: string }) => void;
+  onUpdate: (id: string, updates: { title?: string; content?: string; color?: ThemeColor }) => void;
   onDelete: (id: string) => void;
   onCopy: (content: string) => void;
   onEnterEditMode?: () => void;
+  showDragHandle?: boolean;
+  disabled?: boolean;
 }
 
 // 提示词块组件
 export function PromptBlock({
-  prompt,
+  promptBlock,
   isEditing,
   onUpdate,
   onDelete,
   onCopy,
   onEnterEditMode,
+  showDragHandle = false,
+  disabled = false,
 }: PromptBlockProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [tempTitle, setTempTitle] = useState(prompt.title || '新提示词');
-  const [tempContent, setTempContent] = useState(prompt.content || '');
+  const [tempTitle, setTempTitle] = useState(promptBlock.title || '新提示词');
+  const [tempContent, setTempContent] = useState(promptBlock.content || '');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>(
     'idle'
   );
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 同步 promptBlock 的变化到临时状态
+  useEffect(() => {
+    setTempTitle(promptBlock.title || '新提示词');
+  }, [promptBlock.title]);
+
+  useEffect(() => {
+    setTempContent(promptBlock.content || '');
+  }, [promptBlock.content]);
 
   useEffect(() => {
     if (isEditingContent && textAreaRef.current) {
@@ -63,7 +76,7 @@ export function PromptBlock({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: prompt.id });
+  } = useSortable({ id: promptBlock.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -72,33 +85,33 @@ export function PromptBlock({
 
   // 保存标题
   const saveTitle = () => {
-    onUpdate(prompt.id, { title: tempTitle });
+    onUpdate(promptBlock.id, { title: tempTitle });
     setIsEditingTitle(false);
   };
 
   // 保存内容
   const saveContent = () => {
-    onUpdate(prompt.id, { content: tempContent });
+    onUpdate(promptBlock.id, { content: tempContent });
     setIsEditingContent(false);
   };
 
   // 取消编辑
   const cancelTitleEdit = () => {
-    setTempTitle(prompt.title || '新提示词');
+    setTempTitle(promptBlock.title || '新提示词');
     setIsEditingTitle(false);
   };
 
   const cancelContentEdit = () => {
-    setTempContent(prompt.content || '');
+    setTempContent(promptBlock.content || '');
     setIsEditingContent(false);
   };
 
   // 复制提示词
   const handleCopy = async () => {
-    const success = await copyToClipboard(prompt.content);
+    const success = await copyToClipboard(promptBlock.content);
     if (success) {
       setCopyStatus('success');
-      onCopy(prompt.content);
+      onCopy(promptBlock.content);
       // 2秒后重置状态
       setTimeout(() => setCopyStatus('idle'), 2000);
     } else {
@@ -109,13 +122,13 @@ export function PromptBlock({
   };
 
   // 更改颜色
-  const changeColor = (colorName: string) => {
-    onUpdate(prompt.id, { color: colorName });
+  const changeColor = (colorName: ThemeColor) => {
+    onUpdate(promptBlock.id, { color: colorName });
     setShowColorPicker(false);
   };
 
   // 获取当前颜色主题
-  const currentTheme = getColorTheme(prompt.color || 'default');
+  const currentTheme = getColorTheme((promptBlock.color as any) || 'pink');
 
   return (
     <div className="relative group">
@@ -199,14 +212,14 @@ export function PromptBlock({
             ) : (
               <h5
                 className="text-sm font-regular text-[#a8a1bf] cursor-pointer"
-                title={prompt.title || '未命名提示词'}
+                title={promptBlock.title || '未命名提示词'}
                 onDoubleClick={() => {
                   if (isEditing) {
                     setIsEditingTitle(true);
                   }
                 }}
               >
-                {prompt.title || '未命名提示词'}
+                {promptBlock.title || '未命名提示词'}
               </h5>
             )}
           </div>
@@ -238,14 +251,14 @@ export function PromptBlock({
                             size="sm"
                             className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform flex items-center justify-center text-xs font-bold p-0"
                             style={{
-                              backgroundColor: theme.bg,
-                              color: theme.text,
+                              backgroundColor: theme.colors.bg,
+                              color: theme.colors.text,
                               borderColor:
-                              prompt.color === theme.name
+                              promptBlock.color === theme.name
                                 ? '#000'
                                 : 'transparent',
                             }}
-                            onClick={() => changeColor(theme.name)}
+                            onClick={() => changeColor(theme.name as ThemeColor)}
                             title={theme.name}
                           >
                             {theme.name.charAt(0).toUpperCase()}
@@ -261,7 +274,7 @@ export function PromptBlock({
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 rounded-full text-destructive hover:text-destructive"
-                  onClick={() => onDelete(prompt.id)}
+                  onClick={() => onDelete(promptBlock.id)}
                   title="删除"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -313,7 +326,7 @@ export function PromptBlock({
                 <h2
                   className="w-full text-sm leading-relaxed whitespace-pre-wrap cursor-pointer break-words   rounded-xl   flex items-start justify-start text-left"
                   style={{
-                    color: prompt.content
+                    color: promptBlock.content
                       ? currentTheme.text
                       : `${currentTheme.text}60`,
 
@@ -330,7 +343,7 @@ export function PromptBlock({
                     }
                   }}
                 >
-                  {prompt.content || '描述一下画面'}
+                  {promptBlock.content || '描述一下画面'}
                 </h2>
               )}
             </div>

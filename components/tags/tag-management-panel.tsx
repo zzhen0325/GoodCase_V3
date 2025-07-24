@@ -39,10 +39,11 @@ import {
   FolderPlus,
   Move,
 } from 'lucide-react';
-import { TagGroup, Tag } from '@/types';
+import { TagCategory, Tag } from '@/types';
 import { TagGroupItem } from './tag-group-item';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { cn } from '@/lib/utils';
+import { useToastContext } from '@/components/toast-provider';
 
 interface TagManagementPanelProps {
   open: boolean;
@@ -55,7 +56,7 @@ interface EditCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (data: { name: string }) => void;
-  category: TagGroup | null;
+  category: TagCategory | null;
 }
 
 interface EditTagDialogProps {
@@ -63,14 +64,14 @@ interface EditTagDialogProps {
   onOpenChange: (open: boolean) => void;
   tag: Tag | null;
   onConfirm: (data: { name: string; categoryId?: string }) => void;
-  tagCategories: TagGroup[];
+  tagCategories: TagCategory[];
 }
 
 interface MoveTagDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (categoryId: string) => void;
-  tagCategories: TagGroup[];
+  tagCategories: TagCategory[];
   selectedTags: Tag[];
 }
 
@@ -188,15 +189,15 @@ function EditTagDialog({
             <Label htmlFor="edit-tag-category">所属分类</Label>
             {tagCategories.length > 0 ? (
               <select
-                id="edit-tag-category"
+                id="edit-tag-tagCategory"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full p-2 border rounded-md"
               >
                 <option value="">无分类</option>
-                {tagCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
+                {tagCategories.map((tagCategory) => (
+                  <option key={tagCategory.id} value={tagCategory.id}>
+                    {tagCategory.name}
                   </option>
                 ))}
               </select>
@@ -232,11 +233,10 @@ function MoveTagDialog({
   const [categoryId, setCategoryId] = useState('');
 
   const handleSubmit = () => {
-    if (categoryId) {
-      onConfirm(categoryId);
-      setCategoryId('');
-      onOpenChange(false);
-    }
+    // 允许空字符串作为有效值，表示移动到"未分类"
+    onConfirm(categoryId);
+    setCategoryId('');
+    onOpenChange(false);
   };
 
   return (
@@ -270,9 +270,9 @@ function MoveTagDialog({
               className="w-full p-2 border rounded-md"
             >
               <option value="">请选择目标分类</option>
-              {tagCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
+              {tagCategories.map((tagCategory) => (
+                <option key={tagCategory.id} value={tagCategory.id}>
+                  {tagCategory.name}
                 </option>
               ))}
             </select>
@@ -283,7 +283,7 @@ function MoveTagDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!categoryId}>
+          <Button onClick={handleSubmit}>
             移动
           </Button>
         </DialogFooter>
@@ -297,8 +297,9 @@ export function TagManagementPanel({
   onOpenChange,
   className,
 }: TagManagementPanelProps) {
+  const { toast } = useToastContext();
   const {
-    tagGroups,
+    tagCategories,
     tags,
     selectedTags,
     loading,
@@ -310,14 +311,14 @@ export function TagManagementPanel({
     clearTagSelection,
     selectTagsByGroup,
     deleteSelectedTags,
-    getTagsByGroup,
+    getTagsByCategory,
     refreshAll,
-    createTagGroup,
-    updateTagGroup,
-    deleteTagGroup,
+    createTagCategory,
+    updateTagCategory,
+    deleteTagCategory,
   } = useTagOperations();
 
-  const [localTagCategories, setLocalTagCategories] = useState<TagGroup[]>([]);
+  const [localTagCategories, setLocalTagCategories] = useState<TagCategory[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<Tag | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -325,14 +326,14 @@ export function TagManagementPanel({
   const [showCreateTag, setShowCreateTag] = useState(false);
   const [createTagCategoryId, setCreateTagCategoryId] = useState<string>('');
   const [showEditCategory, setShowEditCategory] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<TagGroup | null>(null);
+  const [editingCategory, setEditingCategory] = useState<TagCategory | null>(null);
   const [showEditTag, setShowEditTag] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [showMoveTag, setShowMoveTag] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: 'category' | 'tag' | 'selected';
-    data?: any;
+    type: 'tagCategory' | 'tag' | 'selected';
+    data?: Tag | TagCategory;
   }>({ type: 'tag' });
 
 
@@ -352,9 +353,16 @@ export function TagManagementPanel({
   // 处理创建分类
   const handleCreateCategory = async (data: { name: string }) => {
     try {
-      await createTagGroup(data);
+      const result = await createTagCategory(data);
+      if (result.success) {
+        toast.success('分类创建成功');
+        setShowCreateCategory(false);
+      } else {
+        toast.error('创建分类失败', result.error || '未知错误');
+      }
     } catch (error) {
       console.error('创建分类失败:', error);
+      toast.error('创建分类失败', error instanceof Error ? error.message : '未知错误');
     }
   };
 
@@ -365,18 +373,26 @@ export function TagManagementPanel({
       const colorThemes = ['pink', 'cyan', 'yellow', 'green', 'purple'];
       const randomColor = colorThemes[Math.floor(Math.random() * colorThemes.length)];
       
-      await createTag({ 
+      const result = await createTag({ 
         name: data.name, 
-        color: randomColor,
-        categoryId: data.categoryId || undefined
+        categoryId: data.categoryId || tagCategories[0]?.id || ""
       });
+      
+      if (result.success) {
+        toast.success('标签创建成功');
+        setShowCreateTag(false);
+        setCreateTagCategoryId('');
+      } else {
+        toast.error('创建标签失败', result.error || '未知错误');
+      }
     } catch (error) {
       console.error('创建标签失败:', error);
+      toast.error('创建标签失败', error instanceof Error ? error.message : '未知错误');
     }
   };
 
   // 处理编辑分类
-  const handleEditCategory = (category: TagGroup) => {
+  const handleEditCategory = (category: TagCategory) => {
     setEditingCategory(category);
     setShowEditCategory(true);
   };
@@ -384,9 +400,17 @@ export function TagManagementPanel({
   const handleUpdateCategory = async (data: { name: string }) => {
     if (editingCategory) {
       try {
-        await updateTagGroup(editingCategory.id, data);
+        const result = await updateTagCategory(editingCategory.id, data);
+        if (result.success) {
+          toast.success('分类更新成功');
+          setShowEditCategory(false);
+          setEditingCategory(null);
+        } else {
+          toast.error('更新分类失败', result.error || '未知错误');
+        }
       } catch (error) {
         console.error('更新分类失败:', error);
+        toast.error('更新分类失败', error instanceof Error ? error.message : '未知错误');
       }
     }
   };
@@ -400,12 +424,21 @@ export function TagManagementPanel({
   const handleUpdateTag = async (data: { name: string; categoryId?: string }) => {
     if (editingTag) {
       try {
-        await updateTag(editingTag.id, {
+        const result = await updateTag(editingTag.id, {
           name: data.name,
-          categoryId: data.categoryId || undefined
+          categoryId: data.categoryId || tagCategories[0]?.id || ""
         });
+        
+        if (result.success) {
+          toast.success('标签更新成功');
+          setShowEditTag(false);
+          setEditingTag(null);
+        } else {
+          toast.error('更新标签失败', result.error || '未知错误');
+        }
       } catch (error) {
         console.error('更新标签失败:', error);
+        toast.error('更新标签失败', error instanceof Error ? error.message : '未知错误');
       }
     }
   };
@@ -420,31 +453,81 @@ export function TagManagementPanel({
   const handleMoveTagsToCategory = async (categoryId: string) => {
     try {
       // selectedTags 是字符串数组（标签ID），直接使用
-      await Promise.all(
+      const results = await Promise.all(
         selectedTags.map((tagId) => {
-          return updateTag(tagId, { categoryId: categoryId });
+          return updateTag(tagId, { categoryId: categoryId === '' ? undefined : categoryId });
         })
       );
+      
+      // 检查是否有失败的操作
+      const failures = results.filter(result => !result.success);
+      if (failures.length > 0) {
+        toast.error(`移动标签失败: ${failures.length}个标签移动失败`);
+      } else {
+        toast.success('标签移动成功');
+      }
+      
       clearTagSelection();
       setShowMoveTag(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('移动标签失败:', error);
+      toast.error(`移动标签失败: ${error?.message || '未知错误'}`);
     }
   };
 
   // 处理删除确认
   const handleDeleteConfirm = async () => {
     try {
-      if (deleteTarget.type === 'category') {
-        await deleteTagGroup(deleteTarget.data.id);
-      } else if (deleteTarget.type === 'tag') {
-        await deleteTag(deleteTarget.data.id);
+      // 初始化result变量，避免在赋值前使用
+      let result: { success: boolean; error?: string } = { success: false };
+      
+      if (deleteTarget.type === 'tagCategory' && deleteTarget.data) {
+        result = await deleteTagCategory((deleteTarget.data as TagCategory).id);
+        if (!result.success) {
+          toast.error('删除分类失败', result.error);
+          console.error('删除分类失败:', result.error);
+        } else {
+          toast.success('分类已删除');
+        }
+      } else if (deleteTarget.type === 'tag' && deleteTarget.data) {
+        // 确保 deleteTarget.data 存在且有 id 属性
+        if (!(deleteTarget.data as Tag).id) {
+          console.error('删除标签失败: 无效的标签ID');
+          toast.error('删除标签失败', '无效的标签ID');
+          return;
+        }
+        
+        result = await deleteTag((deleteTarget.data as Tag).id);
+        if (!result.success) {
+          toast.error('删除标签失败', result.error);
+          console.error('删除标签失败:', result.error);
+        } else {
+          toast.success('标签已删除');
+        }
       } else if (deleteTarget.type === 'selected') {
-        await deleteSelectedTags();
+        // 确保有选中的标签
+        if (selectedTags.length === 0) {
+          console.error('批量删除标签失败: 未选择任何标签');
+          toast.error('批量删除标签失败', '未选择任何标签');
+          return;
+        }
+        
+        result = await deleteSelectedTags();
+        if (!result.success) {
+          toast.error('批量删除标签失败', result.error);
+          console.error('批量删除标签失败:', result.error);
+        } else {
+          toast.success(`已删除 ${selectedTags.length} 个标签`);
+        }
       }
-      setShowDeleteConfirm(false);
+      
+      // 只有在操作成功时关闭对话框
+      if (result.success) {
+        setShowDeleteConfirm(false);
+      }
     } catch (error) {
       console.error('删除失败:', error);
+      toast.error('操作失败', error instanceof Error ? error.message : '未知错误');
     }
   };
 
@@ -455,7 +538,7 @@ export function TagManagementPanel({
     setCreateTagCategoryId(categoryId);
     setShowCreateTag(true);
   };
-  const groupedTags = getTagsByGroup();
+  const groupedTags = getTagsByCategory();
 
 
 
@@ -531,7 +614,7 @@ export function TagManagementPanel({
           {/* 统计信息
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="text-center">
-              <div className="text-2xl font-bold">{tagGroups.length}</div>
+              <div className="text-2xl font-bold">{tagCategories.length}</div>
               <div className="text-sm text-muted-foreground">标签分类</div>
             </div>
             <div className="text-center">
@@ -550,7 +633,7 @@ export function TagManagementPanel({
                 </div>
               ) : error ? (
                 <div className="text-center py-8 text-red-500">{error}</div>
-              ) : tagGroups.length === 0 ? (
+              ) : tagCategories.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   暂无标签分类
                   <div className="text-xs mt-2 text-muted-foreground">
@@ -559,41 +642,41 @@ export function TagManagementPanel({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {tagGroups.map((category) => {
-                    const categoryTags = tags.filter(tag => tag.categoryId === category.id);
+                  {tagCategories.map((tagCategory: TagCategory) => {
+                    const categoryTags = tags.filter((tag: Tag) => tag && tag.categoryId === tagCategory.id);
                     
                     return (
                       <TagGroupItem
-                        key={category.id}
-                        group={category}
+                        key={tagCategory.id}
+                        group={tagCategory}
                         tags={categoryTags}
                         expanded={true}
                         selectedTags={selectedTags}
                         showUsageCount={false}
-                        onTagClick={(tag) => toggleTagSelection(tag.id)}
+                        onTagClick={(tag: Tag) => toggleTagSelection(tag.id)}
                         onTagEdit={handleEditTag}
-                        onGroupEdit={(updatedCategory) => {
+                        onGroupEdit={(updatedCategory: TagCategory) => {
                           setEditingCategory(updatedCategory);
                           setShowEditCategory(true);
                         }}
-                        onGroupDelete={(category) => {
-                          setDeleteTarget({ type: 'category', data: category });
+                        onGroupDelete={(tagCategory: TagCategory) => {
+                          setDeleteTarget({ type: 'tagCategory', data: tagCategory });
                           setShowDeleteConfirm(true);
                         }}
                         onAddTag={handleAddTag}
-                        onGroupSelect={(categoryId) => {
-                          const categoryTags = tags.filter(tag => tag.categoryId === categoryId);
-                          const allSelected = categoryTags.every(tag => selectedTags.includes(tag.id));
+                        onGroupSelect={(categoryId: string) => {
+                          const categoryTags = tags.filter((tag: Tag) => tag && tag.categoryId === categoryId);
+                          const allSelected = categoryTags.every((tag: Tag) => selectedTags.includes(tag.id));
                           if (allSelected) {
                             // 取消选择该分类的所有标签
-                            categoryTags.forEach(tag => {
+                            categoryTags.forEach((tag: Tag) => {
                               if (selectedTags.includes(tag.id)) {
                                 toggleTagSelection(tag.id);
                               }
                             });
                           } else {
                             // 选择该分类的所有标签
-                            categoryTags.forEach(tag => {
+                            categoryTags.forEach((tag: Tag) => {
                               if (!selectedTags.includes(tag.id)) {
                                 toggleTagSelection(tag.id);
                               }
@@ -606,7 +689,7 @@ export function TagManagementPanel({
                   
                   {/* 显示未分类的标签 */}
                   {(() => {
-                    const ungroupedTags = tags.filter(tag => !tag.categoryId);
+                    const ungroupedTags = tags.filter((tag: Tag) => tag && !tag.categoryId);
                     
                     if (ungroupedTags.length === 0) return null;
                     
@@ -621,7 +704,7 @@ export function TagManagementPanel({
                           </div>
                         </div>
                         <div className="p-3 space-y-2">
-                          {ungroupedTags.map((tag) => (
+                          {ungroupedTags.map((tag: Tag) => (
                             <div
                               key={tag.id}
                               className={cn(
@@ -639,7 +722,7 @@ export function TagManagementPanel({
                                 <div className="flex items-center gap-2">
                                   <div
                                     className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: tag.color || '#64748b' }}
+                                    style={{ backgroundColor: "#64748b" }}
                                   />
                                   <span className="font-medium text-sm">{tag.name}</span>
 
@@ -649,7 +732,7 @@ export function TagManagementPanel({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleEditTag(tag)}
+                                  onClick={() => handleEditTag(tag as Tag)}
                                   className="h-6 w-6 p-0"
                                 >
                                   <Edit2 className="w-3 h-3" />
@@ -658,7 +741,7 @@ export function TagManagementPanel({
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
-                                    setDeleteTarget({ type: 'tag', data: tag });
+                                    setDeleteTarget({ type: 'tag', data: tag as Tag });
                                     setShowDeleteConfirm(true);
                                   }}
                                   className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
@@ -692,7 +775,7 @@ export function TagManagementPanel({
         open={showCreateTag}
         onOpenChange={setShowCreateTag}
         onConfirm={handleCreateTag}
-        tagCategories={tagGroups}
+        tagCategories={tagCategories}
         defaultCategoryId={createTagCategoryId}
       />
 
@@ -709,7 +792,7 @@ export function TagManagementPanel({
         open={showEditTag}
         onOpenChange={setShowEditTag}
         onConfirm={handleUpdateTag}
-        tagCategories={tagGroups}
+        tagCategories={tagCategories}
         tag={editingTag}
       />
 
@@ -718,8 +801,8 @@ export function TagManagementPanel({
         open={showMoveTag}
         onOpenChange={setShowMoveTag}
         onConfirm={handleMoveTagsToCategory}
-        tagCategories={tagGroups}
-        selectedTags={tags.filter((tag) => selectedTags.includes(tag.id))}
+        tagCategories={tagCategories}
+        selectedTags={tags.filter((tag: Tag) => selectedTags.includes(tag.id))}
       />
 
       {/* 删除确认对话框 */}
@@ -728,7 +811,7 @@ export function TagManagementPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget.type === 'category' &&
+              {deleteTarget.type === 'tagCategory' &&
                 `确定要删除分类 "${deleteTarget.data?.name}" 吗？此操作将同时删除该分类下的所有标签。`}
               {deleteTarget.type === 'tag' &&
                 `确定要删除标签 "${deleteTarget.data?.name}" 吗？`}

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { ImageData } from '@/types';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ImageCardProps {
   image: ImageData;
@@ -36,10 +37,16 @@ export const ImageCard = React.memo(function ImageCard({
   isSelected = false,
   onSelect,
 }: ImageCardProps) {
+  const [imageLoaded, setImageLoaded] = useState(false);
   const { ref, inView } = useInView({
     threshold: 0.1,
     triggerOnce: true,
   });
+
+  // 当图片URL变化时重置加载状态
+  React.useEffect(() => {
+    setImageLoaded(false);
+  }, [image.url]);
 
   const handleClick = useCallback(() => {
     if (isEditMode && onSelect) {
@@ -97,27 +104,21 @@ export const ImageCard = React.memo(function ImageCard({
           <div className="w-full bg-gray-100 rounded-2xl relative overflow-hidden">
             {image.url ? (
               <React.Fragment>
+                {!imageLoaded && (
+                  <Skeleton className="w-full h-64 rounded-2xl" />
+                )}
                 <motion.img
                   key="image"
                   src={image.url}
-                  alt={image.title}
-                  className="w-full h-auto object-cover transition-transform duration-300"
+         
+                  className={`w-full h-auto object-cover transition-all duration-300 ${
+                    imageLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
                   loading="lazy"
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={imageLoaded ? { scale: 1.05 } : {}}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageLoaded(true)}
                 />
-                {false && (
-                  <div
-                    key="uploading"
-                    className="absolute inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center"
-                  >
-                    <div className="flex flex-col items-center space-y-2">
-                      <div className="w-8 h-8 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-gray-600 text-xs font-medium">
-                        上传中
-                      </span>
-                    </div>
-                  </div>
-                )}
               </React.Fragment>
             ) : (
               <div className="text-gray-400 text-xs text-center p-8">

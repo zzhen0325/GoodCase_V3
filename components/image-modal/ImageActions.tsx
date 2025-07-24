@@ -1,90 +1,193 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Save, Edit3, Check, Copy, Plus, Trash2, Files } from 'lucide-react';
-import type { Prompt, Tag, TagGroup } from '@/types';
+import { 
+  Edit3, 
+  Save, 
+  Copy, 
+  Check, 
+  Trash2, 
+  Files, 
+  Plus 
+} from 'lucide-react';
+import { PromptBlock, Tag, TagCategory } from '@/types';
 import { TagSelectorDropdown } from './TagSelectorDropdown';
 
-export interface ImageActionsProps {
+interface ImageActionsProps {
   isEditing: boolean;
-  prompts: any[];
-  onEdit?: () => void;
-  onSave?: () => void;
-  onCancel?: () => void;
-  onCopyAll?: () => void;
+  promptBlocks: PromptBlock[];
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onCopyAll: () => void;
   onDuplicate?: () => void;
-  copyAllStatus?: string;
-  duplicateStatus?: string;
+  copyAllStatus: 'idle' | 'success' | 'error';
+  duplicateStatus: 'idle' | 'success' | 'error';
   onAddPrompt?: () => void;
-  tags?: any[];
-  tagGroups?: any[];
+  tags?: Tag[];
+  tagCategories?: TagCategory[];
   editedTagIds?: string[];
-  onTagIdsChange?: (arr: string[]) => void;
+  onTagIdsChange?: (tagIds: string[]) => void;
   onRefetch?: () => void;
   tagSelectorOpen?: boolean;
   setTagSelectorOpen?: (open: boolean) => void;
   onDelete?: () => void;
-  deleteStatus?: string;
+  deleteStatus: 'idle' | 'confirming' | 'deleting';
 }
 
-export function ImageActions(props: ImageActionsProps) {
-  const {
-    isEditing, prompts, onEdit, onSave, onCancel, onCopyAll, onDuplicate,
-    copyAllStatus, duplicateStatus, onAddPrompt, tags, tagGroups,
-    editedTagIds, onTagIdsChange, onRefetch, tagSelectorOpen, setTagSelectorOpen, onDelete, deleteStatus
-  } = props;
+export function ImageActions({
+  isEditing,
+  promptBlocks,
+  onEdit,
+  onSave,
+  onCancel,
+  onCopyAll,
+  onDuplicate,
+  copyAllStatus,
+  duplicateStatus,
+  onAddPrompt,
+  tags,
+  tagCategories,
+  editedTagIds,
+  onTagIdsChange,
+  onRefetch,
+  tagSelectorOpen,
+  setTagSelectorOpen,
+  onDelete,
+  deleteStatus,
+}: ImageActionsProps) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const handleDeleteClick = () => {
+    if (!isConfirming) {
+      setIsConfirming(true);
+    } else {
+      setIsConfirming(false);
+      onDelete?.();
+    }
+  };
+
+  // 重置确认状态当删除状态改变时
+  React.useEffect(() => {
+    if (deleteStatus === 'idle') {
+      setIsConfirming(false);
+    }
+  }, [deleteStatus]);
 
   return (
     <div className="flex flex-wrap gap-2 items-center relative">
+      {/* 编辑相关按钮 */}
       {isEditing ? (
         <>
+          {/* 删除按钮 - 编辑模式第一个 */}
           {onDelete && (
             <Button
-              onClick={onDelete}
+              onClick={handleDeleteClick}
               variant="destructive"
               size="sm"
               disabled={deleteStatus === 'deleting'}
             >
               <Trash2 className="w-4 h-4" />
-              {deleteStatus === 'confirming' ? '确认删除' : deleteStatus === 'deleting' ? '删除中...' : '删除'}
+              {deleteStatus === 'deleting'
+                ? '删除中...'
+                : isConfirming
+                  ? '确认删除？'
+                  : '删除'}
             </Button>
           )}
           <Separator orientation="vertical" className="h-6 mx-4" />
-          <Button onClick={onAddPrompt} variant="outline" size="sm">
-            <Plus className="w-4 h-4 text-black" />Add Prompt
+          {/* Add Prompt 按钮 */}
+          <Button
+            onClick={onAddPrompt}
+            variant="outline"
+            size="sm"
+          >
+            <Plus className="w-4 h-4 text-black" />
+            Add Prompt
           </Button>
-          {tags && tagGroups && editedTagIds && onTagIdsChange && onRefetch && (
+          
+          {/* Add Tag 下拉按钮 */}
+          {tags && tagCategories && editedTagIds && onTagIdsChange && onRefetch && (
             <TagSelectorDropdown
               tags={tags}
-              tagGroups={tagGroups}
+              tagCategories={tagCategories}
               selectedTagIds={editedTagIds}
               onTagsChange={onTagIdsChange}
               open={tagSelectorOpen || false}
-              onOpenChange={setTagSelectorOpen || (()=>{})}
+              onOpenChange={setTagSelectorOpen || (() => {})}
               onRefetch={onRefetch}
             />
           )}
+          
           <Separator orientation="vertical" className="h-6 mx-4" />
-          <Button key="save" onClick={onSave} size="sm" className="bg-black hover:bg-black text-white px-4" >
-            <Save className="w-4 h-4" />Save
+          
+          {/* Save 按钮 */}
+          <Button
+            key="save"
+            onClick={onSave}
+            size="sm"
+            className="bg-black hover:bg-black text-white px-4"
+          >
+            <Save className="w-4 h-4" />
+            Save
           </Button>
-          <Button key="cancel" onClick={onCancel} variant="outline" size="sm" className="border-red-200 hover:bg-red-50 hover:text-red-600" >
+          
+          {/* Cancel 按钮 */}
+          <Button
+            key="cancel"
+            onClick={onCancel}
+            variant="outline"
+            size="sm"
+            className="border-red-200 hover:bg-red-50 hover:text-red-600"
+          >
             Cancel
           </Button>
         </>
       ) : (
-        <Button onClick={onEdit} variant="outline" size="sm"><Edit3 className="w-4 h-4" />Edit</Button>
-      )}
-      {!isEditing && (
-        <Button onClick={onCopyAll} variant="outline" size="sm" disabled={!prompts || prompts.length===0} className={copyAllStatus==='success' ? 'border-green-500 text-green-700' : ''}>
-          {copyAllStatus==='success'?<Check className="w-4 h-4" />:<Copy className="w-4 h-4" />}
-          {copyAllStatus==='success'?'复制成功':'复制全部'}
+        <Button onClick={onEdit} variant="outline" size="sm">
+          <Edit3 className="w-4 h-4" />
+          Edit
         </Button>
       )}
+
+      {/* 复制全部提示词 - 编辑模式下隐藏 */}
+      {!isEditing && (
+        <Button
+          onClick={onCopyAll}
+          variant="outline"
+          size="sm"
+          disabled={promptBlocks.length === 0}
+          className={
+            copyAllStatus === 'success' ? 'border-green-500 text-green-700' : ''
+          }
+        >
+          {copyAllStatus === 'success' ? (
+            <Check className="w-4 h-4 " />
+          ) : (
+            <Copy className="w-4 h-4 " />
+          )}
+          {copyAllStatus === 'success' ? '已复制' : '复制全部'}
+        </Button>
+      )}
+
+      {/* 复制图片 - 编辑模式下隐藏 */}
       {!isEditing && onDuplicate && (
-        <Button onClick={onDuplicate} variant="outline" size="sm" className={duplicateStatus==='success'?'border-green-500 text-green-700':''}>
-          {duplicateStatus==='success'?<Check className="w-4 h-4" />:<Files className="w-4 h-4" />}
-          {duplicateStatus==='success'?'已生成副本':'生成副本'}
+        <Button
+          onClick={onDuplicate}
+          variant="outline"
+          size="sm"
+          className={
+            duplicateStatus === 'success'
+              ? 'border-green-500 text-green-700'
+              : ''
+          }
+        >
+          {duplicateStatus === 'success' ? (
+            <Check className="w-4 h-4 " />
+          ) : (
+            <Files className="w-4 h-4 " />
+          )}
+          {duplicateStatus === 'success' ? '已复制' : '复制图片'}
         </Button>
       )}
     </div>

@@ -4,12 +4,12 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { X, Hash, Edit } from 'lucide-react';
-import { Tag, TagGroup, getColorTheme } from '@/types';
+import { Tag, TagCategory, getColorTheme } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface TagItemProps {
   tag: Tag;
-  group?: TagGroup;
+  group?: TagCategory;
   selected?: boolean;
   showUsageCount?: boolean;
   showRemove?: boolean;
@@ -67,7 +67,7 @@ const dragStyle = {
 };
 
 // 获取标签的颜色主题
-const colorTheme = group ? getColorTheme(group.color || 'gray') : getColorTheme(tag.color || 'pink');
+const colorTheme = group ? getColorTheme(group.color || 'gray') : getColorTheme('pink');
 
 const badgeStyle = {
   backgroundColor: selected

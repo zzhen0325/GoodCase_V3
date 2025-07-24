@@ -160,14 +160,14 @@ export async function resizeImage(
 }
 
 /**
- * 压缩图片
+ * 压缩图片（基于base64数据URL）
  * @param dataUrl - 原始图片的base64数据URL
  * @param maxSizeKB - 最大文件大小（KB）
  * @param maxWidth - 最大宽度
  * @param maxHeight - 最大高度
  * @returns Promise<string> - 压缩后的base64数据URL
  */
-export async function compressImage(
+export async function compressImageDataUrl(
   dataUrl: string,
   maxSizeKB: number = 500,
   maxWidth: number = 1920,
@@ -221,3 +221,215 @@ export async function getImageDimensions(
     img.src = dataUrl;
   });
 }
+
+// 图片元数据获取工具
+
+/**
+ * 获取图片元数据（宽高、大小、格式等）
+ * @param file 图片文件
+ * @returns 图片元数据
+ */
+export const getImageMetadata = async (file: File): Promise<{
+  width: number;
+  height: number;
+  fileSize: number;
+  format: string;
+}> => {
+  // 检查是否在浏览器环境
+  if (typeof window !== 'undefined' && typeof Image !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        resolve({
+          width: img.width,
+          height: img.height,
+          fileSize: file.size,
+          format: file.type.split('/')[1] || 'png'
+        });
+      };
+      
+      img.onerror = () => {
+        reject(new Error('无法读取图片元数据'));
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  } else {
+    // 服务器端环境，返回基本信息
+    return {
+      width: 0, // 在服务器端无法获取真实尺寸
+      height: 0,
+      fileSize: file.size,
+      format: file.type.split('/')[1] || 'png'
+    };
+  }
+};
+
+/**
+ * 验证图片文件
+ * @param file 文件对象
+ * @returns 验证结果
+ */
+export const validateImageFile = (file: File): {
+  isValid: boolean;
+  error?: string;
+} => {
+  // 检查文件类型
+  if (!file.type.startsWith('image/')) {
+    return {
+      isValid: false,
+      error: '只支持图片文件'
+    };
+  }
+  
+  // 检查文件大小（10MB限制）
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    return {
+      isValid: false,
+      error: '文件大小不能超过10MB'
+    };
+  }
+  
+  // 检查文件格式
+  const allowedFormats = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+  const format = file.type.split('/')[1];
+  if (!allowedFormats.includes(format)) {
+    return {
+      isValid: false,
+      error: `不支持的图片格式: ${format}`
+    };
+  }
+  
+  return { isValid: true };
+};
+
+/**
+ * 压缩图片文件
+ * @param file 原始图片文件
+ * @param maxWidth 最大宽度
+ * @param maxHeight 最大高度
+ * @param quality 压缩质量 (0-1)
+ * @returns 压缩后的图片文件
+ */
+export const compressImageFile = async (
+  file: File,
+  maxWidth: number = 1920,
+  maxHeight: number = 1080,
+  quality: number = 0.8
+): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // 计算缩放比例
+      let { width, height } = img;
+      
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      if (height > maxHeight) {
+        width = (width * maxHeight) / height;
+        height = maxHeight;
+      }
+      
+      // 设置canvas尺寸
+      canvas.width = width;
+      canvas.height = height;
+      
+      // 绘制图片
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      // 转换为Blob
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            reject(new Error('图片压缩失败'));
+          }
+        },
+        file.type,
+        quality
+      );
+    };
+    
+    img.onerror = () => {
+      reject(new Error('无法加载图片'));
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+/**
+ * 生成图片缩略图
+ * @param file 原始图片文件
+ * @param width 缩略图宽度
+ * @param height 缩略图高度
+ * @returns 缩略图Blob
+ */
+export const generateThumbnail = async (
+  file: File,
+  width: number = 200,
+  height: number = 200
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    img.onload = () => {
+      // 计算缩放和裁剪
+      const scale = Math.max(width / img.width, height / img.height);
+      const scaledWidth = img.width * scale;
+      const scaledHeight = img.height * scale;
+      
+      // 居中裁剪
+      const offsetX = (scaledWidth - width) / 2;
+      const offsetY = (scaledHeight - height) / 2;
+      
+      ctx?.drawImage(
+        img,
+        offsetX / scale,
+        offsetY / scale,
+        width / scale,
+        height / scale,
+        0,
+        0,
+        width,
+        height
+      );
+      
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('生成缩略图失败'));
+          }
+        },
+        'image/jpeg',
+        0.8
+      );
+    };
+    
+    img.onerror = () => {
+      reject(new Error('无法加载图片'));
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};

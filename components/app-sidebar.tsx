@@ -50,10 +50,10 @@ export function AppSidebar({
 
   // 获取标签数据
   const {
-    tagGroups,
+    tagCategories,
     tags,
     loading: tagsLoading,
-    getTagsByGroup,
+    getTagsByCategory,
   } = useTagOperations();
 
   const handleGroupNameChange = (colorName: string, newName: string) => {
@@ -103,7 +103,7 @@ export function AppSidebar({
         {/* 标签分组区域 */}
         <SidebarGroup className="tag-groups-area">
           <TagGroups
-            tagGroups={tagGroups}
+            tagCategories={tagCategories}
             tags={tags}
             currentFilters={currentFilters}
             onSearch={onSearch}
@@ -117,7 +117,7 @@ export function AppSidebar({
             <div className="flex flex-col gap-2 p-4">
               <Button
                 onClick={() => {
-                  // 处理 lemo prompt 功能
+                  // 处理 lemo promptBlock 功能
                   console.log('Lemo Prompt clicked');
                 }}
                 variant="outline"

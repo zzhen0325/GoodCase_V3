@@ -36,14 +36,14 @@ import {
   FolderOpen,
   Folder,
 } from 'lucide-react';
-import { Tag, TagGroup, getColorTheme } from '@/types';
+import { Tag, TagCategory, getColorTheme } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { toast } from 'sonner';
 
 // 创建标签表单组件
 interface CreateTagFormProps {
   searchQuery: string;
-  tagGroups: TagGroup[];
+  tagCategories: TagCategory[];
   onConfirm: (data: { name: string; categoryId?: string }) => void;
   onCancel: () => void;
   onCreateCategory: () => void;
@@ -55,7 +55,7 @@ interface CreateTagFormProps {
 
 export function CreateTagForm({
   searchQuery,
-  tagGroups,
+  tagCategories,
   onConfirm,
   onCancel,
   onCreateCategory,
@@ -74,8 +74,8 @@ export function CreateTagForm({
     try {
       const result = await createTag({
         name: name.trim(),
-        color: '#64748b',
-        categoryId: categoryId || undefined,
+        
+        categoryId: categoryId || tagCategories[0]?.id || "",
       });
 
       if (result.success) {
@@ -122,7 +122,7 @@ export function CreateTagForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">无分类</SelectItem>
-              {tagGroups.map((group) => (
+              {tagCategories.map((group) => (
                 <SelectItem key={group.id} value={group.id}>
                   <div className="flex items-center gap-2">
                     <div
@@ -228,7 +228,7 @@ export function CreateCategoryForm({
 // 标签选择下拉组件
 interface TagSelectorDropdownProps {
   tags: Tag[];
-  tagGroups: TagGroup[];
+  tagCategories: TagCategory[];
   selectedTagIds: string[];
   onTagsChange: (tagIds: string[]) => void;
   open: boolean;
@@ -238,7 +238,7 @@ interface TagSelectorDropdownProps {
 
 export function TagSelectorDropdown({
   tags,
-  tagGroups,
+  tagCategories,
   selectedTagIds,
   onTagsChange,
   open,
@@ -249,18 +249,18 @@ export function TagSelectorDropdown({
   const [showCreateTagDialog, setShowCreateTagDialog] = React.useState(false);
   const [showCreateCategoryDialog, setShowCreateCategoryDialog] =
     React.useState(false);
-  const { createTag, createTagGroup } = useTagOperations();
+  const { createTag, createTagCategory } = useTagOperations();
 
   // 按分类聚合标签
   const groupedTags = React.useMemo(() => {
-    const grouped: { [key: string]: { group: TagGroup | null; tags: Tag[] } } =
+    const grouped: { [key: string]: { group: TagCategory | null; tags: Tag[] } } =
       {};
 
     // 添加未分类组
     grouped['uncategorized'] = { group: null, tags: [] };
 
     // 初始化分类组
-    tagGroups.forEach((group) => {
+    tagCategories.forEach((group) => {
       grouped[group.id] = { group, tags: [] };
     });
 
@@ -275,7 +275,7 @@ export function TagSelectorDropdown({
     });
 
     return grouped;
-  }, [tags, tagGroups]);
+  }, [tags, tagCategories]);
 
   // 过滤标签
   const filteredGroupedTags = React.useMemo(() => {
@@ -283,7 +283,7 @@ export function TagSelectorDropdown({
 
     const filtered: typeof groupedTags = {};
     Object.entries(groupedTags).forEach(([key, { group, tags }]) => {
-      const filteredTags = tags.filter((tag) =>
+      const filteredTags = tags.filter((tag: Tag) =>
         tag.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
       if (filteredTags.length > 0) {
@@ -332,7 +332,7 @@ export function TagSelectorDropdown({
 
   const handleCreateCategoryConfirm = async (data: { name: string }) => {
     try {
-      const result = await createTagGroup(data);
+      const result = await createTagCategory(data);
 
       if (result.success) {
         // 刷新标签列表
@@ -455,7 +455,7 @@ export function TagSelectorDropdown({
           </DialogHeader>
           <CreateTagForm
             searchQuery={searchQuery}
-            tagGroups={tagGroups}
+            tagCategories={tagCategories}
             onConfirm={handleCreateTagConfirm}
             onCancel={() => setShowCreateTagDialog(false)}
             onCreateCategory={() => {
@@ -496,7 +496,7 @@ export function TagSelectorDropdown({
 interface TagDisplayProps {
   tagIds: string[];
   tags: Tag[];
-  tagGroups: TagGroup[];
+  tagCategories: TagCategory[];
   isEditing?: boolean;
   onRemoveTag?: (tagId: string) => void;
   emptyText?: string;
@@ -506,7 +506,7 @@ interface TagDisplayProps {
 export function TagDisplay({
   tagIds,
   tags,
-  tagGroups,
+  tagCategories,
   isEditing = false,
   onRemoveTag,
   emptyText = '暂无标签',
@@ -516,12 +516,12 @@ export function TagDisplay({
     <div className="flex flex-wrap gap-2">
       {tagIds.map((tagId) => {
         const tag = tags.find((t) => t.id === tagId);
-        const tagGroup = tag
-          ? tagGroups.find((g) => g.id === tag.categoryId)
+        const tagCategory = tag
+          ? tagCategories.find((g) => g.id === tag.categoryId)
           : null;
-        const colorTheme = tagGroup
-          ? getColorTheme(tagGroup.color || 'gray')
-          : getColorTheme('gray');
+        const colorTheme = tagCategory
+          ? getColorTheme(tagCategory.color || 'gray')
+          : getColorTheme('pink');
         return tag ? (
           <Badge
             key={`${keyPrefix}-${tag.id}`}

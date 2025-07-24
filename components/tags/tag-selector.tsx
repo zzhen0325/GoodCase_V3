@@ -10,13 +10,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Search, Tags, X, ChevronDown, Plus } from 'lucide-react';
-import { Tag, TagGroup } from '@/types';
+import { Tag, TagCategory } from '@/types';
 import { TagItem } from './tag-item';
 import { cn } from '@/lib/utils';
 
 interface TagSelectorProps {
   tags: Tag[];
-  tagGroups: TagGroup[];
+  tagCategories: TagCategory[];
   selectedTagIds: string[];
   onTagsChange: (tagIds: string[]) => void;
   onCreateTag?: (name: string, groupId: string) => void;
@@ -30,7 +30,7 @@ interface TagSelectorProps {
 
 export function TagSelector({
   tags,
-  tagGroups,
+  tagCategories,
   selectedTagIds,
   onTagsChange,
   onCreateTag,
@@ -49,30 +49,30 @@ export function TagSelector({
 
   // 获取选中的标签对象
   const selectedTags = useMemo(() => {
-    return tags.filter((tag) => selectedTagIds.includes(tag.id));
+    return tags.filter((tag: Tag) => selectedTagIds.includes(tag.id));
   }, [tags, selectedTagIds]);
 
   // 根据搜索查询过滤标签
   const filteredTags = useMemo(() => {
     if (!searchQuery) return tags;
-    return tags.filter((tag) =>
+    return tags.filter((tag: Tag) =>
       tag.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [tags, searchQuery]);
 
   // 根据分组组织过滤后的标签
   const groupedFilteredTags = useMemo(() => {
-    const grouped: Record<string, { group: TagGroup; tags: Tag[] }> = {};
+    const grouped: Record<string, { group: TagCategory; tags: Tag[] }> = {};
 
-    tagGroups.forEach((group) => {
-      const groupTags = filteredTags.filter((tag) => tag.categoryId === group.id);
+    tagCategories.forEach((group) => {
+      const groupTags = filteredTags.filter((tag: Tag) => tag && tag.categoryId === group.id);
       if (groupTags.length > 0 || !searchQuery) {
         grouped[group.id] = { group, tags: groupTags };
       }
     });
 
     return grouped;
-  }, [tagGroups, filteredTags, searchQuery]);
+  }, [tagCategories, filteredTags, searchQuery]);
 
   // 切换标签选择
   const toggleTag = (tag: Tag) => {
@@ -136,7 +136,7 @@ export function TagSelector({
               ) : (
                 <div className="flex flex-wrap gap-1 flex-1">
                   {selectedTags.map((tag) => {
-                    const group = tagGroups.find((g) => g.id === tag.categoryId);
+                    const group = tag ? tagCategories.find((g) => g.id === tag.categoryId) : null;
                     return (
                       <Badge
                         key={tag.id}

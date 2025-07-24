@@ -1,11 +1,12 @@
 'use client';
 
 import _ from 'lodash';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ImageGrid } from '@/components/image-grid';
-import { ImageModal } from '@/components/image-modal';
-import { UploadModal } from '@/components/upload-modal';
+import { OptimizedImageGrid } from '@/components/optimized-image-grid';
+import { PerformanceMonitor, usePerformanceMonitor } from '@/components/performance-monitor';
+import { ImageModal } from '@/components/image-modal/image-modal';
+import { UploadModal } from '@/components/upload-modal/upload-modal';
 import { ConnectionStatus } from '@/components/connection-status';
 import CircularText from '@/components/circular-text';
 import { DownloadProgressToast } from '@/components/download-progress-toast';
@@ -18,63 +19,193 @@ import {
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { AppSidebar } from '@/components/app-sidebar';
-import { useHomePage } from '@/hooks/use-home-page';
+// import { useHomePage } from '@/hooks/use-home-page'; // 已移除
+import { useImageState } from '@/hooks/use-image-state';
+import { useModalState } from '@/hooks/use-modal-state';
+import { useImageOperations } from '@/hooks/use-image-operations';
+import { useBatchOperations } from '@/hooks/use-batch-operations';
+import { useEditMode } from '@/hooks/use-edit-mode';
+import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Bot, Wrench, FileText, ArrowUp, Search, X, Upload } from 'lucide-react';
 
 // 主页面内容组件
 function HomePageContent() {
-  // 使用整合的 hook 管理所有状态和操作
+  // 性能监控
+  const performanceMonitor = usePerformanceMonitor();
+  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
+
+  // 使用组合的 hooks 管理所有状态和操作
+
+  // 图片状态和搜索
   const {
-    // 状态
     images,
     filteredImages,
-    displayedImages,
-
     isLoading,
     searchFilters,
     connectionStatus,
+    handleSearchChange,
+    refetch: refreshData,
+    setImages
+  } = useImageState();
+
+  // 模态框状态
+  const {
     selectedImage,
     isImageModalOpen,
     isUploadModalOpen,
-
     activeView,
+    setSelectedImage,
+    handleImageClick,
+    closeImageModal,
+    closeUploadModal,
+    handleUpload: openUploadModal
+  } = useModalState();
+
+  // 编辑模式和选择状态
+  const {
     isEditMode,
     isSidebarEditMode,
     selectedImageIds,
-    downloadProgress,
-    hasMore,
-    loadingMore,
-
-    // 操作函数
-    loadMore,
-    handleSearchChange,
-    handleImageClick,
-    handleImageUpdate,
-    handleImageUpload,
-    handleImageDelete,
-    handleImageDuplicate,
-    handleCopyPrompt,
-
+    setIsEditMode,
+    setIsSidebarEditMode,
+    setSelectedImageIds,
     handleSelectImage,
     handleSelectAll,
-    handleSidebarEditModeToggle,
+    handleSidebarEditModeToggle
+  } = useEditMode();
+
+  // 图片操作
+  const {
+    handleImageUpdate,
+    handleImageDelete,
+    handleImageDuplicate,
+    handleCopyPrompt
+  } = useImageOperations({
+    selectedImage,
+    setImages,
+    setSelectedImage,
+    setIsImageModalOpen: closeImageModal,
+    onRefresh: refreshData
+  });
+
+  // 批量操作
+  const {
     handleBatchDelete,
-    handleBatchExport,
-    handleImport,
-    handleUpload,
-    handleExport,
-    handleFavorites,
-    handleSettings,
-    handleLarkDoc,
+    handleBatchExport
+  } = useBatchOperations({
+    selectedImageIds,
+    filteredImages,
+    setSelectedImageIds
+  });
 
-    closeImageModal,
-    closeUploadModal,
+  // 无限滚动
+  const {
+    displayedImages,
+    hasMore,
+    loadingMore,
+    loadMore
+  } = useInfiniteScroll(filteredImages, 20);
 
-    refreshData,
-    getConnectionInfo,
-  } = useHomePage();
+  // 图片上传处理函数
+  const handleImageUpload = useCallback(async (
+    file: File,
+    imageName: string,
+    promptBlocks: any[],
+    tagIds?: string[]
+  ) => {
+    try {
+      console.log('🚀 开始上传图片:', imageName);
+
+      // 创建FormData
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', imageName);
+
+      // 添加提示词
+      if (promptBlocks && promptBlocks.length > 0) {
+        formData.append('promptBlocks', JSON.stringify(promptBlocks));
+      }
+
+      // 添加标签
+      if (tagIds && tagIds.length > 0) {
+        formData.append('tagIds', JSON.stringify(tagIds));
+      }
+
+      // 发送上传请求
+      const response = await fetch('/api/images/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '上传失败');
+      }
+
+      const result = await response.json();
+      console.log('✅ 图片上传成功:', result);
+
+      // 直接添加新图片到本地状态，避免整个列表刷新
+      if (result.data) {
+        setImages(prev => [result.data, ...prev]);
+      }
+
+      // 显示成功提示
+      // toast.success('图片上传成功！');
+
+    } catch (error) {
+      console.error('❌ 图片上传失败:', error);
+      // toast.error('图片上传失败: ' + (error instanceof Error ? error.message : '未知错误'));
+      throw error; // 重新抛出错误，让UploadModal处理
+    }
+  }, [refreshData]);
+
+  const handleImport = useCallback(() => {
+    // TODO: 实现导入逻辑
+    console.log('Import');
+  }, []);
+
+  const handleUpload = useCallback(() => {
+    openUploadModal();
+  }, [openUploadModal]);
+
+  const handleExport = useCallback(() => {
+    // TODO: 实现导出逻辑
+    console.log('Export');
+  }, []);
+
+  const handleFavorites = useCallback(() => {
+    // TODO: 实现收藏逻辑
+    console.log('Favorites');
+  }, []);
+
+  const handleSettings = useCallback(() => {
+    // TODO: 实现设置逻辑
+    console.log('Settings');
+  }, []);
+
+  const handleLarkDoc = useCallback(() => {
+    // TODO: 实现飞书文档逻辑
+    console.log('Lark Doc');
+  }, []);
+
+  const getConnectionInfo = useCallback(() => {
+    return {
+      status: connectionStatus,
+      lastSync: new Date().toISOString()
+    };
+  }, [connectionStatus]);
+
+  // 下载进度状态
+  const [downloadProgress, setDownloadProgress] = useState({
+    isVisible: false,
+    progress: 0,
+    current: 0,
+    total: 0,
+    hideProgress: () => setDownloadProgress(prev => ({ ...prev, isVisible: false }))
+  });
 
   // 获取边栏状态
   const { open: sidebarOpen } = useSidebar();
@@ -174,6 +305,14 @@ function HomePageContent() {
           {/* 右侧按钮组 */}
           <div className="flex items-center gap-2 ">
             <Button
+              onClick={() => setShowPerformanceMonitor(!showPerformanceMonitor)}
+              variant="outline"
+              className="h-12 rounded-2xl font-bold px-4 hover:bg-accent transition-colors"
+              size="sm"
+            >
+              <Wrench className="w-4 h-4" />
+            </Button>
+            <Button
               onClick={handleUpload}
               className="bg-black h-12 rounded-2xl text-white  font-bold px-8 hover:bg-accent hover:text-black transition-colors"
               size="sm"
@@ -214,16 +353,12 @@ function HomePageContent() {
               ref={scrollContainerRef}
               className="h-[calc(100vh-12rem)] overflow-y-auto relative scroll-smooth custom-scrollbar px-4"
             >
-              <ImageGrid
+              <OptimizedImageGrid
                 images={displayedImages}
                 onImageClick={handleImageClick}
-                isEditMode={isEditMode}
-                selectedImageIds={selectedImageIds}
-                onSelectImage={handleSelectImage}
-                isCompact={false}
-                hasMore={hasMore}
                 onLoadMore={loadMore}
-                loadingMore={loadingMore}
+                hasMore={hasMore}
+                loading={loadingMore}
               />
 
               {/* 返回顶部按钮 */}
@@ -265,6 +400,13 @@ function HomePageContent() {
         isVisible={downloadProgress.isVisible}
         progress={downloadProgress.progress}
         onClose={downloadProgress.hideProgress}
+      />
+
+      {/* 性能监控 */}
+      <PerformanceMonitor
+        show={showPerformanceMonitor}
+        position="bottom-right"
+        onClose={() => setShowPerformanceMonitor(false)}
       />
     </>
   );

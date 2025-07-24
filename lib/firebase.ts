@@ -226,7 +226,7 @@ export function getAuthInstance() {
 export { initializeStorage, initializeAuth };
 
 // 向后兼容的导出
-export { db };
+// export { db }; // 移除错误的导出，db 是内部变量
 
 // 开发环境下连接模拟器（推荐用于解决连接问题）
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {

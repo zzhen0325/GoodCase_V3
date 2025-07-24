@@ -1,4 +1,10 @@
-export * from './ImageInfo'
-export * from './ImagePreview'
-export * from './ImageActions'
-export * from './TagSelectorDropdown'
+export { ImageModal } from './image-modal';
+export { ImagePreview } from './ImagePreview';
+export { PromptList } from './PromptList';
+export { ImageInfo } from './ImageInfo';
+export { ImageActions } from './ImageActions';
+export { TagSelectorDropdown } from './TagSelectorDropdown';
+export { useImageModalState } from './useImageModalState';
+export { useImageModalActions } from './useImageModalActions';
+
+export type { ImageModalProps } from './image-modal'; 

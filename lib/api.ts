@@ -1,7 +1,7 @@
 import {
   ImageData,
   Tag,
-  TagGroup,
+  TagCategory,
   DBResult,
   SearchFilters,
   SearchResult,
@@ -26,30 +26,35 @@ class ApiClient {
 
   // ==================== 图片相关 ====================
 
-  // 获取所有图片
-  async getAllImages(): Promise<DBResult<ImageData[]>> {
+  // 获取所有图片（支持分页）
+  async getAllImages(pagination?: { page?: number; limit?: number }): Promise<DBResult<{ data: ImageData[]; pagination: any }>> {
     try {
-      const response = await fetch(`${this.baseUrl}/images`);
+      const params = new URLSearchParams();
+      if (pagination?.page) params.append('page', pagination.page.toString());
+      if (pagination?.limit) params.append('limit', pagination.limit.toString());
+      
+      const url = `${this.baseUrl}/images${params.toString() ? `?${params}` : ''}`;
+      const response = await fetch(url);
       const result = await response.json();
 
       if (!response.ok) {
         return {
           success: false,
           error: result.error || '获取图片失败',
-          timestamp: new Date(),
+          
         };
       }
 
       return {
         ...result,
-        timestamp: new Date(),
+        
       };
     } catch (error) {
       console.error('获取图片失败:', error);
       return {
         success: false,
         error: '网络错误',
-        timestamp: new Date(),
+        
       };
     }
   }
@@ -64,20 +69,20 @@ class ApiClient {
         return {
           success: false,
           error: result.error || '获取图片失败',
-          timestamp: new Date(),
+          
         };
       }
 
       return {
         ...result,
-        timestamp: new Date(),
+        
       };
     } catch (error) {
       console.error('获取图片失败:', error);
       return {
         success: false,
         error: '网络错误',
-        timestamp: new Date(),
+        
       };
     }
   }
@@ -117,6 +122,11 @@ class ApiClient {
       if (!response.ok) {
         return {
           images: [],
+          page: 1,
+          limit: 20,
+          total: 0,
+          hasNext: false,
+          hasPrev: false,
           pagination: {
             page: 1,
             limit: 20,
@@ -124,20 +134,22 @@ class ApiClient {
             hasNext: false,
             hasPrev: false,
           },
-          filters,
-          total: 0,
-          searchTime: 0,
         };
       }
 
       return {
         ...result,
-        timestamp: new Date(),
+        
       };
     } catch (error) {
       console.error('搜索图片失败:', error);
       return {
         images: [],
+        page: 1,
+        limit: 20,
+        total: 0,
+        hasNext: false,
+        hasPrev: false,
         pagination: {
           page: 1,
           limit: 20,
@@ -145,9 +157,6 @@ class ApiClient {
           hasNext: false,
           hasPrev: false,
         },
-        filters,
-        total: 0,
-        searchTime: 0,
       };
     }
   }
@@ -171,20 +180,20 @@ class ApiClient {
         return {
           success: false,
           error: result.error || '添加图片失败',
-          timestamp: new Date(),
+          
         };
       }
 
       return {
         ...result,
-        timestamp: new Date(),
+        
       };
     } catch (error) {
       console.error('添加图片失败:', error);
       return {
         success: false,
         error: '网络错误',
-        timestamp: new Date(),
+        
       };
     }
   }
@@ -209,20 +218,20 @@ class ApiClient {
         return {
           success: false,
           error: result.error || '更新图片失败',
-          timestamp: new Date(),
+          
         };
       }
 
       return {
         ...result,
-        timestamp: new Date(),
+        
       };
     } catch (error) {
       console.error('更新图片失败:', error);
       return {
         success: false,
         error: '网络错误',
-        timestamp: new Date(),
+        
       };
     }
   }
@@ -240,20 +249,20 @@ class ApiClient {
         return {
           success: false,
           error: result.error || '删除图片失败',
-          timestamp: new Date(),
+          
         };
       }
 
       return {
         ...result,
-        timestamp: new Date(),
+        
       };
     } catch (error) {
       console.error('删除图片失败:', error);
       return {
         success: false,
         error: '网络错误',
-        timestamp: new Date(),
+        
       };
     }
   }
@@ -273,13 +282,12 @@ class ApiClient {
 
       if (!response.ok) {
         return {
-          success: 0,
-          failed: ids.length,
-          errors: [result.error || '批量删除失败'],
-          results: ids.map(() => ({
+          successCount: 0,
+          failedCount: ids.length,
+          results: ids.map((id) => ({
+            id,
             success: false,
             error: result.error || '批量删除失败',
-            timestamp: new Date(),
           })),
         };
       }
@@ -289,13 +297,12 @@ class ApiClient {
       console.error('批量删除图片失败:', error);
       const errorMessage = '网络错误';
       return {
-        success: 0,
-        failed: ids.length,
-        errors: [errorMessage],
-        results: ids.map(() => ({
+        successCount: 0,
+        failedCount: ids.length,
+        results: ids.map((id) => ({
+          id,
           success: false,
           error: errorMessage,
-          timestamp: new Date(),
         })),
       };
     }
@@ -348,15 +355,15 @@ class ApiClient {
         return {
           success: false,
           error: validation.errors.join(', ') || '文件验证失败',
-          timestamp: new Date(),
+          
         };
       }
 
       const formData = new FormData();
       formData.append('file', file);
 
-      if (options?.generateThumbnail) {
-        formData.append('generateThumbnail', 'true');
+      if ((options as any)?.generateThumbnail) {
+        formData.append('thumbnail', 'true');
       }
 
       const response = await fetch(`${this.baseUrl}/upload`, {
@@ -370,20 +377,20 @@ class ApiClient {
         return {
           success: false,
           error: result.error || '上传失败',
-          timestamp: new Date(),
+          
         };
       }
 
       return {
         ...result,
-        timestamp: new Date(),
+        
       };
     } catch (error) {
       console.error('上传文件失败:', error);
       return {
         success: false,
         error: '网络错误',
-        timestamp: new Date(),
+        
       };
     }
   }

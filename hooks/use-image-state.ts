@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ImageData, SearchFilters, DEFAULT_SEARCH_FILTERS } from '@/types';
-import { database } from '@/lib/database';
 
 interface ImageState {
   images: ImageData[];
@@ -62,18 +61,20 @@ export function useImageState(): ImageState & ImageActions {
       setCacheStatus('loading');
 
       const startTime = Date.now();
-      const result = await database.getAllImages();
+      const response = await fetch('/api/images');
       const loadTime = Date.now() - startTime;
 
-      if (result.success && result.data) {
-        setImages(result.data);
-        setConnectionStatus('connected');
-        console.log(
-          `📸 加载了 ${result.data.length} 张图片，耗时 ${loadTime}ms`
-        );
-      } else {
-        throw new Error(result.error);
+      if (!response.ok) {
+        throw new Error('获取图片失败');
       }
+
+      const result = await response.json();
+      const images = result.data || result.images || [];
+      setImages(images);
+      setConnectionStatus('connected');
+      console.log(
+        `📸 加载了 ${images?.length || 0} 张图片，耗时 ${loadTime}ms`
+      );
 
       // 判断是否来自缓存（简单的时间判断）
       setCacheStatus(loadTime < 50 ? 'hit' : 'miss');
@@ -86,29 +87,15 @@ export function useImageState(): ImageState & ImageActions {
     }
   }, []);
 
-  // 订阅实时数据变化
+  // 初始化加载数据
   useEffect(() => {
-    console.log('🔄 开始监听图片数据变化');
-    setIsLoading(true);
-
-    const unsubscribe = database.subscribeToImages((images) => {
-      if (images) {
-        setImages(images);
-        setConnectionStatus('connected');
-        setIsLoading(false);
-        console.log(`📸 实时更新: 收到 ${images.length} 张图片`);
-      }
-    });
-
-    return () => {
-      console.log('🔄 停止监听图片数据变化');
-      unsubscribe();
-    };
-  }, []);
+    console.log('🔄 开始加载图片数据');
+    loadImages();
+  }, [loadImages]);
 
   // 执行搜索和筛选
   const performSearch = useCallback(async () => {
-    if (!searchFilters.query && searchFilters.tags.length === 0) {
+    if (!searchFilters.query && (!searchFilters.tags || searchFilters.tags.length === 0)) {
       // 没有搜索条件时，显示所有图片
       setFilteredImages(images);
       return;
@@ -119,18 +106,20 @@ export function useImageState(): ImageState & ImageActions {
       // 文本搜索
       if (searchFilters.query) {
         const query = searchFilters.query.toLowerCase();
-        const matchesTitle = image.title?.toLowerCase().includes(query);
-        const matchesPrompts = image.prompts?.some(
-          (prompt) =>
-            prompt.title?.toLowerCase().includes(query) ||
-            prompt.content?.toLowerCase().includes(query)
+        const matchesTitle = image.name?.toLowerCase().includes(query);
+        const matchesPrompts = image.promptBlocks?.some(
+          (promptBlock) =>
+            promptBlock.content?.toLowerCase().includes(query)
         );
         if (!matchesTitle && !matchesPrompts) return false;
       }
 
       // 标签过滤
-      if (searchFilters.tags.length > 0) {
-        const imageTags = image.tags?.filter(tag => tag && tag.name).map((tag) => tag.name) || [];
+      if (searchFilters.tags && searchFilters.tags.length > 0) {
+        const imageTags = Array.isArray(image.tags)
+          ? image.tags.filter(tag => typeof tag === 'string' || (tag && typeof tag === 'object' && 'name' in tag))
+              .map((tag) => typeof tag === 'string' ? tag : (tag as any).name)
+          : [];
         const hasAllTags = searchFilters.tags.every((tag) =>
           imageTags.includes(tag)
         );
