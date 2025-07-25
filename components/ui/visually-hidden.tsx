@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/common';
 
 /**
  * VisuallyHidden组件用于创建对屏幕阅读器可见但视觉上不可见的内容

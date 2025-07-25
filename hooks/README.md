@@ -48,41 +48,7 @@ const {
 } = useTagOperations();
 ```
 
-#### ~~`useCategoryOperations`~~ (已删除)
 
-~~分类操作 Hook，负责处理分类的增删改查操作。~~
-
-**注意：** 此Hook已被删除。分类管理功能已合并到 `useTagOperations` 中，请使用以下方式：
-
-```typescript
-// 旧的用法（已废弃）
-// const {
-//   tagCategories, loading, error,
-//   createCategory, updateCategory, deleteCategory,
-//   refreshCategories
-// } = useCategoryOperations();
-
-// 新的用法
-const {
-  tagCategories, loading, error,
-  createTagCategory, updateTagCategory, deleteTagCategory,
-  refreshAll
-} = useTagOperations();
-```
-
-#### ~~`usePromptOperations`~~ (已删除)
-
-~~提示词相关操作 hook，包括创建、更新、删除提示词等功能。~~
-
-**注意：** 此Hook已被删除。提示词现在作为图片数据的一部分进行管理，请使用 `useImageOperations` 中的相关功能。
-
-```typescript
-// 旧的用法（已废弃）
-// const {
-//   prompts, loading, error,
-//   createPrompt, updatePrompt, deletePrompt,
-//   getPromptById, refreshPrompts
-// } = usePromptOperations();
 ```
 
 ### 状态管理 Hooks

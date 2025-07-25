@@ -4,14 +4,7 @@ import { useEffect, useState } from 'react';
 import { VersionManager, VersionInfo } from '@/lib/version-manager';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { BaseModal } from '@/components/common';
 import { Info, Database, FileText, Clock } from 'lucide-react';
 
 interface VersionInfoProps {
@@ -57,27 +50,28 @@ export function VersionInfoComponent({ showInDev = true }: VersionInfoProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="fixed bottom-4 right-4 z-50 opacity-60 hover:opacity-100 transition-opacity"
-        >
-          <Info className="h-4 w-4 mr-1" />
-          v{versions.documentation}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            数据库版本信息
-          </DialogTitle>
-          <DialogDescription>
-            当前系统的数据库版本和升级历史记录
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="fixed bottom-4 right-4 z-50 opacity-60 hover:opacity-100 transition-opacity"
+        onClick={() => setIsOpen(true)}
+      >
+        <Info className="h-4 w-4 mr-1" />
+        v{versions.documentation}
+      </Button>
+      <BaseModal 
+        isOpen={isOpen} 
+        onClose={() => setIsOpen(false)}
+        title="数据库版本信息"
+        description="当前系统的数据库版本和升级历史记录"
+        size="lg"
+        className="max-w-2xl max-h-[80vh] overflow-y-auto"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Database className="h-5 w-5" />
+          <span className="font-medium">数据库版本信息</span>
+        </div>
 
         <div className="space-y-6">
           {/* 当前版本信息 */}
@@ -174,7 +168,7 @@ export function VersionInfoComponent({ showInDev = true }: VersionInfoProps) {
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </BaseModal>
+    </>
   );
 }

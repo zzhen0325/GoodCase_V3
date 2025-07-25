@@ -1,9 +1,16 @@
-// 数据管理相关 hooks
+// 核心 hooks
+export * from './core';
+
+// 数据相关 hooks
+export * from './data';
+
+// UI相关 hooks
+export * from './ui';
+
+// 原有数据管理相关 hooks (保持向后兼容)
 export { useDataManager } from './use-data-manager';
 export { useImageOperations } from './use-image-operations';
-export { useTagOperations } from './use-tag-operations';
-// export { useCategoryOperations } from './use-category-operations'; // 已删除：功能已合并到useTagOperations中
-// export { usePromptOperations } from './use-prompt-operations'; // 已删除：提示词作为图片数据的一部分，不需要独立的hook
+// useTagOperations 已迁移到 hooks/data/useTags.ts
 export { useDataSync } from './use-data-sync';
 
 // 状态管理相关 hooks
@@ -17,7 +24,6 @@ export { useNavigation } from './use-navigation';
 export { useTagFilter } from './use-tag-filter';
 
 // 页面相关 hooks
-// export { useHomePage } from './use-home-page'; // 已移除
 export { useInfiniteScroll } from './use-infinite-scroll';
 
 // 工具相关 hooks

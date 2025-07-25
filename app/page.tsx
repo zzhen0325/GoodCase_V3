@@ -4,8 +4,8 @@ import _ from 'lodash';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WaterfallImageGrid } from '@/components/waterfall-image-grid';
-import { ImageModal } from '@/components/image-modal/image-modal';
-import { UploadModal } from '@/components/upload-modal/upload-modal';
+import { ImageModal } from '@/components/features/image-management';
+import { UploadModal } from '@/components/features/upload';
 import { ConnectionStatus } from '@/components/connection-status';
 import CircularText from '@/components/circular-text';
 import { DownloadProgressToast } from '@/components/download-progress-toast';
@@ -17,7 +17,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppSidebar } from '@/components/layout';
 // import { useHomePage } from '@/hooks/use-home-page'; // 已移除
 import { useImageState } from '@/hooks/use-image-state';
 import { useModalState } from '@/hooks/use-modal-state';

@@ -1,4 +1,4 @@
-import { getServerFirebase } from './firebase-server';
+import { getAdminDb, getAdminStorage } from './firebase-admin';
 
 // Firebase健康检查工具
 export class FirebaseHealthCheck {
@@ -27,7 +27,8 @@ export class FirebaseHealthCheck {
       }
 
       // 尝试初始化Firebase
-      const { db, storage } = await getServerFirebase();
+      const db = getAdminDb();
+      const storage = getAdminStorage();
 
       // 测试Firestore连接
       try {

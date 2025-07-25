@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { ImageData, PromptBlock } from '@/types';
 import { getImageMetadata, validateImageFile } from '@/lib/image-utils';
-import { copyToClipboard, generateId } from '@/lib/utils';
+import { copyToClipboard, generateId } from '@/lib/utils/common';
 import { toast } from '@/lib/enhanced-toast';
 
 interface UseImageOperationsProps {

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { copyToClipboard, cn } from '@/lib/utils';
+import { copyToClipboard, cn } from '@/lib/utils/common';
 
 // 提示词块组件属性
 interface PromptBlockProps {

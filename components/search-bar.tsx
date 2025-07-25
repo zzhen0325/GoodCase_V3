@@ -5,7 +5,7 @@ import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SearchFilters, DEFAULT_SEARCH_FILTERS } from '@/types';
-import { debounce } from '@/lib/utils';
+import { debounce } from '@/lib/utils/common';
 
 // 搜索框组件属性
 interface SearchBarProps {

@@ -3,13 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { BaseModal } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
@@ -88,19 +82,17 @@ export function ProgressModal({
   const isLoading = !isCompleted && status !== 'idle';
 
   return (
-    <Dialog open={isOpen} onOpenChange={isCompleted ? onClose : undefined}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Icon
-              className={`w-5 h-5 ${config.color} ${isLoading ? 'animate-spin' : ''}`}
-            />
-            {title}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            显示当前操作的进度状态和详细信息
-          </DialogDescription>
-        </DialogHeader>
+    <BaseModal 
+      isOpen={isOpen} 
+      onClose={isCompleted ? onClose : () => {}} 
+      title={title}
+      size="sm"
+      className="sm:max-w-md"
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <config.icon className={`w-5 h-5 ${config.color} ${isLoading ? 'animate-spin' : ''}`} />
+        <span className="font-medium">{title}</span>
+      </div>
 
         <div className="space-y-4">
           {/* 进度条 */}
@@ -148,8 +140,7 @@ export function ProgressModal({
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </BaseModal>
   );
 }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore, doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
-import { generateId } from '@/lib/utils';
+import { generateId } from '@/lib/utils/common';
 
 // Firebase配置
 const firebaseConfig = {
