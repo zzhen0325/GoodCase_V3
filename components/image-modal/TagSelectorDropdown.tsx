@@ -460,9 +460,14 @@ export function TagSelectorDropdown({
     <>
       <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button 
+            type="button"
+            variant="outline"
+            size="lg"
+            className="px-3 text-black font-medium"
+                >
             <TagIcon className="w-4 h-4" />
-            Add Tag
+          Add Tag
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-80 max-h-96 overflow-x-hidden" onCloseAutoFocus={(e) => e.preventDefault()}>

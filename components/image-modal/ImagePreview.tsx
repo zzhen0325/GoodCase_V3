@@ -24,7 +24,7 @@ export function ImagePreview({ image, onClose }: ImagePreviewProps) {
       <img
         src={image.url}
         alt={image.title || '图片'}
-        className="max-w-full max-h-[calc(85vh-8rem)] object-contain rounded-2xl"
+        className="max-w-full max-h-[calc(85vh-20rem)] object-contain rounded-2xl"
         loading="lazy"
       />
     </div>

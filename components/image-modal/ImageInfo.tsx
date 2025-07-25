@@ -2,7 +2,8 @@ import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { X, Save } from 'lucide-react';
 import { ImageData, Tag, TagCategory } from '@/types';
 import { getColorTheme } from '@/types';
 // TagSelectorDropdown 在 ImageActions 中使用，这里不需要导入
@@ -21,6 +22,8 @@ interface ImageInfoProps {
   onRefetch: () => void;
   tagSelectorOpen: boolean;
   setTagSelectorOpen: (open: boolean) => void;
+  onSave?: () => void;
+  onCancel?: () => void;
 }
 
 export function ImageInfo({
@@ -37,6 +40,8 @@ export function ImageInfo({
   onRefetch,
   tagSelectorOpen,
   setTagSelectorOpen,
+  onSave,
+  onCancel,
 }: ImageInfoProps) {
   // 移除标签
   const removeTag = (tagId: string) => {
@@ -63,7 +68,7 @@ export function ImageInfo({
                   <Badge
                     key={tag.id}
                     variant="secondary"
-                    className="h-8 py-4 text-xs font-medium rounded-xl border"
+                    className="px-3 h-8 py-4 text-xs font-medium rounded-xl border"
                     style={{
                       backgroundColor: colorTheme.bg,
                       borderColor: colorTheme.primary,
@@ -74,7 +79,10 @@ export function ImageInfo({
                     {isEditing && (
                       <Button
                         size="icon"
-                        className="ml-2 h-5 w-5 bg-white/40 hover:bg-white"
+                        className="ml-1 h-4 w-4 bg-transparent hover:bg-transparent"
+                        style={{
+                          color: colorTheme.text
+                        }}
                         onClick={() => removeTag(tag.id)}
                       >
                         <X className="h-2 w-2" />
@@ -88,8 +96,40 @@ export function ImageInfo({
               )}
             </div>
           </div>
+ 
+          {/* 编辑模式下的保存和取消按钮 */}
+          {isEditing && (onSave || onCancel) && (
+            <>
+             
+              <div className="flex gap-3 justify-end">
+                {/* Cancel 按钮 */}
+                {onCancel && (
+                  <Button
+                    onClick={onCancel}
+                    variant="outline"
+                    size="lg"
+                    className="border-red-200 hover:bg-red-50 hover:text-red-600"
+                  >
+                    Cancel
+                  </Button>
+                )}
+                
+                {/* Save 按钮 */}
+                {onSave && (
+                  <Button
+                    onClick={onSave}
+                    size="lg"
+                    className="bg-black hover:bg-black text-white px-4"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </ScrollArea>
     </div>
   );
-} 
+}

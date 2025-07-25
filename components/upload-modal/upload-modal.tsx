@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { toast } from 'sonner';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { toast } from '@/lib/enhanced-toast';
 
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Tag as TagIcon, X } from 'lucide-react';
+import { Plus, Tag as TagIcon, X, GripVertical } from 'lucide-react';
 import { PromptBlock, getColorTheme } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { generateId } from '@/lib/utils';
@@ -37,6 +37,10 @@ interface UploadModalProps {
 
 // 主要的上传模态框组件
 export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
+  // 面板宽度状态
+  const [leftPanelWidth, setLeftPanelWidth] = useState(35);
+  const [isDragging, setIsDragging] = useState(false);
+  
   // 文件相关状态
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -47,9 +51,9 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   // 提示词相关状态
   const [promptBlocks, setPromptBlocks] = useState<PromptBlock[]>([
-    { id: generateId(), content: '风格', color: 'pink', order: 0 },
-    { id: generateId(), content: '主体', color: 'cyan', order: 1 },
-    { id: generateId(), content: '场景', color: 'yellow', order: 2 },
+    { id: generateId(), title: '风格', content: '', color: 'pink', order: 0 },
+    { id: generateId(), title: '主体', content: '', color: 'cyan', order: 1 },
+    { id: generateId(), title: '场景', content: '', color: 'yellow', order: 2 },
   ]);
 
   // 标签相关状态
@@ -61,6 +65,47 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   // 标签操作hooks
   const { tags, tagCategories, refreshAll } = useTagOperations();
+
+  // 拖拽处理函数
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const container = document.querySelector('[data-upload-modal-container]') as HTMLElement;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+    
+    // 限制宽度范围在 20% 到 80% 之间
+    const clampedWidth = Math.min(Math.max(newWidth, 20), 80);
+    setLeftPanelWidth(clampedWidth);
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // 添加全局鼠标事件监听
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   // 处理文件选择
   const handleFileSelect = (file: File) => {
@@ -92,9 +137,9 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const resetForm = () => {
     handleClearFile();
     setPromptBlocks([
-      { id: generateId(), content: '风格', color: 'pink', order: 0 },
-      { id: generateId(), content: '主体', color: 'cyan', order: 1 },
-      { id: generateId(), content: '场景', color: 'yellow', order: 2 },
+      { id: generateId(), title: '风格', content: '', color: 'pink', order: 0 },
+      { id: generateId(), title: '主体', content: '', color: 'cyan', order: 1 },
+      { id: generateId(), title: '场景', content: '', color: 'yellow', order: 2 },
     ]);
     setSelectedTagIds([]);
     setIsUploading(false);
@@ -113,25 +158,37 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       return;
     }
 
+    // 显示上传进度条
+    const toastId = toast.uploadProgress(0, '正在上传图片...');
+    
     try {
       setIsUploading(true);
 
       console.log('🚀 开始上传图片:', imageName);
 
+      // 更新进度到30%
+      toast.updateProgress(toastId, { progress: 30, message: '正在处理图片...' });
+
+      // 更新进度到60%
+      toast.updateProgress(toastId, { progress: 60, message: '正在上传到服务器...' });
+
       // 开始上传
       await onUpload(selectedFile, imageName, promptBlocks, selectedTagIds);
 
+      // 更新进度到100%
+      toast.updateProgress(toastId, { progress: 100, message: '上传完成' });
+
+      // 显示成功消息
+      toast.completeProgress(toastId, '图片上传成功！');
+      
       // 上传成功后才关闭弹窗并重置表单
-      toast.success('图片上传成功！');
       resetForm();
       onClose();
 
     } catch (error) {
       console.error('❌ 上传失败:', error);
-      toast.error(
-        '上传失败: ' +
-          (error instanceof Error ? error.message : '请检查网络连接后重试')
-      );
+      // 显示失败消息
+      toast.failProgress(toastId, '图片上传失败');
     } finally {
       setIsUploading(false);
     }
@@ -168,16 +225,15 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2 ">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setTagSelectorOpen(true)}
-                  className="px-3 text-black font-medium"
-                >
-                  <TagIcon className="h-3 w-3 " />
-                  Add Tag
-                </Button>
+                <TagSelectorDropdown
+                  tags={tags}
+                  tagCategories={tagCategories}
+                  selectedTagIds={selectedTagIds}
+                  onTagsChange={setSelectedTagIds}
+                  open={tagSelectorOpen}
+                  onOpenChange={setTagSelectorOpen}
+                  onRefetch={refreshAll}
+                />
                 <Separator orientation="vertical" className="h-6 mx-4" />
                 <Button
                   type="button"
@@ -186,6 +242,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                   onClick={() => {
                     const newBlock: PromptBlock = {
                       id: generateId(),
+                      title: '新提示词',
                       content: '',
                       color: 'pink',
                       order: promptBlocks.length,
@@ -201,9 +258,12 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
             </div>
           </DialogHeader>
 
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex overflow-hidden" data-upload-modal-container>
             {/* 左侧：文件上传区域 */}
-            <div className="w-[35%] flex-1 min-w-0">
+            <div 
+              className="flex-1 min-w-0 flex-shrink-0" 
+              style={{ width: `${leftPanelWidth}%` }}
+            >
               <FileUploadArea
                 selectedFile={selectedFile}
                 previewUrl={previewUrl}
@@ -213,13 +273,30 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               />
             </div>
 
+            {/* 拖拽分隔条 */}
+            <div 
+              className={`w-[1px] bg-border hover:bg-border cursor-col-resize flex-shrink-0 relative group ${
+                isDragging ? 'bg-border' : ''
+              }`}
+              onMouseDown={handleMouseDown}
+            >
+              <div className="absolute inset-y-0 -left-2 -right-2 flex items-center justify-center">
+                <div className="bg-white border  rounded-xl px-1 py-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                  <GripVertical className="w-3 h-6 text-border" />
+                </div>
+              </div>
+            </div>
+
             {/* 右侧：编辑区域 */}
-            <div className="w-[65%] border-l bg-gray-50/50 flex flex-col">
+            <div 
+              className="bg-white flex flex-col min-w-0" 
+              style={{ width: `${100 - leftPanelWidth}%` }}
+            >
               <div className="flex-1 flex flex-col overflow-hidden">
               
                 
                 {/* 提示词显示区域 */}
-                <div className="flex-1 min-h-0 bg-white">
+                <div className="flex-1 flex flex-col min-h-0 max-h-[calc(75vh-220px)]">
                   <PromptList
                     promptBlocks={promptBlocks}
                     isEditing={true}
@@ -254,7 +331,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                         <Badge
                           key={tag.id}
                           variant="secondary"
-                          className="h-8 py-4 text-xs font-medium rounded-xl border"
+                         className="px-3 h-8 py-4 text-xs font-medium rounded-xl border"
                           style={{
                             backgroundColor: colorTheme.bg,
                             borderColor: colorTheme.primary,
@@ -264,7 +341,10 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                           {tag.name}
                           <Button
                             size="icon"
-                            className="ml-2 h-5 w-5 bg-white/40 hover:bg-white"
+                             className="ml-1 h-4 w-4 bg-transparent hover:bg-transparent"
+                            style={{
+                              color: colorTheme.text
+                            }}
                             onClick={() => {
                               setSelectedTagIds(prev => prev.filter(id => id !== tag.id));
                             }}

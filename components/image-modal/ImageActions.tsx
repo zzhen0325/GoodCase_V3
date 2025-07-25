@@ -75,32 +75,17 @@ export function ImageActions({
   }, [deleteStatus]);
 
   return (
-    <div className="flex flex-wrap gap-2 items-center relative">
+    <div className="flex flex-wrap gap-4 items-center relative">
       {/* 编辑相关按钮 */}
       {isEditing ? (
         <>
-          {/* 删除按钮 - 编辑模式第一个 */}
-          {onDelete && (
-            <Button
-              onClick={handleDeleteClick}
-              variant="destructive"
-              size="sm"
-              disabled={deleteStatus === 'deleting'}
-            >
-              <Trash2 className="w-4 h-4" />
-              {deleteStatus === 'deleting'
-                ? '删除中...'
-                : isConfirming
-                  ? '确认删除？'
-                  : '删除'}
-            </Button>
-          )}
-          <Separator orientation="vertical" className="h-6 mx-4" />
+
           {/* Add Prompt 按钮 */}
           <Button
             onClick={onAddPrompt}
             variant="outline"
-            size="sm"
+            size="lg"
+            className="px-3 text-black font-medium"
           >
             <Plus className="w-4 h-4 text-black" />
             Add Prompt
@@ -119,46 +104,27 @@ export function ImageActions({
             />
           )}
           
-          <Separator orientation="vertical" className="h-6 mx-4" />
-          
-          {/* Save 按钮 */}
-          <Button
-            key="save"
-            onClick={onSave}
-            size="sm"
-            className="bg-black hover:bg-black text-white px-4"
-          >
-            <Save className="w-4 h-4" />
-            Save
-          </Button>
-          
-          {/* Cancel 按钮 */}
-          <Button
-            key="cancel"
-            onClick={onCancel}
-            variant="outline"
-            size="sm"
-            className="border-red-200 hover:bg-red-50 hover:text-red-600"
-          >
-            Cancel
-          </Button>
+
         </>
       ) : (
-        <Button onClick={onEdit} variant="outline" size="sm">
+        <Button onClick={onEdit} variant="outline" size="lg" className="px-3 text-black font-medium">
           <Edit3 className="w-4 h-4" />
-          Edit
+          
         </Button>
       )}
+    
 
+       
       {/* 复制全部提示词 - 编辑模式下隐藏 */}
       {!isEditing && (
         <Button
           onClick={onCopyAll}
           variant="outline"
-          size="sm"
+          size="lg"
           disabled={promptBlocks.length === 0}
-          className={
-            copyAllStatus === 'success' ? 'border-green-500 text-green-700' : ''
+          className={ `bg-black border-0 rounded-xl text-white px-3 ${
+            copyAllStatus === 'success' ? 'bg-white border-green-500 text-green-700' : ''
+          } font-medium`
           }
         >
           {copyAllStatus === 'success' ? (
@@ -166,20 +132,23 @@ export function ImageActions({
           ) : (
             <Copy className="w-4 h-4 " />
           )}
-          {copyAllStatus === 'success' ? '已复制' : '复制全部'}
+          {copyAllStatus === 'success' ? '已复制' : 'Copy Prompt'}
         </Button>
       )}
+
+     
 
       {/* 复制图片 - 编辑模式下隐藏 */}
       {!isEditing && onDuplicate && (
         <Button
           onClick={onDuplicate}
           variant="outline"
-          size="sm"
-          className={
+          size="lg"
+          className={ `bg-black border-0 rounded-xl text-white px-3 ${
             duplicateStatus === 'success'
               ? 'border-green-500 text-green-700'
               : ''
+          } font-medium`
           }
         >
           {duplicateStatus === 'success' ? (
@@ -187,7 +156,7 @@ export function ImageActions({
           ) : (
             <Files className="w-4 h-4 " />
           )}
-          {duplicateStatus === 'success' ? '已复制' : '复制图片'}
+          {duplicateStatus === 'success' ? '已复制' : 'Copy & Edit'}
         </Button>
       )}
     </div>

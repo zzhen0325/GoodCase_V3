@@ -30,7 +30,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
   const addPrompt = () => {
     const newPrompt: PromptBlock = {
       id: `temp_${generateId()}`,
-      title: '新提示词',
+      title: 'New Prompt',
       content: '',
       color: 'pink',
       order: promptBlocks.length
@@ -107,7 +107,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
             className="text-xs"
           >
             <Plus className="h-3 w-3 mr-1" />
-            添加
+            Add
           </Button>
         </div>
       </div>
@@ -138,7 +138,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
             </AnimatePresence>
             
             {promptBlocks.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted">
                 <div className="text-sm">暂无提示词</div>
                 <div className="text-xs mt-1">点击"添加"按钮创建提示词</div>
               </div>

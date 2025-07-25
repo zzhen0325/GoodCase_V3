@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { ImageData, PromptBlock } from '@/types';
 import { getImageMetadata, validateImageFile } from '@/lib/image-utils';
 import { copyToClipboard, generateId } from '@/lib/utils';
+import { toast } from '@/lib/enhanced-toast';
 
 interface UseImageOperationsProps {
   selectedImage: ImageData | null;
@@ -141,7 +142,13 @@ export function useImageOperations({
   // 处理图片删除
   const handleImageDelete = useCallback(
     async (id: string) => {
+      // 显示删除进度条
+      const toastId = toast.deleteProgress(0, '正在删除图片...');
+      
       try {
+        // 更新进度到50%
+        toast.updateProgress(toastId, { progress: 50, message: '正在删除图片...' });
+        
         const response = await fetch(`/api/images/${id}`, {
           method: 'DELETE',
         });
@@ -151,6 +158,9 @@ export function useImageOperations({
           throw new Error(errorData.error || '删除图片失败');
         }
 
+        // 更新进度到100%
+        toast.updateProgress(toastId, { progress: 100, message: '删除完成' });
+
         // 更新本地状态
         setImages((prev) => prev.filter((img) => img.id !== id));
 
@@ -158,10 +168,15 @@ export function useImageOperations({
         setIsImageModalOpen(false);
         setSelectedImage(null);
 
+        // 显示成功消息
+        toast.completeProgress(toastId, '图片删除成功');
+
         // 不需要触发全量刷新，本地状态已经更新
         // onRefresh?.();
       } catch (error) {
         console.error('❌ 图片删除失败:', error);
+        // 显示失败消息
+        toast.failProgress(toastId, '图片删除失败');
         throw error;
       }
     },
@@ -171,61 +186,55 @@ export function useImageOperations({
   // 处理图片复制
   const handleImageDuplicate = useCallback(
     async (image: ImageData) => {
+      // 显示复制进度条
+      const toastId = toast.uploadProgress(0, '正在复制图片...');
+      
       try {
-        // 立即打开当前图片的详情弹窗
-        setSelectedImage(image);
+        // 更新进度到30%
+        toast.updateProgress(toastId, { progress: 30, message: '正在复制图片数据...' });
+        
+        // 使用新的复制API接口
+        const response = await fetch('/api/images/duplicate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageId: image.id,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '复制失败');
+        }
+
+        // 更新进度到80%
+        toast.updateProgress(toastId, { progress: 80, message: '复制完成，正在打开...' });
+
+        const { data: newImage } = await response.json();
+
+        // 更新本地状态
+        setImages((prev) => [newImage, ...prev]);
+
+        // 更新进度到100%
+        toast.updateProgress(toastId, { progress: 100, message: '复制成功' });
+
+        // 立即打开新图片的详情弹窗并进入编辑模式
+        setSelectedImage(newImage);
         setIsImageModalOpen(true);
+        
+        // 完成进度条
+        toast.completeProgress(toastId, '图片复制成功，已自动进入编辑模式');
 
-        // 后台异步复制图片
-        (async () => {
-          try {
-            // 创建复制的图片数据
-            const duplicateData = {
-              name: `${image.name} (副本)`,
-              url: image.url,
-              promptBlocks: image.promptBlocks,
-              tags: image.tags,
-            };
-
-            const response = await fetch('/api/images/upload', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                imageUrl: image.url, // 修复：使用正确的参数名
-                title: `${image.title} (副本)`,
-                width: 0,
-                 height: 0,
-                 fileSize: 0,
-                 format: 'png',
-                tags: image.tags || [],
-                promptBlocks: image.promptBlocks || [],
-              }),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || '复制失败');
-            }
-
-            const { data: newImage } = await response.json(); // 修复：使用正确的响应结构
-
-            // 更新本地状态
-            setImages((prev) => [newImage, ...prev]);
-
-            // 不需要触发全量刷新，本地状态已经更新
-            // onRefresh?.();
-          } catch (error) {
-            console.error('❌ 后台复制图片失败:', error);
-          }
-        })();
       } catch (error) {
         console.error('❌ 复制图片失败:', error);
+        // 显示失败消息
+        toast.failProgress(toastId, '图片复制失败');
         throw error;
       }
     },
-    [setSelectedImage, setIsImageModalOpen, setImages, onRefresh]
+    [setSelectedImage, setIsImageModalOpen, setImages]
   );
 
   // 处理提示词复制

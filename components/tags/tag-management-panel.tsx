@@ -43,7 +43,7 @@ import { TagCategory, Tag } from '@/types';
 import { TagGroupItem } from './tag-group-item';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { cn } from '@/lib/utils';
-import { useToastContext } from '@/components/toast-provider';
+import toast from '@/lib/enhanced-toast';
 
 interface TagManagementPanelProps {
   open: boolean;
@@ -297,7 +297,6 @@ export function TagManagementPanel({
   onOpenChange,
   className,
 }: TagManagementPanelProps) {
-  const { toast } = useToastContext();
   const {
     tagCategories,
     tags,
@@ -358,11 +357,11 @@ export function TagManagementPanel({
         toast.success('分类创建成功');
         setShowCreateCategory(false);
       } else {
-        toast.error('创建分类失败', result.error || '未知错误');
+        toast.error('创建分类失败', { description: result.error || '未知错误' });
       }
     } catch (error) {
       console.error('创建分类失败:', error);
-      toast.error('创建分类失败', error instanceof Error ? error.message : '未知错误');
+      toast.error('创建分类失败', { description: error instanceof Error ? error.message : '未知错误' });
     }
   };
 
@@ -383,11 +382,11 @@ export function TagManagementPanel({
         setShowCreateTag(false);
         setCreateTagCategoryId('');
       } else {
-        toast.error('创建标签失败', result.error || '未知错误');
+        toast.error('创建标签失败', { description: result.error || '未知错误' });
       }
     } catch (error) {
       console.error('创建标签失败:', error);
-      toast.error('创建标签失败', error instanceof Error ? error.message : '未知错误');
+      toast.error('创建标签失败', { description: error instanceof Error ? error.message : '未知错误' });
     }
   };
 
@@ -406,11 +405,11 @@ export function TagManagementPanel({
           setShowEditCategory(false);
           setEditingCategory(null);
         } else {
-          toast.error('更新分类失败', result.error || '未知错误');
+          toast.error('更新分类失败', { description: result.error || '未知错误' });
         }
       } catch (error) {
         console.error('更新分类失败:', error);
-        toast.error('更新分类失败', error instanceof Error ? error.message : '未知错误');
+        toast.error('更新分类失败', { description: error instanceof Error ? error.message : '未知错误' });
       }
     }
   };
@@ -434,11 +433,11 @@ export function TagManagementPanel({
           setShowEditTag(false);
           setEditingTag(null);
         } else {
-          toast.error('更新标签失败', result.error || '未知错误');
+          toast.error('更新标签失败', { description: result.error || '未知错误' });
         }
       } catch (error) {
         console.error('更新标签失败:', error);
-        toast.error('更新标签失败', error instanceof Error ? error.message : '未知错误');
+        toast.error('更新标签失败', { description: error instanceof Error ? error.message : '未知错误' });
       }
     }
   };
@@ -462,7 +461,7 @@ export function TagManagementPanel({
       // 检查是否有失败的操作
       const failures = results.filter(result => !result.success);
       if (failures.length > 0) {
-        toast.error(`移动标签失败: ${failures.length}个标签移动失败`);
+        toast.error('移动标签失败', { description: `${failures.length}个标签移动失败` });
       } else {
         toast.success('标签移动成功');
       }
@@ -471,7 +470,7 @@ export function TagManagementPanel({
       setShowMoveTag(false);
     } catch (error: any) {
       console.error('移动标签失败:', error);
-      toast.error(`移动标签失败: ${error?.message || '未知错误'}`);
+      toast.error('移动标签失败', { description: error?.message || '未知错误' });
     }
   };
 
@@ -484,7 +483,7 @@ export function TagManagementPanel({
       if (deleteTarget.type === 'tagCategory' && deleteTarget.data) {
         result = await deleteTagCategory((deleteTarget.data as TagCategory).id);
         if (!result.success) {
-          toast.error('删除分类失败', result.error);
+          toast.error('删除分类失败', { description: result.error });
           console.error('删除分类失败:', result.error);
         } else {
           toast.success('分类已删除');
@@ -493,13 +492,13 @@ export function TagManagementPanel({
         // 确保 deleteTarget.data 存在且有 id 属性
         if (!(deleteTarget.data as Tag).id) {
           console.error('删除标签失败: 无效的标签ID');
-          toast.error('删除标签失败', '无效的标签ID');
+          toast.error('删除标签失败', { description: '无效的标签ID' });
           return;
         }
         
         result = await deleteTag((deleteTarget.data as Tag).id);
         if (!result.success) {
-          toast.error('删除标签失败', result.error);
+          toast.error('删除标签失败', { description: result.error });
           console.error('删除标签失败:', result.error);
         } else {
           toast.success('标签已删除');
@@ -508,13 +507,13 @@ export function TagManagementPanel({
         // 确保有选中的标签
         if (selectedTags.length === 0) {
           console.error('批量删除标签失败: 未选择任何标签');
-          toast.error('批量删除标签失败', '未选择任何标签');
+          toast.error('批量删除标签失败', { description: '未选择任何标签' });
           return;
         }
         
         result = await deleteSelectedTags();
         if (!result.success) {
-          toast.error('批量删除标签失败', result.error);
+          toast.error('批量删除标签失败', { description: result.error });
           console.error('批量删除标签失败:', result.error);
         } else {
           toast.success(`已删除 ${selectedTags.length} 个标签`);
@@ -527,7 +526,7 @@ export function TagManagementPanel({
       }
     } catch (error) {
       console.error('删除失败:', error);
-      toast.error('操作失败', error instanceof Error ? error.message : '未知错误');
+      toast.error('操作失败', { description: error instanceof Error ? error.message : '未知错误' });
     }
   };
 

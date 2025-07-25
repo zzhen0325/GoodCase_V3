@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { FirebaseProvider } from '@/components/firebase-provider';
 import { DataProvider } from '@/components/shared/DataContext';
 import { VersionInfoComponent } from '@/components/version-info';
-import { ToastProvider } from '@/components/toast-provider';
+
 import './globals.css';
 
 const poppins = Poppins({
@@ -71,13 +71,11 @@ export default function RootLayout({
       >
         <FirebaseProvider>
           <DataProvider>
-            <ToastProvider>
-              <div className="min-h-screen bg-background text-foreground">
-                {children}
-              </div>
-              <Toaster />
-              <VersionInfoComponent />
-            </ToastProvider>
+            <div className="min-h-screen bg-background text-foreground">
+              {children}
+            </div>
+            <Toaster />
+            <VersionInfoComponent />
           </DataProvider>
         </FirebaseProvider>
         <script

@@ -3,7 +3,7 @@
 import _ from 'lodash';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { OptimizedImageGrid } from '@/components/optimized-image-grid';
+import { WaterfallImageGrid } from '@/components/waterfall-image-grid';
 import { ImageModal } from '@/components/image-modal/image-modal';
 import { UploadModal } from '@/components/upload-modal/upload-modal';
 import { ConnectionStatus } from '@/components/connection-status';
@@ -77,7 +77,7 @@ function HomePageContent() {
   const {
     handleImageUpdate,
     handleImageDelete,
-    handleImageDuplicate,
+    handleImageDuplicate: originalHandleImageDuplicate,
     handleCopyPrompt
   } = useImageOperations({
     selectedImage,
@@ -86,6 +86,16 @@ function HomePageContent() {
     setIsImageModalOpen: closeImageModal,
     onRefresh: refreshData
   });
+
+  // 包装复制函数，添加自动编辑模式
+  const handleImageDuplicate = useCallback(async (image: any) => {
+    setAutoEdit(true); // 设置自动编辑模式
+    await originalHandleImageDuplicate(image);
+    // 复制完成后，延迟重置autoEdit状态，确保弹窗已经打开并应用了自动编辑模式
+    setTimeout(() => {
+      setAutoEdit(false);
+    }, 100);
+  }, [originalHandleImageDuplicate]);
 
   // 批量操作
   const {
@@ -157,7 +167,7 @@ function HomePageContent() {
       // toast.error('图片上传失败: ' + (error instanceof Error ? error.message : '未知错误'));
       throw error; // 重新抛出错误，让UploadModal处理
     }
-  }, [refreshData]);
+  }, [setImages]);
 
   const handleImport = useCallback(() => {
     // TODO: 实现导入逻辑
@@ -194,6 +204,9 @@ function HomePageContent() {
       lastSync: new Date().toISOString()
     };
   }, [connectionStatus]);
+
+  // 自动编辑模式状态
+  const [autoEdit, setAutoEdit] = useState(false);
 
   // 下载进度状态
   const [downloadProgress, setDownloadProgress] = useState({
@@ -327,11 +340,15 @@ function HomePageContent() {
                 <ImageModal
                   isOpen={isImageModalOpen}
                   image={selectedImage}
-                  onClose={closeImageModal}
+                  onClose={() => {
+                    setAutoEdit(false); // 关闭弹窗时重置自动编辑模式
+                    closeImageModal();
+                  }}
                   onUpdate={handleImageUpdate}
                   onDelete={handleImageDelete}
                   onCopyPrompt={handleCopyPrompt}
                   onDuplicate={handleImageDuplicate}
+                  autoEdit={autoEdit}
                 />
               </div>
             </motion.div>
@@ -343,7 +360,7 @@ function HomePageContent() {
               ref={scrollContainerRef}
               className="h-[calc(100vh-12rem)] overflow-y-auto relative scroll-smooth custom-scrollbar px-4"
             >
-              <OptimizedImageGrid
+              <WaterfallImageGrid
                 images={displayedImages}
                 onImageClick={handleImageClick}
                 onLoadMore={loadMore}
@@ -391,6 +408,7 @@ function HomePageContent() {
         progress={downloadProgress.progress}
         onClose={downloadProgress.hideProgress}
       />
+
 
 
     </>

@@ -47,28 +47,31 @@ export const FileUploadArea: React.FC<FileUploadAreaProps> = ({
           className={`h-full flex flex-col items-center justify-center relative overflow-hidden transition-colors ${
             previewUrl 
               ? 'rounded-2xl' 
-              : 'border-2 border-dashed border-gray-300 rounded-lg bg-gray-50/50 hover:bg-gray-50'
+              : 'border-1 border-dashed  rounded-lg bg-muted/30 hover:bg-muted'
           }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
         >
           {previewUrl ? (
-            <div className="relative w-full h-auto max-h-[80%] rounded-2xl">
-              <img
-                src={previewUrl}
-                alt="预览"
-                className="w-full max-h-[80%] object-contain rounded-2xl"
-              />
+            <>
+              {/* X按钮放在整个预览区域的右上角 */}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="absolute top-2 right-2 h-8 w-8 p-0 rounded-xl bg-white/80 hover:bg-white"
+                className="absolute top-2 right-2 h-8 w-8 p-0 rounded-xl bg-white/80 hover:bg-white z-10"
                 onClick={onClearFile}
               >
                 <X className="h-4 w-4" />
               </Button>
-            </div>
+              
+              {/* 图片预览 */}
+              <img
+                src={previewUrl}
+                alt="预览"
+                className="max-w-full max-h-[calc(75vh-20rem)] object-contain rounded-2xl"
+              />
+            </>
           ) : (
             <motion.div
               className="text-center"
@@ -76,11 +79,10 @@ export const FileUploadArea: React.FC<FileUploadAreaProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+              <div className="mx-auto h-12 w-12 text-black/70 mb-4">
                 <Upload className="h-full w-full" />
               </div>
               <div className="text-sm text-gray-600 mb-2">
-               
                 <Button
                   type="button"
                   variant="outline"
@@ -88,7 +90,7 @@ export const FileUploadArea: React.FC<FileUploadAreaProps> = ({
                   className="text-white bg-black hover:text-black mb-10  rounded-xl"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                Select
+                  Select
                 </Button>
               </div>
               <p className="text-xs text-gray-500">

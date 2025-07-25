@@ -85,10 +85,12 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile();
     const [openMobile, setOpenMobile] = React.useState(false);
     const [isResizing, setIsResizing] = React.useState(false);
+    const [isInitialLoad, setIsInitialLoad] = React.useState(true);
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen);
+    // 初始加载时边栏隐藏，2秒后显示
+    const [_open, _setOpen] = React.useState(false);
     const open = openProp ?? _open;
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
@@ -104,6 +106,19 @@ const SidebarProvider = React.forwardRef<
       },
       [setOpenProp, open]
     );
+
+    // 页面加载时的延迟显示逻辑
+    React.useEffect(() => {
+      if (isInitialLoad) {
+        // 2秒后自动显示边栏
+        const timer = setTimeout(() => {
+          setOpen(defaultOpen);
+          setIsInitialLoad(false);
+        }, 1500);
+
+        return () => clearTimeout(timer);
+      }
+    }, [isInitialLoad, defaultOpen, setOpen]);
 
     // Width state management
     const [width, setWidthState] = React.useState(defaultWidth);

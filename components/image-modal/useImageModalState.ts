@@ -4,9 +4,10 @@ import { ImageData, PromptBlock } from '@/types';
 interface UseImageModalStateProps {
   image: ImageData | null;
   isOpen: boolean;
+  autoEdit?: boolean; // 是否自动进入编辑模式
 }
 
-export function useImageModalState({ image, isOpen }: UseImageModalStateProps) {
+export function useImageModalState({ image, isOpen, autoEdit = false }: UseImageModalStateProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [promptBlocks, setPrompts] = useState<PromptBlock[]>([]);
@@ -79,9 +80,10 @@ export function useImageModalState({ image, isOpen }: UseImageModalStateProps) {
   // 弹窗打开时初始化编辑状态
   useEffect(() => {
     if (isOpen && image) {
-      setIsEditing(false);
+      // 如果是自动编辑模式，则自动进入编辑状态
+      setIsEditing(autoEdit);
     }
-  }, [isOpen, image?.id]);
+  }, [isOpen, image?.id, autoEdit]);
 
   return {
     // 状态
@@ -108,4 +110,4 @@ export function useImageModalState({ image, isOpen }: UseImageModalStateProps) {
     setDuplicateStatus,
     setLastInitializedImageId,
   };
-} 
+}
