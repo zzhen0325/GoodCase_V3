@@ -211,7 +211,7 @@ export function TagSelector({
             )}
           </div>
 
-          <ScrollArea className="h-[300px]">
+          <ScrollArea className="h-[300px] [&>[data-radix-scroll-area-viewport]]:scrollbar-none">
             <div className="p-2">
               {Object.entries(groupedFilteredTags).map(
                 ([groupId, { group, tags: groupTags }]) => (

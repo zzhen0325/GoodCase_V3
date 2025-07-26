@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +22,7 @@ import {
 } from 'lucide-react';
 import { TagCategory, Tag } from '@/types';
 import { TagItem } from './tag-item';
+import { CreateCategoryDialog } from './dialogs/CreateCategoryDialog';
 import { cn } from '@/lib/utils';
 
 interface TagGroupItemProps {
@@ -58,8 +58,7 @@ export function TagGroupItem({
   onGroupSelect,
   className,
 }: TagGroupItemProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(group.name);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleToggleExpand = () => {
     onToggleExpand?.(group.id);
@@ -70,31 +69,16 @@ export function TagGroupItem({
   };
 
   const handleEdit = () => {
-    setIsEditing(true);
-    setEditName(group.name);
+    setShowEditDialog(true);
   };
 
-  const handleSaveEdit = () => {
-    if (editName.trim() && editName !== group.name) {
-      onGroupEdit?.({
-        ...group,
-        name: editName.trim(),
-      });
-    }
-    setIsEditing(false);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditName(group.name);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveEdit();
-    } else if (e.key === 'Escape') {
-      handleCancelEdit();
-    }
+  const handleEditConfirm = (data: { name: string; color?: string }) => {
+    onGroupEdit?.({
+      ...group,
+      name: data.name,
+      color: data.color as any,
+    });
+    setShowEditDialog(false);
   };
 
   const selectedTagsInGroup = tags.filter((tag: Tag) =>
@@ -133,35 +117,25 @@ export function TagGroupItem({
               <Folder className="w-4 h-4 text-black" />
             )}
 
-            {isEditing ? (
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onBlur={handleSaveEdit}
-                onKeyDown={handleKeyDown}
-                className="h-6 text-sm font-medium"
-                autoFocus
-              />
-            ) : (
-              <span className="font-medium text-sm">{group.name}</span>
-            )}
+            <span className="font-medium text-sm">{group.name}</span>
+              <Badge
+              variant="outline"
+              className="text-xs text-border "
+            >
+              {(group as any).tagCount || 0} 
+            </Badge>
           </div>
 
           <div className="flex items-center gap-2">
-            <Badge
-              variant="secondary"
-              className="text-xs text-black"
-            >
-              {(group as any).tagCount || 0} 个标签
-            </Badge>
+          
 
             {someTagsSelected && (
-              <Badge variant="outline" className="text-xs">
-                {selectedTagsInGroup}/{tags.length} 选中
+              <Badge variant="outline" className="text-xs font-regular">  
+                {selectedTagsInGroup}/{tags.length} 
               </Badge>
             )}
 
-            {allTagsSelected && <Badge className="text-xs">全选</Badge>}
+            {allTagsSelected && <Badge className="text-xs bg-muted">全选</Badge>}
           </div>
         </div>
 
@@ -232,6 +206,14 @@ export function TagGroupItem({
           )}
         </div>
       )}
+      
+      
+      <CreateCategoryDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onConfirm={handleEditConfirm}
+        initialData={{ name: group.name, color: group.color }}
+      />
     </div>
   );
 }

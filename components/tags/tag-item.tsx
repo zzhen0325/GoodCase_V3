@@ -89,9 +89,9 @@ return (
       <Badge
         variant={badgeVariant}
         className={cn(
-          'inline-flex items-center gap-1.5 cursor-pointer transition-all duration-200',
+          'inline-flex items-center gap-1.5 rounded-xl cursor-pointer transition-all duration-200',
           'hover:shadow-sm hover:scale-105',
-          selected && 'ring-2 ring-primary ring-offset-1',
+          selected && 'ring-2 ring-muted ring-offset-1',
           sizeClasses[size],
           className
         )}
@@ -101,33 +101,11 @@ return (
       <Hash className="w-3 h-3" />
       <span className="font-medium">{tag.name}</span>
 
-      {showUsageCount && (
-        <span className="text-xs opacity-75">(0)</span>
-      )}
+     
 
-      {showEdit && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-4 w-4 p-0 ml-1 hover:bg-blue-500/20"
-          onClick={handleEdit}
-          title="编辑标签"
-        >
-          <Edit className="w-3 h-3" />
-        </Button>
-      )}
+     
 
-      {showRemove && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-4 w-4 p-0 ml-1 hover:bg-red-500/20"
-          onClick={handleRemove}
-          title="删除标签"
-        >
-          <X className="w-3 h-3" />
-        </Button>
-      )}
+     
       </Badge>
     </div>
   );

@@ -81,17 +81,27 @@ PromptList.DragOverlay = function PromptListDragOverlay({
   isEditing: boolean; 
 }) {
   return (
-    <PromptBlockComponent
-      promptBlock={{
-        id: promptBlock.id,
-        title: promptBlock.title,
-        content: promptBlock.content || '',
-        color: promptBlock.color || 'default'
+    <div 
+      className="pointer-events-none"
+      style={{
+        transform: 'rotate(5deg) scale(1.05)',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+        zIndex: 1000,
+        opacity: 0.9
       }}
-      isEditing={isEditing}
-      onUpdate={() => {}}
-      onDelete={() => {}}
-      onCopy={() => {}}
-    />
-  );
-};
+    >
+      <PromptBlockComponent
+        promptBlock={{
+          id: promptBlock.id,
+          title: promptBlock.title,
+          content: promptBlock.content || '',
+          color: promptBlock.color || 'default'
+        }}
+        isEditing={isEditing}
+        onUpdate={() => {}}
+        onDelete={() => {}}
+        onCopy={() => {}}
+      />
+    </div>
+   );
+ };

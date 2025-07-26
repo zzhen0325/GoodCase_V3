@@ -185,9 +185,17 @@ export function PromptBlock({
       <motion.div
         ref={setNodeRef}
         style={style}
-        className={`relative group ${isDragging ? 'z-50 opacity-50' : ''}`}
+        className={`relative group ${
+          isDragging 
+            ? 'z-50 opacity-30 scale-95 border-2 border-dashed border-gray-300' 
+            : ''
+        }`}
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={{ 
+          opacity: isDragging ? 0.3 : 1, 
+          y: 0,
+          scale: isDragging ? 0.95 : 1
+        }}
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.2 }}
         {...(isEditing ? attributes : {})}
@@ -343,7 +351,7 @@ export function PromptBlock({
                     }
                   }}
                 >
-                  {promptBlock.content || '描述一下画面'}
+                  {promptBlock.content || (isEditing ? '双击编辑' : 'some prompts')}
                 </h2>
               )}
             </div>

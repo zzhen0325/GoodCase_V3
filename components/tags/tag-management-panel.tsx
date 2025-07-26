@@ -55,7 +55,7 @@ interface TagManagementPanelProps {
 interface EditCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: { name: string }) => void;
+  onConfirm: (data: { name: string; color?: string }) => void;
   category: TagCategory | null;
 }
 
@@ -87,26 +87,36 @@ function EditCategoryDialog({
   category,
 }: EditCategoryDialogProps) {
   const [name, setName] = useState(category?.name || '');
+  const [color, setColor] = useState<string>(category?.color || 'pink');
 
   React.useEffect(() => {
     if (category) {
       setName(category.name);
+      setColor(category.color || 'pink');
     }
   }, [category]);
 
   const handleSubmit = () => {
     if (name.trim()) {
-      onConfirm({ name: name.trim() });
+      onConfirm({ name: name.trim(), color });
       onOpenChange(false);
     }
   };
+
+  const colorOptions = [
+    { name: 'pink', label: '粉色', colors: { bg: '#FFE5FA', primary: '#F4BFEA' } },
+    { name: 'cyan', label: '青色', colors: { bg: '#D7F9FF', primary: '#80E3F5' } },
+    { name: 'yellow', label: '黄色', colors: { bg: '#FFF7D7', primary: '#FFE1B3' } },
+    { name: 'green', label: '绿色', colors: { bg: '#D1FFCB', primary: '#A6E19E' } },
+    { name: 'purple', label: '紫色', colors: { bg: '#EADDFF', primary: '#D8C0FF' } },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>编辑标签分类</DialogTitle>
-          <DialogDescription>修改标签分类的名称。</DialogDescription>
+          <DialogDescription>修改标签分类的名称和颜色。</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -119,6 +129,30 @@ function EditCategoryDialog({
               placeholder="输入分类名称"
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
+          </div>
+          
+          <div>
+            <Label>分类颜色</Label>
+            <div className="grid grid-cols-5 gap-2 mt-2">
+              {colorOptions.map((option) => (
+                <button
+                  key={option.name}
+                  type="button"
+                  onClick={() => setColor(option.name)}
+                  className={cn(
+                    'flex flex-col items-center p-2 rounded-lg border-2 transition-all',
+                    color === option.name ? 'border-primary' : 'border-transparent hover:border-gray-300'
+                  )}
+                  style={{ backgroundColor: option.colors.bg }}
+                >
+                  <div
+                    className="w-6 h-6 rounded-full mb-1"
+                    style={{ backgroundColor: option.colors.primary }}
+                  />
+                  <span className="text-xs font-medium">{option.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -396,7 +430,7 @@ export function TagManagementPanel({
     setShowEditCategory(true);
   };
 
-  const handleUpdateCategory = async (data: { name: string }) => {
+  const handleUpdateCategory = async (data: { name: string; color?: string }) => {
     if (editingCategory) {
       try {
         const result = await updateTagCategory(editingCategory.id, data);
@@ -703,7 +737,10 @@ export function TagManagementPanel({
                           </div>
                         </div>
                         <div className="p-3 space-y-2">
-                          {ungroupedTags.map((tag: Tag) => (
+                          {ungroupedTags.map((tag: Tag) => {
+                            // 使用默认的灰色主题
+                            const defaultTheme = { bg: '#f1f5f9', text: '#1e293b', primary: '#64748b' };
+                            return (
                             <div
                               key={tag.id}
                               className={cn(
@@ -721,10 +758,9 @@ export function TagManagementPanel({
                                 <div className="flex items-center gap-2">
                                   <div
                                     className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: "#64748b" }}
+                                    style={{ backgroundColor: defaultTheme.primary }}
                                   />
                                   <span className="font-medium text-sm">{tag.name}</span>
-
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
@@ -749,7 +785,8 @@ export function TagManagementPanel({
                                 </Button>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );

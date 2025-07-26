@@ -3,6 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TagCategory } from '@/types';
 
 interface CreateTagDialogProps {
@@ -65,18 +72,18 @@ export function CreateTagDialog({ open, onOpenChange, onConfirm, tagCategories, 
           <div>
             <Label htmlFor="tag-category">所属分类</Label>
             {tagCategories.length > 0 ? (
-              <select
-                id="tag-tagCategory"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full p-2 border rounded-md"
-              >
-                {tagCategories.map((tagCategory) => (
-                  <option key={tagCategory.id} value={tagCategory.id}>
-                    {tagCategory.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择分类" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tagCategories.map((tagCategory) => (
+                    <SelectItem key={tagCategory.id} value={tagCategory.id}>
+                      {tagCategory.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <div className="w-full p-2 border rounded-md bg-muted text-muted-foreground text-sm">
                 暂无分类，标签将创建为未分类状态
