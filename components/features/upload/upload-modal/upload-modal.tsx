@@ -211,8 +211,6 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       <BaseModal
         isOpen={isOpen}
         onClose={onClose}
-        title="上传图片"
-        description="选择图片文件，添加提示词，然后上传到图库"
         size="xl"
         className="max-w-[70vw] h-[75vh] p-0 flex flex-col rounded-2xl overflow-hidden gap-0"
       >

@@ -5,7 +5,7 @@ import { GalleryVerticalEnd, MoreHorizontal, Tag, Settings, Download, Upload, Bo
 import { SearchFilters } from '@/types';
 import { useTags } from '@/hooks/data/useTags';
 import { Button } from '@/components/ui/button';
-import { TagManager } from '@/components/common/tags/TagManager';
+import TagManager from '@/components/common/tags/TagManager';
 import { BaseModal } from '@/components/common';
 
 import {
@@ -158,6 +158,7 @@ export function AppSidebar({
         <TagManager
           tags={tags}
           tagCategories={tagCategories}
+          selectedTags={[]}
         />
       </BaseModal>
     </Sidebar>

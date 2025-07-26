@@ -202,14 +202,19 @@ export function ImageModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={image.title || '图片详情'}
-      description="查看和编辑图片的详细信息，包括提示词和标签"
       size="xl"
       className="max-w-[70vw] h-[75vh] p-0 flex flex-col rounded-2xl overflow-hidden gap-0"
     >
       {/* 顶部操作区域 */}
       <div className="p-6 border-b">
         <div className="flex items-center gap-4">
+          {/* 图片名称 */}
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-gray-900 truncate">
+              {image.name || '未命名图片'}
+            </h2>
+          </div>
+          
           {/* 删除按钮 - 编辑模式第一个 */}
           {modalState.isEditing && onDelete && (
             <DeleteButton

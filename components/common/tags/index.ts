@@ -2,6 +2,6 @@
 export { TagItem } from './TagItem';
 export { TagDisplay } from './TagDisplay';
 export { TagSelector } from './TagSelector';
-export { TagManager } from './TagManager';
+export { default as TagManager } from './TagManager';
 export { CreateTagForm } from './CreateTagForm';
 export { CreateCategoryForm } from './CreateCategoryForm';
