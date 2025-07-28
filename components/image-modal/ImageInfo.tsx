@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { X, Save } from 'lucide-react';
 import { ImageData, Tag, TagCategory } from '@/types';
 import { getColorTheme } from '@/types';
@@ -65,30 +66,38 @@ export function ImageInfo({
                 const tagCategory = tag ? tagCategories.find(g => g.id === tag.categoryId) : null;
                 const colorTheme = tagCategory ? getColorTheme(tagCategory.color || 'gray') : getColorTheme('pink');
                 return tag ? (
-                  <Badge
-                    key={tag.id}
-                    variant="secondary"
-                    className="px-3 h-8 py-4 text-xs font-medium rounded-xl border"
-                    style={{
-                      backgroundColor: colorTheme.bg,
-                      borderColor: colorTheme.primary,
-                      color: colorTheme.text
-                    }}
-                  >
-                    {tag.name}
-                    {isEditing && (
-                      <Button
-                        size="icon"
-                        className="ml-1 h-4 w-4 bg-transparent hover:bg-transparent"
-                        style={{
-                          color: colorTheme.text
-                        }}
-                        onClick={() => removeTag(tag.id)}
-                      >
-                        <X className="h-2 w-2" />
-                      </Button>
-                    )}
-                  </Badge>
+                  <TooltipProvider key={tag.id} delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant="secondary"
+                          className="px-3 h-8 py-4 text-xs font-medium rounded-xl border cursor-help transition-all duration-200"
+                          style={{
+                            backgroundColor: colorTheme.bg,
+                            borderColor: colorTheme.primary,
+                            color: colorTheme.text
+                          }}
+                        >
+                          {tag.name}
+                          {isEditing && (
+                            <Button
+                              size="icon"
+                              className="ml-1 h-4 w-4 bg-transparent hover:bg-transparent"
+                              style={{
+                                color: colorTheme.text
+                              }}
+                              onClick={() => removeTag(tag.id)}
+                            >
+                              <X className="h-2 w-2" />
+                            </Button>
+                          )}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded shadow-lg">
+                        <p>{tagCategory ? `分类: ${tagCategory.name}` : '未分类'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 ) : null;
               })}
               {editedTagIds.length === 0 && (

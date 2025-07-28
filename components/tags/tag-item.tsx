@@ -101,9 +101,17 @@ return (
       <Hash className="w-3 h-3" />
       <span className="font-medium">{tag.name}</span>
 
-     
-
-     
+      {showEdit && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-4 w-4 p-0 ml-1 hover:bg-white/20"
+          onClick={handleEdit}
+          title="编辑标签"
+        >
+          <Edit className="w-3 h-3" />
+        </Button>
+      )}
 
      
       </Badge>

@@ -322,14 +322,9 @@ export function PromptBlock({
                   onChange={(e) => setTempContent(e.target.value)}
                   onBlur={saveContent}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      if (e.ctrlKey) {
-                        saveContent();
-                      } else {
-                        // 阻止普通回车键的默认行为，避免创建新行
-                        e.preventDefault();
-                        saveContent();
-                      }
+                    if (e.key === 'Enter' && e.ctrlKey) {
+                      // 只有Ctrl+Enter才确认保存
+                      saveContent();
                     }
                     if (e.key === 'Escape') cancelContentEdit();
                   }}

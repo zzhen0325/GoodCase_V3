@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 // 数组移动工具函数
 function arrayMove<T>(array: T[], from: number, to: number): T[] {
   const newArray = [...array];
@@ -297,19 +298,18 @@ function MoveTagDialog({
 
           <div>
             <Label htmlFor="move-tag-category">目标分类</Label>
-            <select
-              id="move-tag-category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full p-2 border rounded-md"
-            >
-              <option value="">请选择目标分类</option>
-              {tagCategories.map((tagCategory) => (
-                <option key={tagCategory.id} value={tagCategory.id}>
-                  {tagCategory.name}
-                </option>
-              ))}
-            </select>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="请选择目标分类" />
+              </SelectTrigger>
+              <SelectContent>
+                {tagCategories.map((tagCategory) => (
+                  <SelectItem key={tagCategory.id} value={tagCategory.id}>
+                    {tagCategory.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -606,13 +606,16 @@ export function TagManagementPanel({
           </div>
 
           {/* 选择操作栏 */}
-          <div className="flex items-center justify-between gap-4 py-2">
+          <div className="flex items-center justify-between gap-4 py-2 bg-muted/20 rounded-2xl border p-2">
             <div className="flex items-center gap-2 flex-1">
               {selectedTags.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-black">
-                    已选择 {selectedTags.length} 个标签
-                  </Badge>
+                  <Button 
+                  variant="outline"
+                    size="sm"
+                    className="text-black rounded-full">
+                    {selectedTags.length} 
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
