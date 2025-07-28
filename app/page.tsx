@@ -54,6 +54,7 @@ function HomePageContent() {
     isUploadModalOpen,
     activeView,
     setSelectedImage,
+    setIsImageModalOpen,
     handleImageClick,
     closeImageModal,
     closeUploadModal,
@@ -83,19 +84,20 @@ function HomePageContent() {
     selectedImage,
     setImages,
     setSelectedImage,
-    setIsImageModalOpen: closeImageModal,
+    setIsImageModalOpen,
     onRefresh: refreshData
   });
 
   // 包装复制函数，添加自动编辑模式
   const handleImageDuplicate = useCallback(async (image: any) => {
+    closeImageModal(); // 先关闭原始图片弹窗，避免用户误操作
     setAutoEdit(true); // 设置自动编辑模式
     await originalHandleImageDuplicate(image);
     // 复制完成后，延迟重置autoEdit状态，确保弹窗已经打开并应用了自动编辑模式
     setTimeout(() => {
       setAutoEdit(false);
-    }, 100);
-  }, [originalHandleImageDuplicate]);
+    }, 1000); // 增加延迟时间，确保弹窗完全打开并进入编辑模式
+  }, [originalHandleImageDuplicate, closeImageModal]);
 
   // 批量操作
   const {

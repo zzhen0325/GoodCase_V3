@@ -40,7 +40,7 @@ function createProgressToast(options: ProgressToastOptions) {
       case 'delete':
         return 'bg-red-500'
       default:
-        return 'bg-gray-500'
+        return 'bg-[#FF9AF4]'
     }
   }
 

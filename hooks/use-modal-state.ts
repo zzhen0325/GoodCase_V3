@@ -58,6 +58,7 @@ export function useModalState() {
 
     // 状态更新函数
     setSelectedImage,
+    setIsImageModalOpen,
     setActiveView,
     handleImageClick,
     closeImageModal,

@@ -31,8 +31,8 @@ export function useImageModalState({ image, isOpen, autoEdit = false }: UseImage
     if (image && isOpen && lastInitializedImageId !== image.id) {
       console.log('🔄 初始化图片数据:', image);
       
-      // 设置标题
-      setEditedTitle(image.title || '');
+      // 设置标题 - 优先使用name字段，然后是title字段
+      setEditedTitle(image.name || image.title || '');
       
       // 设置提示词 - 确保数据格式正确
       if (image.promptBlocks && Array.isArray(image.promptBlocks) && image.promptBlocks.length > 0) {
@@ -79,11 +79,12 @@ export function useImageModalState({ image, isOpen, autoEdit = false }: UseImage
 
   // 弹窗打开时初始化编辑状态
   useEffect(() => {
-    if (isOpen && image) {
+    if (isOpen && image && autoEdit) {
       // 如果是自动编辑模式，则自动进入编辑状态
-      setIsEditing(autoEdit);
+      console.log('🔧 自动进入编辑模式');
+      setIsEditing(true);
     }
-  }, [isOpen, image?.id, autoEdit]);
+  }, [isOpen, autoEdit, image?.id]);
 
   return {
     // 状态

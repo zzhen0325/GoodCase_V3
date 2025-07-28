@@ -116,9 +116,12 @@ export function AppSidebar({
           <SidebarMenuItem>
             <div className="flex flex-col gap-2 p-4">
               <Button
-                onClick={() => {
-                  // 处理 lemo promptBlock 功能
-                  console.log('Lemo Prompt clicked');
+               onClick={() => {
+                  // 打开 lemon8 AI wiki
+                  window.open(
+                    'https://applink.larkoffice.com/T8YoVOazXtPs',
+                    '_blank'
+                  );
                 }}
                 variant="outline"
                 className="w-full h-10 justify-start"

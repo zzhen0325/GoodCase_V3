@@ -219,7 +219,7 @@ export function ImageModal({
             )}
             
             <DialogTitle className="text-lg font-semibold truncate flex-1">
-              {image.title || '图片详情'}
+              {image.name || image.title || '图片详情'}
             </DialogTitle>
             
             {/* 操作按钮区域 */}
