@@ -336,7 +336,7 @@ export function PromptBlock({
                 />
               ) : (
                 <h2
-                  className="w-full text-sm leading-relaxed whitespace-pre-wrap cursor-pointer break-words   rounded-xl   flex items-start justify-start text-left"
+                  className="w-full text-sm leading-relaxed whitespace-pre-wrap cursor-pointer break-words  rounded-xl   flex items-start justify-start text-left"
                   style={{
                     color: promptBlock.content
                       ? currentTheme.text
@@ -344,7 +344,8 @@ export function PromptBlock({
 
                     wordBreak: 'break-word',
                     overflowWrap: 'break-word',
-                    lineHeight: '1.2',
+                    lineHeight: '1.5',
+                    fontWeight: '400',
                   }}
                   onDoubleClick={() => {
                     if (isEditing) {
