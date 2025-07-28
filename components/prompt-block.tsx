@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Copy, Trash2, Palette, Check, X } from 'lucide-react';
+import { Copy, Trash2, Palette, Check, X, GripVertical } from 'lucide-react';
 import { type PromptBlock, COLOR_THEMES, getColorTheme, ThemeColor } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -187,7 +187,7 @@ export function PromptBlock({
         style={style}
         className={`relative group ${
           isDragging 
-            ? 'z-50 opacity-30 scale-95 border-2 border-dashed border-gray-300' 
+            ? 'z-50 opacity-30 scale-95' 
             : ''
         }`}
         initial={{ opacity: 0, y: 20 }}
@@ -198,8 +198,6 @@ export function PromptBlock({
         }}
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.2 }}
-        {...(isEditing ? attributes : {})}
-        {...(isEditing ? listeners : {})}
       >
         {/* 标题和操作按钮区域 */}
         <div className="flex items-center justify-between w-full">
@@ -236,6 +234,18 @@ export function PromptBlock({
           <div className="flex items-center gap-1 flex-shrink-0">
             {isEditing && (
               <>
+                <Button
+                  key="drag-handle"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-full cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-700"
+                  title="拖拽排序"
+                  {...attributes}
+                  {...listeners}
+                >
+                  <GripVertical className="h-3.5 w-3.5" />
+                </Button>
+
                 <div key="color-picker" className="relative">
                   <Button
                     variant="ghost"
@@ -295,8 +305,7 @@ export function PromptBlock({
         <div className="w-full relative group">
           <Badge
             className={cn(
-              'w-full p-4 rounded-2xl  transition-all duration-200 flex flex-col gap-3 ',
-              isEditing ? 'cursor-grab active:cursor-grabbing' : ''
+              'w-full p-4 rounded-2xl  transition-all duration-200 flex flex-col gap-3'
             )}
             style={{
               backgroundColor: currentTheme.bg,

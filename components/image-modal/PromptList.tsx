@@ -84,8 +84,8 @@ PromptList.DragOverlay = function PromptListDragOverlay({
     <div 
       className="pointer-events-none"
       style={{
-        transform: 'rotate(5deg) scale(1.05)',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+        transform: 'scale(0.8 )',
+        
         zIndex: 1000,
         opacity: 0.9
       }}
