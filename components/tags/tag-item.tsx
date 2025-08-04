@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { X, Hash, Edit } from 'lucide-react';
-import { Tag, TagCategory, getColorTheme } from '@/types';
+import { Tag, TagCategory, getColorTheme, SearchFilters } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface TagItemProps {
@@ -20,6 +20,11 @@ interface TagItemProps {
   onRemove?: (tag: Tag) => void;
   onEdit?: (tag: Tag) => void;
   className?: string;
+  // 搜索相关props
+  enableSearch?: boolean;
+  tags?: Tag[];
+  currentFilters?: SearchFilters;
+  onSearch?: (filters: SearchFilters) => void;
 }
 
 export function TagItem({
@@ -35,6 +40,11 @@ export function TagItem({
   onRemove,
   onEdit,
   className,
+  // 搜索相关props
+  enableSearch = false,
+  tags = [],
+  currentFilters,
+  onSearch,
 }: TagItemProps) {
   const handleClick = () => {
     onClick?.(tag);

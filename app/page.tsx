@@ -1,7 +1,7 @@
 'use client';
 
 import _ from 'lodash';
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WaterfallImageGrid } from '@/components/waterfall-image-grid';
@@ -28,6 +28,7 @@ import { useEditMode } from '@/hooks/use-edit-mode';
 import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchBar } from '@/components/search-bar';
 import { Bot, FileText, ArrowUp, Search, X, Upload } from 'lucide-react';
 
 // 主页面内容组件
@@ -62,6 +63,7 @@ function HomePageContent() {
     closeImageModal,
     onCloseImageModal,
     closeUploadModal,
+    openImageById,
     handleUpload: openUploadModal
   } = useModalState();
 
@@ -120,6 +122,45 @@ function HomePageContent() {
     loadingMore,
     loadMore
   } = useInfiniteScroll(filteredImages, 50);
+
+  // 用于跟踪已处理的URL参数，避免重复处理
+  const processedImageIdRef = useRef<string | null>(null);
+
+  // 监听URL参数变化，处理直接访问
+  useEffect(() => {
+    const imageId = searchParams.get('image');
+    
+    // 如果没有图片ID或者已经处理过相同的ID，直接返回
+    if (!imageId || processedImageIdRef.current === imageId) {
+      return;
+    }
+    
+    // 如果图片列表还没加载完成，等待
+    if (images.length === 0) {
+      return;
+    }
+    
+    // 如果弹窗已经打开且显示的是同一张图片，不需要重复处理
+    if (isImageModalOpen && selectedImage?.id === imageId) {
+      processedImageIdRef.current = imageId;
+      return;
+    }
+    
+    // 查找目标图片
+    const targetImage = images.find(img => img.id === imageId);
+    if (targetImage && !isImageModalOpen) {
+      console.log('🔗 检测到URL参数，打开图片:', imageId);
+      processedImageIdRef.current = imageId;
+      openImageById(imageId, targetImage);
+    }
+  }, [searchParams, images, isImageModalOpen, selectedImage?.id]);
+
+  // 当弹窗关闭时，清除已处理的图片ID记录
+  useEffect(() => {
+    if (!isImageModalOpen) {
+      processedImageIdRef.current = null;
+    }
+  }, [isImageModalOpen]);
 
 
 
@@ -319,27 +360,12 @@ function HomePageContent() {
             </>
           )}
           {/* 中间搜索框区域 */}
-          <div className="flex-1 ">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 " />
-              <Input
-                type="text"
-                placeholder="Search images..."
-                value={searchFilters.query || ''}
-                onChange={(e) => handleSearchChange({ ...searchFilters, query: e.target.value })}
-                className="w-full h-12 pl-10 pr-4 rounded-xl bg-muted/30 border-border  font-medium text-black placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-300"
-              />
-              {searchFilters.query && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6"
-                  onClick={() => handleSearchChange({ ...searchFilters, query: '' })}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
+          <div className="flex-1">
+            <SearchBar
+              onSearch={handleSearchChange}
+              currentFilters={searchFilters}
+              images={displayedImages}
+            />
           </div>
           <Separator orientation="vertical" className="mx-2 h-4" />
           {/* 右侧按钮组 */}
@@ -357,71 +383,82 @@ function HomePageContent() {
         </header>
 
         {/* 主容器 - 图片瀑布流区域 */}
-        <div className="flex flex-1 flex-col gap-4 p-10 ">
-          {/* ImageModal 区域 - 面板形式，居中显示 */}
-          {selectedImage && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-            >
-              <div className="w-full h-full rounded-3xl overflow-hidden">
-                <ImageModal
-                  isOpen={isImageModalOpen}
-                  image={selectedImage}
-                  onClose={() => {
-                    console.log('🎯 主页面关闭弹窗回调');
-                    setAutoEdit(false); // 关闭弹窗时重置自动编辑模式
-                    onCloseImageModal();
-                  }}
-                  onUpdate={handleImageUpdate}
-                  onDelete={handleImageDelete}
-                  onCopyPrompt={handleCopyPrompt}
-                  onDuplicate={handleImageDuplicate}
-                  autoEdit={autoEdit}
-                />
-              </div>
-            </motion.div>
-          )}
-
-          {/* 图片网格区域 - 瀑布流布局，可滚动 */}
-          {!selectedImage && (
-            <div
-              ref={scrollContainerRef}
-              className="h-[calc(100vh-12rem)] overflow-y-auto relative scroll-smooth custom-scrollbar px-4"
-            >
-              <WaterfallImageGrid
-                images={displayedImages}
-                onImageClick={handleImageClick}
-                onLoadMore={loadMore}
-                hasMore={hasMore}
-                loading={loadingMore}
+        <div className="flex flex-1 flex-col gap-4 p-10 relative">
+          {/* 背景遮罩层 - 仅当上传弹窗打开时显示 */}
+          <AnimatePresence>
+            {isUploadModalOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="absolute inset-0 bg-muted z-10"
               />
+            )}
+          </AnimatePresence>
+           <AnimatePresence>
+            {isImageModalOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="absolute inset-0 bg-muted z-10"
+              />
+            )}
+          </AnimatePresence>
 
-              {/* 返回顶部按钮 */}
-              <AnimatePresence>
-                {showScrollTop && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.2 }}
+          {/* 图片网格区域 - 瀑布流布局，可滚动，始终显示 */}
+          <div
+            ref={scrollContainerRef}
+            className="h-[calc(100vh-12rem)] overflow-y-auto relative scroll-smooth custom-scrollbar px-4"
+          >
+            <WaterfallImageGrid
+              images={displayedImages}
+              onImageClick={handleImageClick}
+              onLoadMore={loadMore}
+              hasMore={hasMore}
+              loading={loadingMore}
+            />
+
+            {/* 返回顶部按钮 */}
+            <AnimatePresence>
+              {showScrollTop && !selectedImage && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Button
+                    onClick={scrollToTop}
+                    size="lg"
+                    className="fixed bottom-8 right-8 z-50 rounded-full w-12 h-12 shadow-lg hover:shadow-xl transition-shadow"
                   >
-                    <Button
-                      onClick={scrollToTop}
-                      size="lg"
-                      className="fixed bottom-8 right-8 z-50 rounded-full w-12 h-12 shadow-lg hover:shadow-xl transition-shadow"
-                    >
-                      <ArrowUp className="h-5 w-5" />
-                    </Button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
+                    <ArrowUp className="h-5 w-5" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </SidebarInset>
+
+      {/* 图片详情弹窗 */}
+      <ImageModal
+        isOpen={isImageModalOpen}
+        image={selectedImage}
+        onClose={() => {
+          console.log('🎯 主页面关闭弹窗回调');
+          setAutoEdit(false); // 关闭弹窗时重置自动编辑模式
+          onCloseImageModal();
+        }}
+        onUpdate={handleImageUpdate}
+        onDelete={handleImageDelete}
+        onCopyPrompt={handleCopyPrompt}
+        onDuplicate={handleImageDuplicate}
+        autoEdit={autoEdit}
+      />
 
       {/* 上传弹窗 */}
       <UploadModal
@@ -450,7 +487,9 @@ function HomePageContent() {
 export default function HomePage() {
   return (
     <SidebarProvider>
-      <HomePageContent />
+      <Suspense fallback={<div>Loading...</div>}>
+        <HomePageContent />
+      </Suspense>
     </SidebarProvider>
   );
 }

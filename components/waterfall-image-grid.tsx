@@ -144,7 +144,7 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
             <>
               {/* 骨架屏 */}
               {!imageLoaded && (
-                <div className="absolute inset-0 z-10">
+                <div className="absolute inset-0 z-9">
                   <div className="w-full h-64 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
                     <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
                   </div>
@@ -225,14 +225,14 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
               const layoutClassName = `flex ${isHorizontalLayout ? 'flex-row' : 'flex-col'}`;
             
               return (
-                <div className={`${layoutClassName} ${isHorizontalLayout ? 'h-full' : ''} group-hover:scale-115 transition-all duration-300`}>
+                <div className={`${layoutClassName} ${isHorizontalLayout ? 'h-full' : ''}` }>
                   {/* Before 图片 */}
                   <div className={`relative ${isHorizontalLayout ? 'flex-1' : ''}`}>
                 {image.beforeImage?.url ? (
                   <>
                     {/* Before 骨架屏 */}
                     {!beforeLoaded && (
-                      <div className="absolute inset-0 z-10">
+                      <div className="absolute inset-0 z-9">
                         <div className="w-full h-64 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
                           <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
                         </div>
@@ -278,7 +278,7 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
               </div>
               
               {/* 分割线 */}
-              <div className={`bg-white relative z-10 ${
+              <div className={`bg-white relative z-9 ${
                 isHorizontalLayout 
                   ? 'w-px h-full mx-0' 
                   : 'h-px w-full my-0'

@@ -1,7 +1,6 @@
 # TODO:
 
-- [x] enhance-image-utils: 改进lib/image-utils.ts，添加getImageMetadataServer函数和WebP格式支持 (priority: High)
-- [x] update-upload-api: 修改app/api/images/upload/route.ts使用新的元数据获取函数 (priority: High)
-- [x] create-fix-api: 创建app/api/images/fix-all-metadata/route.ts通用修复API (priority: High)
-- [x] create-script: 创建scripts/fix-image-metadata.js命令行脚本 (priority: Medium)
-- [x] test-functionality: 测试修复功能并验证结果 (priority: Medium)
+- [x] analyze_modal_animations: 分析当前图片详情弹窗和上传弹窗的动画实现差异 (priority: High)
+- [x] remove_extra_overlay: 移除图片详情弹窗中多余的透明背景遮罩 (priority: High)
+- [x] unify_exit_animations: 统一图片详情弹窗和上传弹窗的退出动画效果 (priority: High)
+- [x] test_modal_animations: 测试修复后的弹窗动画效果 (priority: Medium)

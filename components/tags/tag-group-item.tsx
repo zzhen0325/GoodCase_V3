@@ -20,7 +20,7 @@ import {
   Folder,
   FolderOpen,
 } from 'lucide-react';
-import { TagCategory, Tag } from '@/types';
+import { TagCategory, Tag, SearchFilters } from '@/types';
 import { TagItem } from './tag-item';
 import { CreateCategoryDialog } from './dialogs/CreateCategoryDialog';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,11 @@ interface TagGroupItemProps {
   onAddTag?: (groupId: string) => void;
   onGroupSelect?: (groupId: string) => void;
   className?: string;
+  // 新增搜索相关props
+  enableSearch?: boolean;
+  allTags?: Tag[];
+  currentFilters?: SearchFilters;
+  onSearch?: (filters: SearchFilters) => void;
 }
 
 export function TagGroupItem({
@@ -57,6 +62,11 @@ export function TagGroupItem({
   onAddTag,
   onGroupSelect,
   className,
+  // 新增搜索相关props
+  enableSearch = false,
+  allTags = [],
+  currentFilters,
+  onSearch,
 }: TagGroupItemProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
 
@@ -199,6 +209,11 @@ export function TagGroupItem({
                     onClick={onTagClick}
                     onRemove={onTagRemove}
                     onEdit={onTagEdit}
+                    // 传递搜索相关props
+                    enableSearch={enableSearch}
+                    tags={allTags}
+                    currentFilters={currentFilters}
+                    onSearch={onSearch}
                   />
                 ))}
               </div>
