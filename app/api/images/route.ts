@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
         id: docSnapshot.id,
         url: firestoreImage.url,
         name: firestoreImage.name,
+        link: firestoreImage.link,
         createdAt: firestoreImage.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         updatedAt: firestoreImage.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         status: firestoreImage.status

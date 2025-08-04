@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
 import { X, Save } from 'lucide-react';
 import { ImageData, Tag, TagCategory } from '@/types';
 import { getColorTheme } from '@/types';
@@ -18,8 +19,10 @@ interface ImageInfoProps {
   tagCategories: TagCategory[];
   editedTitle: string;
   editedTagIds: string[];
+  editedLink?: string;
   onTitleChange: (title: string) => void;
   onTagIdsChange: (tagIds: string[]) => void;
+  onLinkChange?: (link: string) => void;
   onRefetch: () => void;
   tagSelectorOpen: boolean;
   setTagSelectorOpen: (open: boolean) => void;
@@ -36,8 +39,10 @@ export function ImageInfo({
   tagCategories,
   editedTitle,
   editedTagIds,
+  editedLink,
   onTitleChange,
   onTagIdsChange,
+  onLinkChange,
   onRefetch,
   tagSelectorOpen,
   setTagSelectorOpen,
@@ -99,12 +104,7 @@ export function ImageInfo({
                     </Tooltip>
                   </TooltipProvider>
                 ) : null;
-              })}
-              {editedTagIds.length === 0 && (
-                <span className="text-xs text-black">暂无标签</span>
-              )}
-            </div>
-          </div>
+              })}              {editedTagIds.length === 0 && (                <span className="text-xs text-black">暂无标签</span>              )}            </div>          </div>
  
           {/* 编辑模式下的保存和取消按钮 */}
           {isEditing && (onSave || onCancel) && (

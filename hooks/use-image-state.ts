@@ -61,7 +61,7 @@ export function useImageState(): ImageState & ImageActions {
       setCacheStatus('loading');
 
       const startTime = Date.now();
-      const response = await fetch('/api/images');
+      const response = await fetch('/api/images?limit=100');
       const loadTime = Date.now() - startTime;
 
       if (!response.ok) {

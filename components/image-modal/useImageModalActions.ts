@@ -13,6 +13,7 @@ interface UseImageModalActionsProps {
   modalState: {
     editedTitle: string;
     editedTagIds: string[];
+    editedLink: string;
     promptBlocks: PromptBlock[];
     isEditing: boolean;
     activeId: string | null;
@@ -20,6 +21,7 @@ interface UseImageModalActionsProps {
     tagSelectorOpen: boolean;
     setEditedTitle: (title: string) => void;
     setEditedTagIds: (tagIds: string[]) => void;
+    setEditedLink: (link: string) => void;
     setPromptBlocks: (promptBlocks: PromptBlock[]) => void;
     setIsEditing: (isEditing: boolean) => void;
     setLastInitializedImageId: (id: string | null) => void;
@@ -53,7 +55,8 @@ export function useImageModalActions({
       await onUpdate(image.id, {
         name: modalState.editedTitle,
         tags: modalState.editedTagIds,
-        promptBlocks: updatedPromptBlocks
+        promptBlocks: updatedPromptBlocks,
+        link: modalState.editedLink
       });
 
       toast.success('保存成功');
@@ -84,6 +87,9 @@ export function useImageModalActions({
     if (image) {
       // 重置为编辑前的状态
       modalState.setEditedTitle(image.name || '');
+      
+      // 重置链接
+      modalState.setEditedLink(image.link || '');
       
       // 重置提示词
       if (image.promptBlocks && Array.isArray(image.promptBlocks) && image.promptBlocks.length > 0) {
@@ -226,6 +232,10 @@ export function useImageModalActions({
     modalState.setTagSelectorOpen(open);
   }, [modalState]);
 
+  const handleLinkChange = useCallback((link: string) => {
+    modalState.setEditedLink(link);
+  }, [modalState]);
+
   return {
     handleSave,
     handleCancel,
@@ -239,6 +249,7 @@ export function useImageModalActions({
     handleEdit,
     handleTitleChange,
     handleTagIdsChange,
+    handleLinkChange,
     handleTagSelectorOpen,
   };
 }

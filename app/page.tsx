@@ -115,14 +115,15 @@ function HomePageContent() {
     hasMore,
     loadingMore,
     loadMore
-  } = useInfiniteScroll(filteredImages, 20);
+  } = useInfiniteScroll(filteredImages, 50);
 
   // 图片上传处理函数
   const handleImageUpload = useCallback(async (
     file: File,
     imageName: string,
     promptBlocks: any[],
-    tagIds?: string[]
+    tagIds?: string[],
+    link?: string
   ) => {
     try {
       console.log('🚀 开始上传图片:', imageName);
@@ -140,6 +141,11 @@ function HomePageContent() {
       // 添加标签
       if (tagIds && tagIds.length > 0) {
         formData.append('tagIds', JSON.stringify(tagIds));
+      }
+
+      // 添加链接
+      if (link) {
+        formData.append('link', link);
       }
 
       // 发送上传请求

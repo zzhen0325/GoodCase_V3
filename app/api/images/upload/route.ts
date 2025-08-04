@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get('content-type');
     let imageFile: File;
     let title: string = '';
+    let link: string = '';
     let tagIds: string[] = [];
     let promptBlocks: any[] = [];
     let promptIds: string[] = [];
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       imageFile = formData.get('file') as File;
       title = formData.get('title') as string || '';
+      link = formData.get('link') as string || '';
       
       const tagIdsStr = formData.get('tagIds') as string;
       if (tagIdsStr) {
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
     } else {
       // JSON格式 (来自 hooks/use-image-operations.ts)
       const body = await request.json();
-      const { imageUrl, title: jsonTitle, tagIds: jsonTagIds, promptBlocks: jsonPromptBlocks, promptIds: jsonPromptIds, ...metadata } = body;
+      const { imageUrl, title: jsonTitle, link: jsonLink, tagIds: jsonTagIds, promptBlocks: jsonPromptBlocks, promptIds: jsonPromptIds, ...metadata } = body;
       
       // 将base64转换为File对象
       const response = await fetch(imageUrl);
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest) {
       imageFile = new File([blob], jsonTitle || 'image.png', { type: blob.type });
       
       title = jsonTitle || '';
+      link = jsonLink || '';
       tagIds = jsonTagIds || [];
       promptBlocks = jsonPromptBlocks || [];
       promptIds = jsonPromptIds || [];
@@ -121,6 +124,7 @@ export async function POST(request: NextRequest) {
       id: imageId,
       name: title || imageFile.name,
       description: '',
+      link: link || '',
       url: imageUrl,
       size: imageFile.size,
       mimeType: imageFile.type,

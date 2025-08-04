@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { GripVertical, Trash2 } from 'lucide-react';
 import {
@@ -205,7 +206,8 @@ export function ImageModal({
   if (!image) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <TooltipProvider>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[70vw] h-[75vh] p-0 flex flex-col rounded-2xl overflow-hidden gap-0 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
         {/* 顶部标题区域 */}
         <DialogHeader className="p-6 border-b">
@@ -243,6 +245,10 @@ export function ImageModal({
                 tagSelectorOpen={modalState.tagSelectorOpen}
                 setTagSelectorOpen={modalActions.handleTagSelectorOpen}
                 onDelete={onDelete ? () => onDelete(image.id) : undefined}
+                imageLink={image?.link}
+                onLinkClick={image?.link ? () => window.open(image.link, '_blank') : undefined}
+                editedLink={modalState.editedLink}
+                onLinkChange={modalActions.handleLinkChange}
                 deleteStatus={modalState.deleteStatus}
               />
             </div>
@@ -308,8 +314,10 @@ export function ImageModal({
                   tagCategories={tagCategories}
                   editedTitle={modalState.editedTitle}
                   editedTagIds={modalState.editedTagIds}
+                  editedLink={modalState.editedLink}
                   onTitleChange={modalActions.handleTitleChange}
                   onTagIdsChange={modalActions.handleTagIdsChange}
+                  onLinkChange={modalActions.handleLinkChange}
                   onRefetch={refreshTags}
                   tagSelectorOpen={modalState.tagSelectorOpen}
                   setTagSelectorOpen={modalActions.handleTagSelectorOpen}
@@ -331,5 +339,6 @@ export function ImageModal({
         </DndContext>
       </DialogContent>
     </Dialog>
+    </TooltipProvider>
   );
 }

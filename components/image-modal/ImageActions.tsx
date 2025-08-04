@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Edit3, 
   Save, 
@@ -8,7 +10,9 @@ import {
   Check, 
   Trash2, 
   Files, 
-  Plus 
+  Plus,
+  ExternalLink,
+  Link
 } from 'lucide-react';
 import { PromptBlock, Tag, TagCategory } from '@/types';
 import { TagSelectorDropdown } from './TagSelectorDropdown';
@@ -33,6 +37,10 @@ interface ImageActionsProps {
   setTagSelectorOpen?: (open: boolean) => void;
   onDelete?: () => void;
   deleteStatus: 'idle' | 'confirming' | 'deleting';
+  imageLink?: string;
+  onLinkClick?: () => void;
+  editedLink?: string;
+  onLinkChange?: (link: string) => void;
 }
 
 export function ImageActions({
@@ -55,8 +63,13 @@ export function ImageActions({
   setTagSelectorOpen,
   onDelete,
   deleteStatus,
+  imageLink,
+  onLinkClick,
+  editedLink,
+  onLinkChange,
 }: ImageActionsProps) {
   const [isConfirming, setIsConfirming] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
 
   const handleDeleteClick = () => {
     if (!isConfirming) {
@@ -77,6 +90,75 @@ export function ImageActions({
   return (
     <div className="flex flex-wrap gap-4 items-center relative">
       {/* 编辑相关按钮 */}
+  {/* 链接按钮 */}
+      <div className="relative">
+        {isEditing ? (
+          <>
+            <Button
+              onClick={() => setShowLinkInput(!showLinkInput)}
+              variant="outline"
+              size="lg"
+              className="px-4 border rounded-xl text-black font-medium"
+            >
+              <Link className="w-4 h-4" />
+              Edit Link
+            </Button>
+            {showLinkInput && (
+              <div className="absolute top-full left-0 mt-2 w-64 p-3 bg-white border rounded-lg shadow-lg z-[9999]">
+                <Input
+                  value={editedLink || ''}
+                  onChange={(e) => onLinkChange?.(e.target.value)}
+                  placeholder="输入链接地址"
+                  className="w-full"
+                  autoFocus
+                />
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setShowLinkInput(false)}
+                    className="flex-1"
+                  >
+                    确定
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowLinkInput(false);
+                      onLinkChange?.('');
+                    }}
+                    className="flex-1"
+                  >
+                    清除
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+           imageLink && onLinkClick && (
+               <Tooltip>
+                 <TooltipTrigger asChild>
+                   <Button
+                     onClick={onLinkClick}
+                     variant="outline"
+                     size="lg"
+                     className="px-4 border rounded-xl text-black font-medium"
+                   >
+                     <ExternalLink className="w-4 h-4" />
+                     Link
+                   </Button>
+                 </TooltipTrigger>
+                 <TooltipContent side="bottom" className="z-[9999]">
+                   <p className="max-w-xs break-all">{imageLink}</p>
+                 </TooltipContent>
+               </Tooltip>
+           )
+         )}
+      </div>
+
+
+
       {isEditing ? (
         <>
 
@@ -115,6 +197,33 @@ export function ImageActions({
     
 
        
+    
+
+
+  {/* 复制图片 - 编辑模式下隐藏 */}
+      {!isEditing && onDuplicate && (
+        <Button
+          onClick={onDuplicate}
+          variant="outline"
+          size="lg"
+          className={ `border rounded-xl text-black px-3 ${
+            duplicateStatus === 'success'
+              ? 'border-green-500 text-green-700'
+              : ''
+          } font-medium`
+          }
+        >
+          {duplicateStatus === 'success' ? (
+            <Check className="w-4 h-4 " />
+          ) : (
+            <Files className="w-4 h-4 " />
+          )}
+          {duplicateStatus === 'success' ? '已复制' : 'Copy & Edit'}
+        </Button>
+      )}
+
+       {!isEditing && <Separator orientation="vertical" className="h-6 mx-2" />}
+
       {/* 复制全部提示词 - 编辑模式下隐藏 */}
       {!isEditing && (
         <Button
@@ -138,27 +247,7 @@ export function ImageActions({
 
      
 
-      {/* 复制图片 - 编辑模式下隐藏 */}
-      {!isEditing && onDuplicate && (
-        <Button
-          onClick={onDuplicate}
-          variant="outline"
-          size="lg"
-          className={ `bg-black border-0 rounded-xl text-white px-3 ${
-            duplicateStatus === 'success'
-              ? 'border-green-500 text-green-700'
-              : ''
-          } font-medium`
-          }
-        >
-          {duplicateStatus === 'success' ? (
-            <Check className="w-4 h-4 " />
-          ) : (
-            <Files className="w-4 h-4 " />
-          )}
-          {duplicateStatus === 'success' ? '已复制' : 'Copy & Edit'}
-        </Button>
-      )}
+    
     </div>
   );
 }

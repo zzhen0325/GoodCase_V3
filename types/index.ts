@@ -100,6 +100,7 @@ export interface ImageData {
   name: string;
   title?: string; // 兼容性字段，等同于name
   description?: string;
+  link?: string; // 关联链接，可选
   tags: string[]; // 标签ID数组
   promptBlocks: PromptBlock[];
   createdAt: string;
@@ -114,6 +115,7 @@ export interface FirestoreImage {
   url: string;
   name: string;
   description?: string;
+  link?: string; // 关联链接，可选
   tags: string[]; // 标签ID数组
   promptBlocks: PromptBlock[];
   createdAt: any; // Firestore Timestamp

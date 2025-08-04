@@ -13,13 +13,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Tag as TagIcon, X, GripVertical } from 'lucide-react';
+import { Plus, Tag as TagIcon, X, GripVertical, Link, ExternalLink } from 'lucide-react';
 import { PromptBlock, getColorTheme } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { generateId } from '@/lib/utils';
 import { FileUploadArea } from './FileUploadArea';
 import { TagSelectorDropdown } from 'components/image-modal/TagSelectorDropdown';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UploadActions } from './UploadActions';
 import { PromptList } from '../image-modal/PromptList';
 
@@ -31,7 +33,8 @@ interface UploadModalProps {
     file: File,
     imageName: string,
     promptBlocks: PromptBlock[],
-    tagIds?: string[]
+    tagIds?: string[],
+    link?: string
   ) => Promise<void>;
 }
 
@@ -59,6 +62,10 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   // 标签相关状态
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [tagSelectorOpen, setTagSelectorOpen] = useState(false);
+
+  // 链接相关状态
+  const [imageLink, setImageLink] = useState('');
+  const [linkInputOpen, setLinkInputOpen] = useState(false);
 
   // 上传状态
   const [isUploading, setIsUploading] = useState(false);
@@ -142,6 +149,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       { id: generateId(), title: '场景', content: '', color: 'yellow', order: 2 },
     ]);
     setSelectedTagIds([]);
+    setImageLink('');
     setIsUploading(false);
   };
 
@@ -173,7 +181,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       toast.updateProgress(toastId, { progress: 60, message: '正在上传到服务器...' });
 
       // 开始上传
-      await onUpload(selectedFile, imageName, promptBlocks, selectedTagIds);
+      await onUpload(selectedFile, imageName, promptBlocks, selectedTagIds, imageLink || undefined);
 
       // 更新进度到100%
       toast.updateProgress(toastId, { progress: 100, message: '上传完成' });
@@ -225,6 +233,50 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2 ">
+                <Popover open={linkInputOpen} onOpenChange={setLinkInputOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="px-3 text-black font-medium"
+                    >
+                      <Link className="w-4 h-4" />
+                      Add Link
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="start">
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">关联链接</label>
+                        <Input
+                          placeholder="输入链接地址..."
+                          value={imageLink}
+                          onChange={(e) => setImageLink(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setImageLink('');
+                            setLinkInputOpen(false);
+                          }}
+                        >
+                          清除
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setLinkInputOpen(false)}
+                        >
+                          确定
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 <TagSelectorDropdown
                   tags={tags}
                   tagCategories={tagCategories}

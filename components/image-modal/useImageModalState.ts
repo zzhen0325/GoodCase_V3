@@ -12,6 +12,7 @@ export function useImageModalState({ image, isOpen, autoEdit = false }: UseImage
   const [editedTitle, setEditedTitle] = useState('');
   const [promptBlocks, setPrompts] = useState<PromptBlock[]>([]);
   const [editedTagIds, setEditedTagIds] = useState<string[]>([]);
+  const [editedLink, setEditedLink] = useState('');
   const [tagSelectorOpen, setTagSelectorOpen] = useState(false);
   const [lastInitializedImageId, setLastInitializedImageId] = useState<string | null>(null);
 
@@ -33,6 +34,9 @@ export function useImageModalState({ image, isOpen, autoEdit = false }: UseImage
       
       // 设置标题 - 优先使用name字段，然后是title字段
       setEditedTitle(image.name || image.title || '');
+      
+      // 设置链接
+      setEditedLink(image.link || '');
       
       // 设置提示词 - 确保数据格式正确
       if (image.promptBlocks && Array.isArray(image.promptBlocks) && image.promptBlocks.length > 0) {
@@ -92,6 +96,7 @@ export function useImageModalState({ image, isOpen, autoEdit = false }: UseImage
     editedTitle,
     promptBlocks,
     editedTagIds,
+    editedLink,
     tagSelectorOpen,
     activeId,
     copyAllStatus,
@@ -104,6 +109,7 @@ export function useImageModalState({ image, isOpen, autoEdit = false }: UseImage
     setPrompts,
     setPromptBlocks: setPrompts,
     setEditedTagIds,
+    setEditedLink,
     setTagSelectorOpen,
     setActiveId,
     setCopyAllStatus,

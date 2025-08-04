@@ -25,7 +25,7 @@ export function useImageOperations({
 }: UseImageOperationsProps) {
   // 处理图片更新
   const handleImageUpdate = useCallback(
-    async (id: string, updates: Partial<ImageData> | { title?: string; tagIds?: string[]; promptIds?: string[] }) => {
+    async (id: string, updates: Partial<ImageData>) => {
       try {
         const response = await fetch(`/api/images/${id}`, {
           method: 'PUT',
