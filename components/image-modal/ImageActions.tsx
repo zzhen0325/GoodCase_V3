@@ -110,7 +110,6 @@ export function ImageActions({
                   onChange={(e) => onLinkChange?.(e.target.value)}
                   placeholder="输入链接地址"
                   className="w-full"
-                  autoFocus
                 />
                 <div className="flex gap-2 mt-2">
                   <Button

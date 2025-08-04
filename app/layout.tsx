@@ -68,6 +68,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${poppins.variable} ${robotoMono.variable} font-sans antialiased`}
+        suppressHydrationWarning
       >
         <FirebaseProvider>
           <DataProvider>

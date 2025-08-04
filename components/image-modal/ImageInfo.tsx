@@ -57,15 +57,15 @@ export function ImageInfo({
   return (
     <div className="border-t flex-shrink-0">
       <ScrollArea className="max-h-60">
-        <div className="p-6 space-y-6">
+        <div className="px-6 py-4 space-y-4">
           {/* 标签显示 */}
           <div>
-            <label className="text-sm font-medium text-black mb-6">
+            <label className="text-sm font-medium text-black mb-3">
               Tags
             </label>
 
             {/* 当前标签显示 */}
-            <div className="flex flex-wrap gap-2 mt-4">
+            <div className="flex flex-wrap gap-2 mt-3">
               {editedTagIds.map((tagId) => {
                 const tag = tags.find((t) => t.id === tagId);
                 const tagCategory = tag ? tagCategories.find(g => g.id === tag.categoryId) : null;
@@ -76,7 +76,7 @@ export function ImageInfo({
                       <TooltipTrigger asChild>
                         <Badge
                           variant="secondary"
-                          className="px-3 h-8 py-4 text-xs font-medium rounded-xl border cursor-help transition-all duration-200"
+                          className="px-3 h-7 py-2 text-xs font-medium rounded-xl border cursor-help transition-all duration-200"
                           style={{
                             backgroundColor: colorTheme.bg,
                             borderColor: colorTheme.primary,
@@ -104,7 +104,12 @@ export function ImageInfo({
                     </Tooltip>
                   </TooltipProvider>
                 ) : null;
-              })}              {editedTagIds.length === 0 && (                <span className="text-xs text-black">暂无标签</span>              )}            </div>          </div>
+              })}
+              {editedTagIds.length === 0 && (
+                <span className="text-xs text-black">暂无标签</span>
+              )}
+            </div>
+          </div>
  
           {/* 编辑模式下的保存和取消按钮 */}
           {isEditing && (onSave || onCancel) && (

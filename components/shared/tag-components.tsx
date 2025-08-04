@@ -388,7 +388,7 @@ export function TagSelectorDropdown({
                   className="cursor-pointer flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>创建 "{searchQuery.trim()}"</span>
+                  <span>创建 &quot;{searchQuery.trim()}&quot;</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </div>
@@ -439,7 +439,7 @@ export function TagSelectorDropdown({
                   className="cursor-pointer flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>创建 "{searchQuery.trim()}"</span>
+                  <span>创建 &quot;{searchQuery.trim()}&quot;</span>
                 </DropdownMenuItem>
               </div>
             )}

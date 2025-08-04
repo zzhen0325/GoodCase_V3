@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, where, limit as firestoreLimit } from 'firebase/firestore';
-import { ImageData, FirestoreImage, Tag, FirestoreTag, TagCategory, FirestoreTagCategory, PRESET_THEMES } from '@/types';
+import { ImageData, FirestoreImage, Tag, FirestoreTag, TagCategory, FirestoreTagCategory, PRESET_THEMES, ImageType } from '@/types';
 
 // GET - 获取图片列表
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '9999');
     const status = searchParams.get('status') as 'ACTIVE' | 'ARCHIVED' | null;
     const tagId = searchParams.get('tagId');
     const fields = searchParams.get('fields'); // 选择性字段加载
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       // 基础图片信息
       const image: any = {
         id: docSnapshot.id,
-        url: firestoreImage.url,
+        type: firestoreImage.type || 'single', // 向后兼容：默认为单图类型
         name: firestoreImage.name,
         link: firestoreImage.link,
         createdAt: firestoreImage.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
@@ -102,13 +102,41 @@ export async function GET(request: NextRequest) {
         status: firestoreImage.status
       };
       
+      // 根据图片类型处理 URL 字段
+      if (firestoreImage.type === 'comparison') {
+        // 双图类型：添加 beforeImage 和 afterImage
+        if (firestoreImage.beforeImage) {
+          image.beforeImage = firestoreImage.beforeImage;
+        }
+        if (firestoreImage.afterImage) {
+          image.afterImage = firestoreImage.afterImage;
+        }
+        // 计算双图的总大小
+        image.size = (firestoreImage.beforeImage?.fileSize || 0) + (firestoreImage.afterImage?.fileSize || 0);
+      } else {
+        // 单图类型：使用传统的 url 字段
+        image.url = firestoreImage.url;
+        image.size = firestoreImage.size;
+        image.width = firestoreImage.width;
+        image.height = firestoreImage.height;
+        image.mimeType = firestoreImage.mimeType;
+        image.format = firestoreImage.format;
+      }
+      
       // 根据fields参数决定返回哪些字段
       if (!fields || fields.includes('description')) {
         image.description = firestoreImage.description;
       }
       
       if (!fields || fields.includes('storagePath')) {
-        image.storagePath = firestoreImage.storagePath;
+        // 根据图片类型处理 storagePath 字段
+        if (firestoreImage.type === 'comparison') {
+          // 双图类型：storagePath 信息已包含在 beforeImage 和 afterImage 中
+          // 不需要单独的 storagePath 字段
+        } else {
+          // 单图类型：使用传统的 storagePath 字段
+          image.storagePath = firestoreImage.storagePath;
+        }
       }
       
       if (!fields || fields.includes('tags')) {

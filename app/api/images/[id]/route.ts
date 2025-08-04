@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { ImageType } from '@/types';
 
 // PUT - 更新图片信息
 export async function PUT(
@@ -34,6 +35,10 @@ export async function PUT(
       );
     }
 
+    // 获取当前图片数据以了解类型
+    const currentData = imageDoc.data();
+    const currentType = currentData?.type || 'single';
+    
     // 准备更新数据
     const updateData: any = {
       ...updates,
@@ -43,6 +48,53 @@ export async function PUT(
     // 如果有title字段，同时更新name字段以保持兼容性
     if (updates.title) {
       updateData.name = updates.title;
+    }
+    
+    // 处理图片类型变更
+    if (updates.type && updates.type !== currentType) {
+      updateData.type = updates.type;
+      
+      // 如果从单图变为双图，清除单图字段
+      if (updates.type === 'comparison') {
+        updateData.url = null;
+        updateData.storagePath = null;
+      }
+      // 如果从双图变为单图，清除双图字段
+      else if (updates.type === 'single') {
+        updateData.beforeImage = null;
+        updateData.afterImage = null;
+      }
+    }
+    
+    // 处理双图字段更新
+    if (updates.beforeImage) {
+      updateData.beforeImage = updates.beforeImage;
+    }
+    if (updates.afterImage) {
+      updateData.afterImage = updates.afterImage;
+    }
+    
+    // 处理单图字段更新
+    if (updates.url !== undefined) {
+      updateData.url = updates.url;
+    }
+    if (updates.storagePath !== undefined) {
+      updateData.storagePath = updates.storagePath;
+    }
+    if (updates.size !== undefined) {
+      updateData.size = updates.size;
+    }
+    if (updates.width !== undefined) {
+      updateData.width = updates.width;
+    }
+    if (updates.height !== undefined) {
+      updateData.height = updates.height;
+    }
+    if (updates.mimeType !== undefined) {
+      updateData.mimeType = updates.mimeType;
+    }
+    if (updates.format !== undefined) {
+      updateData.format = updates.format;
     }
 
     // 更新图片信息
@@ -160,10 +212,20 @@ export async function GET(
       );
     }
 
-    const imageData = {
+    const firestoreData = imageDoc.data();
+    const imageData: any = {
       id: imageDoc.id,
-      ...imageDoc.data(),
+      type: firestoreData?.type || 'single', // 向后兼容：默认为单图类型
+      ...firestoreData,
     };
+    
+    // 确保时间戳正确转换
+    if (firestoreData?.createdAt?.toDate) {
+      imageData.createdAt = firestoreData.createdAt.toDate().toISOString();
+    }
+    if (firestoreData?.updatedAt?.toDate) {
+      imageData.updatedAt = firestoreData.updatedAt.toDate().toISOString();
+    }
 
     console.log('✅ 获取图片信息成功:', id);
 

@@ -14,12 +14,12 @@ interface PromptListProps {
 
 export function PromptList({ promptBlocks, isEditing, onUpdate, onDelete, onCopy }: PromptListProps) {
   return (
-    <div className="flex-1 flex flex-col min-h-0 max-h-[calc(75vh-220px)]">
+    <div className="flex-1 flex flex-col min-h-0">
       <div className="flex-1 min-h-0">
         <ScrollArea className="h-full">
-          <div className="p-6 pt-4 space-y-4">
+          <div className="px-6 py-4 space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-4">
                 <label className="text-md font-medium text-black">
                   Prompts 
                 </label>

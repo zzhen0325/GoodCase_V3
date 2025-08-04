@@ -36,6 +36,10 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [beforeLoaded, setBeforeLoaded] = useState(false);
+  const [afterLoaded, setAfterLoaded] = useState(false);
+  const [beforeError, setBeforeError] = useState(false);
+  const [afterError, setAfterError] = useState(false);
   const { ref, inView } = useInView({
     threshold: 0.1,
     triggerOnce: true,
@@ -43,9 +47,16 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
 
   // 当图片URL变化时重置状态
   useEffect(() => {
-    setImageLoaded(false);
-    setImageError(false);
-  }, [image.url]);
+    if (image.type === 'single') {
+      setImageLoaded(false);
+      setImageError(false);
+    } else {
+      setBeforeLoaded(false);
+      setAfterLoaded(false);
+      setBeforeError(false);
+      setAfterError(false);
+    }
+  }, [image.type, image.url, image.beforeImage?.url, image.afterImage?.url]);
 
   const handleClick = useCallback(() => {
     if (isEditMode && onSelect) {
@@ -63,6 +74,26 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
   const handleImageError = useCallback(() => {
     setImageLoaded(true);
     setImageError(true);
+  }, []);
+
+  const handleBeforeLoad = useCallback(() => {
+    setBeforeLoaded(true);
+    setBeforeError(false);
+  }, []);
+
+  const handleBeforeError = useCallback(() => {
+    setBeforeLoaded(true);
+    setBeforeError(true);
+  }, []);
+
+  const handleAfterLoad = useCallback(() => {
+    setAfterLoaded(true);
+    setAfterError(false);
+  }, []);
+
+  const handleAfterError = useCallback(() => {
+    setAfterLoaded(true);
+    setAfterError(true);
   }, []);
 
   return (
@@ -107,56 +138,216 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
 
       {/* 图片容器 */}
       <div className="relative overflow-hidden rounded-xl bg-gray-100">
-        {image.url ? (
-          <>
-            {/* 骨架屏 */}
-            {!imageLoaded && (
-              <div className="absolute inset-0 z-10">
-                <div className="w-full h-64 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
-                  <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
+        {image.type === 'single' ? (
+          // 单图显示
+          image.url ? (
+            <>
+              {/* 骨架屏 */}
+              {!imageLoaded && (
+                <div className="absolute inset-0 z-10">
+                  <div className="w-full h-64 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
+                    <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
+                  </div>
                 </div>
-              </div>
-            )}
-            
-            {/* 实际图片 */}
-            <motion.img
-              src={image.url}
-              alt={image.title || 'Image'}
-              className={`w-full h-auto object-cover transition-all duration-300 ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              } ${imageError ? 'hidden' : ''}`}
-              loading="lazy"
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-            />
-            
-            {/* 错误状态 */}
-            {imageError && (
-              <div className="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-400">
-                <div className="text-center">
-                  <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-sm">加载失败</p>
+              )}
+              
+              {/* 实际图片 */}
+              <motion.img
+                src={image.url}
+                alt={image.title || 'Image'}
+                className={`w-full h-auto object-cover transition-all duration-300 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                } ${imageError ? 'hidden' : ''}`}
+                loading="lazy"
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                onLoad={handleImageLoad}
+                onError={handleImageError}
+              />
+              
+              {/* 错误状态 */}
+              {imageError && (
+                <div className="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-400">
+                  <div className="text-center">
+                    <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm">加载失败</p>
+                  </div>
                 </div>
+              )}
+            </>
+          ) : (
+            <div className="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-400">
+              <div className="text-center">
+                <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm">暂无图片</p>
               </div>
-            )}
-          </>
-        ) : (
-          <div className="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-400">
-            <div className="text-center">
-              <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-sm">暂无图片</p>
             </div>
+          )
+        ) : (
+          // 双图对比显示
+          <div className="relative">
+            {/* Before & After 标签
+            <div className="absolute top-2 left-2 right-2 z-20 flex justify-between pointer-events-none">
+              <div className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm">
+                Before
+              </div>
+              <div className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm">
+                After
+              </div>
+            </div> */}
+            
+            {(() => {
+              // 计算图片比例来决定布局方向
+              const beforeImage = image.beforeImage;
+              const afterImage = image.afterImage;
+              
+              // 如果有图片尺寸信息，计算平均宽高比
+              let isHorizontalLayout = false; // 默认垂直布局（上下排列）
+              
+        
+              
+              if (beforeImage?.width && beforeImage?.height && afterImage?.width && afterImage?.height) {
+                const beforeRatio = beforeImage.width / beforeImage.height;
+                const afterRatio = afterImage.width / afterImage.height;
+                const avgRatio = (beforeRatio + afterRatio) / 2;
+                
+                // 宽高比 > 1：宽图，使用水平布局（左右排列）
+                // 宽高比 <= 1：长图或正方形，使用垂直布局（上下排列）
+                isHorizontalLayout = avgRatio < 1;
+              }
+                
+              
+              
+              const layoutClassName = `flex ${isHorizontalLayout ? 'flex-row' : 'flex-col'}`;
+            
+              return (
+                <div className={`${layoutClassName} ${isHorizontalLayout ? 'h-full' : ''} group-hover:scale-115 transition-all duration-300`}>
+                  {/* Before 图片 */}
+                  <div className={`relative ${isHorizontalLayout ? 'flex-1' : ''}`}>
+                {image.beforeImage?.url ? (
+                  <>
+                    {/* Before 骨架屏 */}
+                    {!beforeLoaded && (
+                      <div className="absolute inset-0 z-10">
+                        <div className="w-full h-64 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
+                          <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Before 实际图片 */}
+                    <motion.img
+                      src={image.beforeImage.url}
+                      alt="Before"
+                      className={`w-full ${isHorizontalLayout ? 'h-full' : 'h-auto'} object-cover transition-all duration-300 ${
+                        beforeLoaded ? 'opacity-100' : 'opacity-0'
+                      } ${beforeError ? 'hidden' : ''}`}
+                      loading="lazy"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      onLoad={handleBeforeLoad}
+                      onError={handleBeforeError}
+                    />
+                    
+                    {/* Before 错误状态 */}
+                    {beforeError && (
+                      <div className=" h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                        <div className="text-center">
+                          <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="text-xs">加载失败</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                    <div className="text-center">
+                      <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-xs">暂无图片</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* 分割线 */}
+              <div className={`bg-white relative z-10 ${
+                isHorizontalLayout 
+                  ? 'w-px h-full mx-0' 
+                  : 'h-px w-full my-0'
+              }`}>
+                <div className={`absolute inset-0 ${
+                  isHorizontalLayout 
+                    ? 'w-px h-full mx-1' 
+                    : 'h-px w-full my-0'
+                }`} />
+              </div>
+              
+              {/* After 图片 */}
+              <div className={`relative ${isHorizontalLayout ? 'flex-1' : ''}`}>
+                {image.afterImage?.url ? (
+                  <>
+                    {/* After 骨架屏 */}
+                    {!afterLoaded && (
+                      <div className="absolute inset-0 z-10">
+                        <div className="w-full h-64 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
+                          <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* After 实际图片 */}
+                    <motion.img
+                      src={image.afterImage.url}
+                      alt="After"
+                      className={`w-full ${isHorizontalLayout ? 'h-full' : 'h-auto'} object-cover transition-all duration-300 ${
+                        afterLoaded ? 'opacity-100' : 'opacity-0'
+                      } ${afterError ? 'hidden' : ''}`}
+                      loading="lazy"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      onLoad={handleAfterLoad}
+                      onError={handleAfterError}
+                    />
+                    
+                    {/* After 错误状态 */}
+                    {afterError && (
+                      <div className="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-400">
+                        <div className="text-center">
+                          <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="text-xs">加载失败</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-400">
+                    <div className="text-center">
+                      <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-xs">暂无图片</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+              );
+            })()}
           </div>
         )}
         
         {/* 悬停效果 */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-all duration-300" />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5  transition-all duration-300" />
       </div>
     </motion.div>
   );

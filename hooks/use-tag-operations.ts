@@ -6,63 +6,17 @@ import { Tag, TagCategory } from '@/types';
 export function useTagOperations() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const { tags, setTags, tagCategories: tagCategories, setCategories } = useDataContext();
-  const [tagsLoading, setTagsLoading] = useState(true);
-  const [tagsError, setTagsError] = useState<string | null>(null);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const { tags, setTags, tagCategories, setCategories, loading, error, refreshData } = useDataContext();
+  
+  // 使用DataContext的状态，不再重复获取数据
+  const tagsLoading = loading;
+  const tagsError = error;
+  const categoriesLoading = loading;
+  const categoriesError = error;
 
-  // 获取标签分类数据
-  const fetchTagCategories = async () => {
-    try {
-      setCategoriesLoading(true);
-      const response = await fetch('/api/tag-categories');
-      if (!response.ok) throw new Error('拉取分类失败');
-      const result = await response.json();
-      if (result.success) {
-        setCategories(result.data || []);
-        setCategoriesError(null);
-      } else {
-        throw new Error(result.error?.message || '获取分类失败');
-      }
-    } catch (e) {
-      console.error('拉取分类失败:', e);
-      setCategoriesError(e instanceof Error ? e.message : '拉取分类失败');
-    } finally {
-      setCategoriesLoading(false);
-    }
-  };
-
-  // 获取标签数据
-  const fetchTags = async () => {
-    try {
-      setTagsLoading(true);
-      const response = await fetch('/api/tags');
-      if (!response.ok) throw new Error('获取标签失败');
-      const result = await response.json();
-      if (result.success) {
-        setTags(result.data || []);
-        setTagsError(null);
-      } else {
-        throw new Error(result.error?.message || '获取标签失败');
-      }
-    } catch (e) {
-      console.error('获取标签失败:', e);
-      setTagsError(e instanceof Error ? e.message : '获取标签失败');
-    } finally {
-      setTagsLoading(false);
-    }
-  };
-
-  // 初始化获取标签数据
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
-  // 初始化获取标签分类数据
-  useEffect(() => {
-    fetchTagCategories();
-  }, []);
+  // 刷新数据的方法
+  const fetchTags = refreshData;
+  const fetchTagCategories = refreshData;
 
   // getTagGroups 不再独立请求，数据由 DataContext 初始化
 

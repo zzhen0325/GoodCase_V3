@@ -225,6 +225,148 @@ export async function getImageDimensions(
 // 图片元数据获取工具
 
 /**
+ * 检查是否为PNG格式
+ */
+function isPNG(data: Uint8Array): boolean {
+  return data.length >= 8 && 
+         data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4E && data[3] === 0x47 &&
+         data[4] === 0x0D && data[5] === 0x0A && data[6] === 0x1A && data[7] === 0x0A;
+}
+
+/**
+ * 解析PNG图片尺寸
+ */
+function parsePNGDimensions(data: Uint8Array): { width: number; height: number } | null {
+  try {
+    if (data.length < 24) return null;
+    
+    const width = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19];
+    const height = (data[20] << 24) | (data[21] << 16) | (data[22] << 8) | data[23];
+    
+    return { width, height };
+  } catch (error) {
+    console.error('解析PNG尺寸失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 检查是否为JPEG格式
+ */
+function isJPEG(data: Uint8Array): boolean {
+  return data.length >= 2 && data[0] === 0xFF && data[1] === 0xD8;
+}
+
+/**
+ * 解析JPEG图片尺寸
+ */
+function parseJPEGDimensions(data: Uint8Array): { width: number; height: number } | null {
+  try {
+    let offset = 2; // Skip SOI marker
+    
+    while (offset < data.length - 1) {
+      if (data[offset] !== 0xFF) {
+        offset++;
+        continue;
+      }
+      
+      const marker = data[offset + 1];
+      
+      // SOF0, SOF1, SOF2 markers contain dimension info
+      if (marker >= 0xC0 && marker <= 0xC3) {
+        if (offset + 9 < data.length) {
+          const height = (data[offset + 5] << 8) | data[offset + 6];
+          const width = (data[offset + 7] << 8) | data[offset + 8];
+          return { width, height };
+        }
+      }
+      
+      // Skip this segment
+      if (offset + 3 < data.length) {
+        const segmentLength = (data[offset + 2] << 8) | data[offset + 3];
+        offset += 2 + segmentLength;
+      } else {
+        break;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('解析JPEG尺寸失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 检查是否为WebP格式
+ */
+function isWebP(data: Uint8Array): boolean {
+  return data.length >= 12 && 
+         data[0] === 0x52 && data[1] === 0x49 && data[2] === 0x46 && data[3] === 0x46 && // RIFF
+         data[8] === 0x57 && data[9] === 0x45 && data[10] === 0x42 && data[11] === 0x50; // WEBP
+}
+
+/**
+ * 解析WebP图片尺寸
+ */
+function parseWebPDimensions(data: Uint8Array): { width: number; height: number } | null {
+  try {
+    // WebP VP8 format
+    if (data.length >= 30) {
+      const width = ((data[26] | (data[27] << 8)) & 0x3fff) + 1;
+      const height = ((data[28] | (data[29] << 8)) & 0x3fff) + 1;
+      return { width, height };
+    }
+    return null;
+  } catch (error) {
+    console.error('解析WebP尺寸失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 服务器端获取图片元数据（增强版）
+ * 支持PNG、JPEG、WebP格式的尺寸解析
+ */
+export const getImageMetadataServer = async (file: File): Promise<{
+  width: number;
+  height: number;
+  fileSize: number;
+  format: string;
+}> => {
+  try {
+    const buffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(buffer);
+    
+    let dimensions = { width: 0, height: 0 };
+    
+    // 尝试解析不同格式
+    if (isPNG(uint8Array)) {
+      dimensions = parsePNGDimensions(uint8Array) || { width: 0, height: 0 };
+    } else if (isJPEG(uint8Array)) {
+      dimensions = parseJPEGDimensions(uint8Array) || { width: 0, height: 0 };
+    } else if (isWebP(uint8Array)) {
+      dimensions = parseWebPDimensions(uint8Array) || { width: 0, height: 0 };
+    }
+    
+    return {
+      width: dimensions.width,
+      height: dimensions.height,
+      fileSize: file.size,
+      format: file.type.split('/')[1] || 'png'
+    };
+  } catch (error) {
+    console.error('获取图片元数据失败:', error);
+    return {
+      width: 0,
+      height: 0,
+      fileSize: file.size,
+      format: file.type.split('/')[1] || 'png'
+    };
+  }
+};
+
+/**
  * 获取图片元数据（宽高、大小、格式等）
  * @param file 图片文件
  * @returns 图片元数据
@@ -256,13 +398,8 @@ export const getImageMetadata = async (file: File): Promise<{
       img.src = URL.createObjectURL(file);
     });
   } else {
-    // 服务器端环境，返回基本信息
-    return {
-      width: 0, // 在服务器端无法获取真实尺寸
-      height: 0,
-      fileSize: file.size,
-      format: file.type.split('/')[1] || 'png'
-    };
+    // 服务器端环境，使用增强的元数据获取
+    return getImageMetadataServer(file);
   }
 };
 

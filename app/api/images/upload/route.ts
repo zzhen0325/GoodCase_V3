@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { UnifiedImageStorageService } from '@/lib/unified-image-storage';
-import { getImageMetadata } from '@/lib/image-utils';
+import { getImageMetadata, getImageMetadataServer } from '@/lib/image-utils';
 import { v4 as uuidv4 } from 'uuid';
 
 // POST - 上传图片
@@ -9,17 +9,31 @@ export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type');
     let imageFile: File;
+    let beforeFile: File | null = null;
+    let afterFile: File | null = null;
     let title: string = '';
     let link: string = '';
     let tagIds: string[] = [];
     let promptBlocks: any[] = [];
     let promptIds: string[] = [];
+    let imageType: 'single' | 'comparison' = 'single';
     
     // 检查是FormData还是JSON格式
     if (contentType?.includes('multipart/form-data')) {
       // FormData格式 (来自 page.tsx)
       const formData = await request.formData();
-      imageFile = formData.get('file') as File;
+      
+      // 获取图片类型
+      imageType = (formData.get('imageType') as string || 'single') as 'single' | 'comparison';
+      
+      if (imageType === 'comparison') {
+        beforeFile = formData.get('beforeFile') as File;
+        afterFile = formData.get('afterFile') as File;
+        imageFile = beforeFile; // 用于后续验证
+      } else {
+        imageFile = formData.get('file') as File;
+      }
+      
       title = formData.get('title') as string || '';
       link = formData.get('link') as string || '';
       
@@ -49,93 +63,241 @@ export async function POST(request: NextRequest) {
       promptIds = jsonPromptIds || [];
     }
     
-    if (!imageFile) {
+    // 验证文件存在
+    if (imageType === 'comparison') {
+      if (!beforeFile || !afterFile) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'MISSING_FILE',
+            message: '请选择Before和After图片文件' 
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (!imageFile) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'MISSING_FILE',
+            message: '请选择要上传的图片文件' 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 验证文件类型和大小的辅助函数
+    const validateFile = (file: File, fileName: string) => {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error(`${fileName}不支持的文件类型，请上传 JPEG、PNG 或 WebP 格式的图片`);
+      }
+      
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new Error(`${fileName}文件大小不能超过 10MB`);
+      }
+    };
+
+    // 验证所有文件
+    try {
+      if (imageType === 'comparison') {
+        validateFile(beforeFile!, 'Before图片');
+        validateFile(afterFile!, 'After图片');
+      } else {
+        validateFile(imageFile, '图片');
+      }
+    } catch (error) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'MISSING_FILE',
-          message: '请选择要上传的图片文件' 
+          error: 'INVALID_FILE',
+          message: error instanceof Error ? error.message : '文件验证失败'
         },
         { status: 400 }
       );
     }
 
-    // 验证文件类型
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(imageFile.type)) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'INVALID_FILE_TYPE',
-          message: '不支持的文件类型，请上传 JPEG、PNG 或 WebP 格式的图片' 
-        },
-        { status: 400 }
-      );
-    }
-
-    // 验证文件大小 (10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (imageFile.size > maxSize) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'FILE_TOO_LARGE',
-          message: '文件大小不能超过 10MB' 
-        },
-        { status: 400 }
-      );
-    }
-
-    // 获取图片元数据
+    // 生成图片ID
+    const imageId = uuidv4();
+    
+    // 获取图片元数据和上传文件
     let metadata;
-    try {
-      metadata = await getImageMetadata(imageFile);
-      console.log('图片元数据获取成功:', metadata);
-    } catch (error) {
-      console.error('获取图片元数据失败:', error);
-      // 使用默认值继续处理
-      metadata = {
-        width: 0,
-        height: 0,
-        fileSize: imageFile.size,
-        format: imageFile.type.split('/')[1] || 'png'
-      };
+    let imageUrl: string | undefined;
+    let beforeImageData: { 
+      storagePath: string; 
+      url: string; 
+      fileSize: number;
+      width: number;
+      height: number;
+      mimeType: string;
+      format: string;
+    } | undefined;
+    let afterImageData: { 
+      storagePath: string; 
+      url: string; 
+      fileSize: number;
+      width: number;
+      height: number;
+      mimeType: string;
+      format: string;
+    } | undefined;
+    
+    if (imageType === 'comparison') {
+      // 双图模式：分别处理before和after图片
+      try {
+        console.log('开始处理双图上传');
+        
+        // 获取before图片元数据
+        const beforeMetadata = await getImageMetadataServer(beforeFile!);
+        const afterMetadata = await getImageMetadataServer(afterFile!);
+        
+        console.log('Before图片元数据:', beforeMetadata);
+        console.log('After图片元数据:', afterMetadata);
+        
+        // 使用after图片的元数据作为主要元数据
+        metadata = afterMetadata;
+        
+        // 如果仍然无法获取尺寸，记录警告
+        if (beforeMetadata.width === 0 || beforeMetadata.height === 0) {
+          console.warn('Before图片尺寸获取失败，将在后台异步修复');
+        }
+        if (afterMetadata.width === 0 || afterMetadata.height === 0) {
+          console.warn('After图片尺寸获取失败，将在后台异步修复');
+        }
+        
+        // 上传before图片
+        const beforeExt = beforeFile!.name.split('.').pop() || 'png';
+        const beforeFileName = `${imageId}_before.${beforeExt}`;
+        const beforeUrl = await UnifiedImageStorageService.uploadImageServer(
+          beforeFile!,
+          'images',
+          beforeFileName
+        );
+        
+        // 上传after图片
+        const afterExt = afterFile!.name.split('.').pop() || 'png';
+        const afterFileName = `${imageId}_after.${afterExt}`;
+        const afterUrl = await UnifiedImageStorageService.uploadImageServer(
+          afterFile!,
+          'images',
+          afterFileName
+        );
+        
+        beforeImageData = {
+          storagePath: `images/${beforeFileName}`,
+          url: beforeUrl,
+          fileSize: beforeMetadata.fileSize,
+          width: beforeMetadata.width,
+          height: beforeMetadata.height,
+          mimeType: beforeFile!.type,
+          format: beforeMetadata.format
+        };
+        
+        afterImageData = {
+          storagePath: `images/${afterFileName}`,
+          url: afterUrl,
+          fileSize: afterMetadata.fileSize,
+          width: afterMetadata.width,
+          height: afterMetadata.height,
+          mimeType: afterFile!.type,
+          format: afterMetadata.format
+        };
+        
+        console.log('双图上传成功:', { beforeUrl, afterUrl });
+        
+      } catch (error) {
+        console.error('双图上传失败:', error);
+        throw new Error(`双图上传失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
+    } else {
+      // 单图模式：使用增强的服务器端元数据获取
+      try {
+        metadata = await getImageMetadataServer(imageFile);
+        console.log('图片元数据获取成功:', metadata);
+        
+        // 如果仍然无法获取尺寸，记录警告
+        if (metadata.width === 0 || metadata.height === 0) {
+          console.warn('图片尺寸获取失败，将在后台异步修复');
+        }
+      } catch (error) {
+        console.error('获取图片元数据失败:', error);
+        metadata = {
+          width: 0,
+          height: 0,
+          fileSize: imageFile.size,
+          format: imageFile.type.split('/')[1] || 'png'
+        };
+      }
+
+      try {
+        console.log('开始上传图片到 Firebase Storage');
+        imageUrl = await UnifiedImageStorageService.uploadImageServer(
+          imageFile,
+          'images'
+        );
+        console.log('图片上传成功:', imageUrl);
+      } catch (error) {
+        console.error('Firebase Storage 上传失败:', error);
+        throw new Error(`图片上传失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
     }
 
-    // 上传到 Firebase Storage
-    let imageUrl;
-    try {
-      console.log('开始上传图片到 Firebase Storage');
-      imageUrl = await UnifiedImageStorageService.uploadImageServer(
-        imageFile,
-        'images'
-      );
-      console.log('图片上传成功:', imageUrl);
-    } catch (error) {
-      console.error('Firebase Storage 上传失败:', error);
-      throw new Error(`图片上传失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    // 处理提示词块：双图类型默认添加"指令"提示词块
+    let finalPromptBlocks = promptBlocks || [];
+    if (imageType === 'comparison' && finalPromptBlocks.length === 0) {
+      finalPromptBlocks = [{
+        id: 'default-instruction',
+        title: '指令',
+        content: '',
+        color: 'blue',
+        order: 0
+      }];
     }
 
     // 保存到 Firestore
     let docRef;
-    const imageId = uuidv4();
     const now = new Date();
-    const imageData = {
+    
+    // 构建图片数据结构
+    const baseImageData = {
       id: imageId,
-      name: title || imageFile.name,
+      type: imageType,
+      name: title || (imageType === 'comparison' ? 'Before & After Comparison' : imageFile.name),
       description: '',
       link: link || '',
-      url: imageUrl,
-      size: imageFile.size,
-      mimeType: imageFile.type,
-      width: metadata.width,
-      height: metadata.height,
       tags: tagIds || [],
-      promptBlocks: promptBlocks || [],
+      promptBlocks: finalPromptBlocks,
       status: 'ACTIVE',
       createdAt: now,
       updatedAt: now
     };
+    
+    let imageData;
+    if (imageType === 'comparison') {
+      // 双图数据结构
+      imageData = {
+        ...baseImageData,
+        beforeImage: beforeImageData,
+        afterImage: afterImageData,
+        size: (beforeFile?.size || 0) + (afterFile?.size || 0),
+        mimeType: afterFile?.type || 'image/png',
+        width: metadata.width,
+        height: metadata.height
+      };
+    } else {
+      // 单图数据结构
+      imageData = {
+        ...baseImageData,
+        url: imageUrl,
+        size: imageFile.size,
+        mimeType: imageFile.type,
+        width: metadata.width,
+        height: metadata.height
+      };
+    }
 
     try {
       console.log('开始连接数据库');

@@ -2,6 +2,7 @@
 
 import _ from 'lodash';
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WaterfallImageGrid } from '@/components/waterfall-image-grid';
 import { ImageModal } from '@/components/image-modal/image-modal';
@@ -31,7 +32,9 @@ import { Bot, FileText, ArrowUp, Search, X, Upload } from 'lucide-react';
 
 // 主页面内容组件
 function HomePageContent() {
-
+  // 获取URL参数和路由
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   // 使用组合的 hooks 管理所有状态和操作
 
@@ -57,6 +60,7 @@ function HomePageContent() {
     setIsImageModalOpen,
     handleImageClick,
     closeImageModal,
+    onCloseImageModal,
     closeUploadModal,
     handleUpload: openUploadModal
   } = useModalState();
@@ -117,21 +121,39 @@ function HomePageContent() {
     loadMore
   } = useInfiniteScroll(filteredImages, 50);
 
+
+
   // 图片上传处理函数
   const handleImageUpload = useCallback(async (
     file: File,
     imageName: string,
     promptBlocks: any[],
     tagIds?: string[],
-    link?: string
+    link?: string,
+    beforeFile?: File,
+    afterFile?: File,
+    imageType?: 'single' | 'comparison'
   ) => {
     try {
-      console.log('🚀 开始上传图片:', imageName);
+      console.log('🚀 开始上传图片:', imageName, '类型:', imageType);
 
       // 创建FormData
       const formData = new FormData();
-      formData.append('file', file);
+      
+      // 根据图片类型添加文件
+      if (imageType === 'comparison') {
+        if (beforeFile && afterFile) {
+          formData.append('beforeFile', beforeFile);
+          formData.append('afterFile', afterFile);
+        } else {
+          throw new Error('双图模式需要提供before和after图片');
+        }
+      } else {
+        formData.append('file', file);
+      }
+      
       formData.append('title', imageName);
+      formData.append('imageType', imageType || 'single');
 
       // 添加提示词
       if (promptBlocks && promptBlocks.length > 0) {
@@ -349,8 +371,9 @@ function HomePageContent() {
                   isOpen={isImageModalOpen}
                   image={selectedImage}
                   onClose={() => {
+                    console.log('🎯 主页面关闭弹窗回调');
                     setAutoEdit(false); // 关闭弹窗时重置自动编辑模式
-                    closeImageModal();
+                    onCloseImageModal();
                   }}
                   onUpdate={handleImageUpdate}
                   onDelete={handleImageDelete}

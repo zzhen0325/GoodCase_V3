@@ -129,11 +129,12 @@ export class UnifiedImageStorageService {
   // 服务端上传图片
   static async uploadImageServer(
     file: File,
-    folder: string = 'images'
+    folder: string = 'images',
+    customFileName?: string
   ): Promise<string> {
     try {
       this.validateFile(file);
-      const filePath = this.generateFilePath(file, folder);
+      const filePath = customFileName ? `${folder}/${customFileName}` : this.generateFilePath(file, folder);
 
       console.log('服务端开始上传图片:', {
         fileName: filePath,

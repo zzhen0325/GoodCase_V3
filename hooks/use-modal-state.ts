@@ -7,11 +7,14 @@ import { useSidebar } from '@/components/ui/sidebar';
  * 负责管理各种模态框的开关状态和选中的图片
  */
 export function useModalState() {
+  
   // 模态框状态
   const [selectedImage, setSelectedImage] = useState<ImageData | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const previousSidebarState = useRef<boolean | null>(null);
+  
+
 
   // 视图状态
   const [activeView, setActiveView] = useState('grid');
@@ -19,14 +22,23 @@ export function useModalState() {
   // 边栏控制
   const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
 
-  // 处理图片点击
+  // 处理图片点击 - 使用 useCallback 确保稳定的回调函数
   const handleImageClick = useCallback((image: ImageData) => {
+    console.log('🖼️ 打开图片详情:', image.id);
     setSelectedImage(image);
     setIsImageModalOpen(true);
   }, []);
 
-  // 模态框控制函数
+  // 模态框控制函数 - 清理状态
   const closeImageModal = useCallback(() => {
+    console.log('🔒 关闭图片详情弹窗');
+    setIsImageModalOpen(false);
+    setSelectedImage(null);
+  }, []);
+
+  // onClose函数 - 只清理modal相关状态，不主动跳转路由
+  const onCloseImageModal = useCallback(() => {
+    console.log('🔒 onClose: 只清理modal状态');
     setIsImageModalOpen(false);
     setSelectedImage(null);
   }, []);
@@ -48,6 +60,8 @@ export function useModalState() {
     }
   }, [isImageModalOpen, setSidebarOpen]);
 
+
+
   return {
     // 状态
     selectedImage,
@@ -62,6 +76,7 @@ export function useModalState() {
     setActiveView,
     handleImageClick,
     closeImageModal,
+    onCloseImageModal,
     closeUploadModal,
 
     handleUpload,

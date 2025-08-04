@@ -18,10 +18,12 @@ import { PromptBlock, getColorTheme } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { generateId } from '@/lib/utils';
 import { FileUploadArea } from './FileUploadArea';
+import { DualFileUploadArea } from './DualFileUploadArea';
 import { TagSelectorDropdown } from 'components/image-modal/TagSelectorDropdown';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { UploadActions } from './UploadActions';
 import { PromptList } from '../image-modal/PromptList';
 
@@ -34,7 +36,10 @@ interface UploadModalProps {
     imageName: string,
     promptBlocks: PromptBlock[],
     tagIds?: string[],
-    link?: string
+    link?: string,
+    beforeFile?: File,
+    afterFile?: File,
+    imageType?: 'single' | 'comparison'
   ) => Promise<void>;
 }
 
@@ -44,20 +49,40 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [leftPanelWidth, setLeftPanelWidth] = useState(35);
   const [isDragging, setIsDragging] = useState(false);
   
+  // 图片类型状态
+  const [imageType, setImageType] = useState<'single' | 'comparison'>('single');
+  
   // 文件相关状态
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  
+  // 双图文件状态
+  const [beforeFile, setBeforeFile] = useState<File | null>(null);
+  const [afterFile, setAfterFile] = useState<File | null>(null);
+  const [beforePreviewUrl, setBeforePreviewUrl] = useState<string | null>(null);
+  const [afterPreviewUrl, setAfterPreviewUrl] = useState<string | null>(null);
+  const beforeFileInputRef = useRef<HTMLInputElement | null>(null);
+  const afterFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 图片信息状态
   const [imageName, setImageName] = useState('');
 
   // 提示词相关状态
-  const [promptBlocks, setPromptBlocks] = useState<PromptBlock[]>([
-    { id: generateId(), title: '风格', content: '', color: 'pink', order: 0 },
-    { id: generateId(), title: '主体', content: '', color: 'cyan', order: 1 },
-    { id: generateId(), title: '场景', content: '', color: 'yellow', order: 2 },
-  ]);
+  const getDefaultPromptBlocks = (type: 'single' | 'comparison'): PromptBlock[] => {
+    if (type === 'comparison') {
+      return [
+        { id: generateId(), title: '指令', content: '', color: 'blue', order: 0 }
+      ];
+    }
+    return [
+      { id: generateId(), title: '风格', content: '', color: 'pink', order: 0 },
+      { id: generateId(), title: '主体', content: '', color: 'cyan', order: 1 },
+      { id: generateId(), title: '场景', content: '', color: 'yellow', order: 2 },
+    ];
+  };
+  
+  const [promptBlocks, setPromptBlocks] = useState<PromptBlock[]>(getDefaultPromptBlocks('single'));
 
   // 标签相关状态
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -127,6 +152,30 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     setImageName(nameWithoutExt);
   };
 
+  // 处理Before图片选择
+  const handleBeforeFileSelect = (file: File) => {
+    setBeforeFile(file);
+    
+    // 生成预览URL
+    const url = URL.createObjectURL(file);
+    setBeforePreviewUrl(url);
+    
+    // 如果还没有设置图片名称，使用before图片的名称
+    if (!imageName) {
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+      setImageName(nameWithoutExt + '_comparison');
+    }
+  };
+
+  // 处理After图片选择
+  const handleAfterFileSelect = (file: File) => {
+    setAfterFile(file);
+    
+    // 生成预览URL
+    const url = URL.createObjectURL(file);
+    setAfterPreviewUrl(url);
+  };
+
   // 清除文件
   const handleClearFile = () => {
     setSelectedFile(null);
@@ -140,14 +189,55 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     }
   };
 
+  // 清除Before文件
+  const handleClearBeforeFile = () => {
+    setBeforeFile(null);
+    if (beforePreviewUrl) {
+      URL.revokeObjectURL(beforePreviewUrl);
+      setBeforePreviewUrl(null);
+    }
+    if (beforeFileInputRef.current) {
+      beforeFileInputRef.current.value = '';
+    }
+  };
+
+  // 清除After文件
+  const handleClearAfterFile = () => {
+    setAfterFile(null);
+    if (afterPreviewUrl) {
+      URL.revokeObjectURL(afterPreviewUrl);
+      setAfterPreviewUrl(null);
+    }
+    if (afterFileInputRef.current) {
+      afterFileInputRef.current.value = '';
+    }
+  };
+
+  // 处理图片类型切换
+  const handleImageTypeChange = (type: 'single' | 'comparison') => {
+    setImageType(type);
+    // 切换类型时重置提示词为对应类型的默认值
+    setPromptBlocks(getDefaultPromptBlocks(type));
+    // 清除所有文件
+    handleClearFile();
+    handleClearBeforeFile();
+    handleClearAfterFile();
+    setImageName('');
+    // 在双图模式下调整布局比例
+    if (type === 'comparison') {
+      setLeftPanelWidth(70);
+    } else {
+      setLeftPanelWidth(35);
+    }
+  };
+
   // 重置表单
   const resetForm = () => {
     handleClearFile();
-    setPromptBlocks([
-      { id: generateId(), title: '风格', content: '', color: 'pink', order: 0 },
-      { id: generateId(), title: '主体', content: '', color: 'cyan', order: 1 },
-      { id: generateId(), title: '场景', content: '', color: 'yellow', order: 2 },
-    ]);
+    handleClearBeforeFile();
+    handleClearAfterFile();
+    setImageType('single');
+    setPromptBlocks(getDefaultPromptBlocks('single'));
     setSelectedTagIds([]);
     setImageLink('');
     setIsUploading(false);
@@ -161,9 +251,17 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       e.stopPropagation();
     }
 
-    if (!selectedFile) {
-      toast.error('请选择图片文件');
-      return;
+    // 根据图片类型进行不同的验证
+    if (imageType === 'single') {
+      if (!selectedFile) {
+        toast.error('请选择图片文件');
+        return;
+      }
+    } else {
+      if (!beforeFile || !afterFile) {
+        toast.error('请选择Before和After图片文件');
+        return;
+      }
     }
 
     // 显示上传进度条
@@ -172,7 +270,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     try {
       setIsUploading(true);
 
-      console.log('🚀 开始上传图片:', imageName);
+      console.log('🚀 开始上传图片:', imageName, '类型:', imageType);
 
       // 更新进度到30%
       toast.updateProgress(toastId, { progress: 30, message: '正在处理图片...' });
@@ -181,13 +279,17 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       toast.updateProgress(toastId, { progress: 60, message: '正在上传到服务器...' });
 
       // 开始上传
-      await onUpload(selectedFile, imageName, promptBlocks, selectedTagIds, imageLink || undefined);
+      if (imageType === 'single') {
+        await onUpload(selectedFile!, imageName, promptBlocks, selectedTagIds, imageLink || undefined, undefined, undefined, 'single');
+      } else {
+        await onUpload(selectedFile || beforeFile!, imageName, promptBlocks, selectedTagIds, imageLink || undefined, beforeFile!, afterFile!, 'comparison');
+      }
 
       // 更新进度到100%
       toast.updateProgress(toastId, { progress: 100, message: '上传完成' });
 
       // 显示成功消息
-      toast.completeProgress(toastId, '图片上传成功！');
+      toast.completeProgress(toastId, imageType === 'single' ? '图片上传成功！' : '对比图片上传成功！');
       
       // 上传成功后才关闭弹窗并重置表单
       resetForm();
@@ -208,17 +310,49 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     onClose();
   };
 
-  // 清理预览URL
+  // 清理预览URL - 只在组件卸载时清理
   React.useEffect(() => {
     return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
+      if (beforePreviewUrl) {
+        URL.revokeObjectURL(beforePreviewUrl);
+      }
+      if (afterPreviewUrl) {
+        URL.revokeObjectURL(afterPreviewUrl);
+      }
     };
+  }, []); // 移除依赖数组，只在组件卸载时执行清理
+
+  // 当URL变化时清理旧的URL（防止内存泄漏）
+  const prevPreviewUrl = React.useRef<string | null>(null);
+  const prevBeforePreviewUrl = React.useRef<string | null>(null);
+  const prevAfterPreviewUrl = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (prevPreviewUrl.current && prevPreviewUrl.current !== previewUrl) {
+      URL.revokeObjectURL(prevPreviewUrl.current);
+    }
+    prevPreviewUrl.current = previewUrl;
   }, [previewUrl]);
 
+  React.useEffect(() => {
+    if (prevBeforePreviewUrl.current && prevBeforePreviewUrl.current !== beforePreviewUrl) {
+      URL.revokeObjectURL(prevBeforePreviewUrl.current);
+    }
+    prevBeforePreviewUrl.current = beforePreviewUrl;
+  }, [beforePreviewUrl]);
+
+  React.useEffect(() => {
+    if (prevAfterPreviewUrl.current && prevAfterPreviewUrl.current !== afterPreviewUrl) {
+      URL.revokeObjectURL(prevAfterPreviewUrl.current);
+    }
+    prevAfterPreviewUrl.current = afterPreviewUrl;
+  }, [afterPreviewUrl]);
+
   // 检查是否可以上传
-  const canUpload = selectedFile;
+  const canUpload = imageType === 'single' ? selectedFile : (beforeFile && afterFile);
 
   return (
     <>
@@ -226,11 +360,17 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         <DialogContent className="max-w-[70vw] h-[75vh] p-0 flex flex-col rounded-2xl overflow-hidden gap-0 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
           <DialogHeader className="mt-4 px-6 py-4 border-b">
             <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle>上传图片</DialogTitle>
-                <DialogDescription>
-                  选择图片文件，添加提示词，然后上传到图库
-                </DialogDescription>
+              <div className="flex items-center gap-6">
+                <div>
+                  <DialogTitle>上传图片</DialogTitle>
+                </div>
+                {/* Tab切换 */}
+                <Tabs value={imageType} onValueChange={(value) => handleImageTypeChange(value as 'single' | 'comparison')} className="">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="single">上传单张</TabsTrigger>
+                    <TabsTrigger value="comparison">上传双图</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
               <div className="flex items-center gap-2 ">
                 <Popover open={linkInputOpen} onOpenChange={setLinkInputOpen}>
@@ -316,13 +456,28 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               className="flex-1 min-w-0 flex-shrink-0" 
               style={{ width: `${leftPanelWidth}%` }}
             >
-              <FileUploadArea
-                selectedFile={selectedFile}
-                previewUrl={previewUrl}
-                onFileSelect={handleFileSelect}
-                onClearFile={handleClearFile}
-                fileInputRef={fileInputRef}
-              />
+              {imageType === 'single' ? (
+                <FileUploadArea
+                  selectedFile={selectedFile}
+                  previewUrl={previewUrl}
+                  onFileSelect={handleFileSelect}
+                  onClearFile={handleClearFile}
+                  fileInputRef={fileInputRef}
+                />
+              ) : (
+                <DualFileUploadArea
+                  beforeFile={beforeFile}
+                  afterFile={afterFile}
+                  beforePreviewUrl={beforePreviewUrl}
+                  afterPreviewUrl={afterPreviewUrl}
+                  onBeforeFileSelect={handleBeforeFileSelect}
+                  onAfterFileSelect={handleAfterFileSelect}
+                  onClearBeforeFile={handleClearBeforeFile}
+                  onClearAfterFile={handleClearAfterFile}
+                  beforeFileInputRef={beforeFileInputRef}
+                  afterFileInputRef={afterFileInputRef}
+                />
+              )}
             </div>
 
             {/* 拖拽分隔条 */}
@@ -345,10 +500,13 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
               <div className="flex-1 flex flex-col overflow-hidden">
-              
-                
                 {/* 提示词显示区域 */}
-                <div className="flex-1 flex flex-col min-h-0 max-h-[calc(75vh-220px)]">
+                <div 
+                  className="flex flex-col min-h-0 overflow-hidden"
+                  style={{ 
+                    height: imageType === 'comparison' ? '70%' : 'calc(100% - 120px)'
+                  }}
+                >
                   <PromptList
                     promptBlocks={promptBlocks}
                     isEditing={true}
@@ -369,12 +527,21 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                   />
                 </div>
 
-                  {/* 标签显示区域 */}
-                <div className="border-t bg-white p-4">
-                  <label className="text-sm font-medium text-black mb-2 block">
-                    Tags
-                  </label>
-                  <div className="flex flex-wrap gap-2">
+                {/* 图片信息区域 */}
+                <div 
+                  className="border-t bg-white p-4 overflow-auto"
+                  style={{ 
+                    height: imageType === 'comparison' ? '30%' : '120px'
+                  }}
+                >
+                 
+                  
+                  {/* 标签区域 */}
+                   <div>
+                     <label className="text-sm font-medium text-black mb-2 block">
+                       Tags
+                     </label>
+                     <div className="flex flex-wrap gap-2">
                     {selectedTagIds.map((tagId) => {
                       const tag = tags.find((t) => t.id === tagId);
                       const tagCategory = tag ? tagCategories.find(g => g.id === tag.categoryId) : null;
@@ -406,14 +573,13 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                         </Badge>
                       ) : null;
                     })}
-                    {selectedTagIds.length === 0 && (
-                      <span className="text-xs text-gray-500">暂无标签</span>
-                    )}
+                      {selectedTagIds.length === 0 && (
+                        <span className="text-xs text-gray-500">暂无标签</span>
+                      )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-
-              </div>
 
               {/* 操作按钮 */}
               <div className="p-6 border-t bg-white flex justify-end">

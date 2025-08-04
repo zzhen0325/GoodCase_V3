@@ -36,12 +36,22 @@ export const PRESET_THEMES = {
     accent: "#D8C0FF",
     bg: "#EADDFF",
     text: "#A180D7"
+  },
+  blue: {
+    primary: "#A3C4F3",
+    secondary: "#A3C4F3",
+    accent: "#A3C4F3",
+    bg: "#E1F0FF",
+    text: "#5A7BA8"
   }
 } as const;
 
 export type ThemeColor = keyof typeof PRESET_THEMES;
 
 // ==================== 核心数据类型 ====================
+
+// 图片类型枚举
+export type ImageType = 'single' | 'comparison';
 
 // 标签分类类型（运行时使用）
 export interface TagCategory {
@@ -95,8 +105,38 @@ export interface PromptBlock {
 // 图片类型（运行时使用）
 export interface ImageData {
   id: string;
-  storagePath: string;
-  url: string;
+  type: ImageType; // 图片类型：单图或对比图
+  
+  // 单图字段（type='single'时使用）
+  storagePath?: string;
+  url?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  mimeType?: string;
+  format?: string;
+  
+  // 双图字段（type='comparison'时使用）
+  beforeImage?: {
+    storagePath: string;
+    url: string;
+    fileSize: number;
+    width: number;
+    height: number;
+    mimeType: string;
+    format: string;
+  };
+  afterImage?: {
+    storagePath: string;
+    url: string;
+    fileSize: number;
+    width: number;
+    height: number;
+    mimeType: string;
+    format: string;
+  };
+  
+  // 通用字段
   name: string;
   title?: string; // 兼容性字段，等同于name
   description?: string;
@@ -111,8 +151,38 @@ export interface ImageData {
 // Firestore 图片文档类型（数据库存储）
 export interface FirestoreImage {
   id: string;
-  storagePath: string;
-  url: string;
+  type: ImageType; // 图片类型：单图或对比图
+  
+  // 单图字段（type='single'时使用）
+  storagePath?: string;
+  url?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  mimeType?: string;
+  format?: string;
+  
+  // 双图字段（type='comparison'时使用）
+  beforeImage?: {
+    storagePath: string;
+    url: string;
+    fileSize: number;
+    width: number;
+    height: number;
+    mimeType: string;
+    format: string;
+  };
+  afterImage?: {
+    storagePath: string;
+    url: string;
+    fileSize: number;
+    width: number;
+    height: number;
+    mimeType: string;
+    format: string;
+  };
+  
+  // 通用字段
   name: string;
   description?: string;
   link?: string; // 关联链接，可选
@@ -259,7 +329,17 @@ export type FilterableFields = 'name' | 'tags';
 
 // 类型守卫函数
 export function isImageData(obj: any): obj is ImageData {
-  return obj && typeof obj.id === 'string' && typeof obj.url === 'string' && typeof obj.name === 'string';
+  return obj && 
+    typeof obj.id === 'string' && 
+    typeof obj.name === 'string' && 
+    (obj.type === 'single' || obj.type === 'comparison') &&
+    (
+      // 单图类型验证
+      (obj.type === 'single' && typeof obj.url === 'string') ||
+      // 双图类型验证
+      (obj.type === 'comparison' && obj.beforeImage && obj.afterImage &&
+       typeof obj.beforeImage.url === 'string' && typeof obj.afterImage.url === 'string')
+    );
 }
 
 export function isTag(obj: any): obj is Tag {
@@ -343,6 +423,14 @@ export const DEFAULT_PROMPT_BLOCKS: Omit<PromptBlock, 'id'>[] = [
     order: 1
   }
 ];
+
+// 双图类型默认提示词
+export const DEFAULT_COMPARISON_PROMPT: Omit<PromptBlock, 'id'> = {
+  title: '指令',
+  content: '',
+  color: 'blue',
+  order: 0
+};
 
 // ==================== 数据库相关类型 ====================
 

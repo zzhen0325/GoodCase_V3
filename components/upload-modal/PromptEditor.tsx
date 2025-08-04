@@ -140,7 +140,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
             {promptBlocks.length === 0 && (
               <div className="text-center py-8 text-muted">
                 <div className="text-sm">暂无提示词</div>
-                <div className="text-xs mt-1">点击"添加"按钮创建提示词</div>
+                <div className="text-xs mt-1">点击&quot;添加&quot;按钮创建提示词</div>
               </div>
             )}
           </div>

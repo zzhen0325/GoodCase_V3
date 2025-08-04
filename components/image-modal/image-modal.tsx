@@ -35,6 +35,7 @@ import { ImageActions } from './ImageActions';
 import { ImagePreview } from './ImagePreview';
 import { PromptList } from './PromptList';
 import { ImageInfo } from './ImageInfo';
+
 import { useImageModalState } from './useImageModalState';
 import { useImageModalActions } from './useImageModalActions';
 
@@ -96,9 +97,10 @@ export interface ImageModalProps {
 
 // 主组件
 export function ImageModal({
+  onClose,
   image,
   isOpen,
-  onClose,
+  
   onUpdate,
   onDelete,
   onDuplicate,
@@ -106,9 +108,20 @@ export function ImageModal({
   onRefetch,
   autoEdit = false,
 }: ImageModalProps) {
-  // 面板宽度状态
-  const [leftPanelWidth, setLeftPanelWidth] = useState(35);
+  // 面板宽度状态 - 根据图片类型设置不同的默认宽度
+  const [leftPanelWidth, setLeftPanelWidth] = useState(
+    image?.type === 'comparison' ? 70 : 35
+  );
   const [isDragging, setIsDragging] = useState(false);
+
+  // 监听图片类型变化，自动调整面板宽度
+  useEffect(() => {
+    if (image?.type === 'comparison') {
+      setLeftPanelWidth(70);
+    } else {
+      setLeftPanelWidth(35);
+    }
+  }, [image?.type]);
   // DnD sensors - 必须在组件顶层调用
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -207,7 +220,13 @@ export function ImageModal({
 
   return (
     <TooltipProvider>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        console.log('🔍 Dialog onOpenChange:', open);
+        if (!open) {
+          console.log('🔒 Dialog触发关闭');
+          onClose();
+        }
+      }}>
       <DialogContent className="max-w-[70vw] h-[75vh] p-0 flex flex-col rounded-2xl overflow-hidden gap-0 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
         {/* 顶部标题区域 */}
         <DialogHeader className="p-6 border-b">
@@ -264,69 +283,138 @@ export function ImageModal({
           onDragStart={modalActions.handleDragStart}
           onDragEnd={modalActions.handleDragEnd}
         >
-          <div className="flex h-full" data-modal-container>
-            {/* 图片预览区域 */}
-            <div 
-              className="min-w-0 flex-shrink-0" 
-              style={{ width: `${leftPanelWidth}%` }}
-            >
-              <ImagePreview image={image} onClose={onClose} />
-            </div>
+          {/* 根据图片类型调整布局 */}
+          {image.type === 'comparison' ? (
+            /* 双图模式：左右并列双栏显示 */
+            <div className="flex h-full" data-modal-container>
+              {/* 图片预览区域 - 双图模式 */}
+              <div 
+                className="min-w-0 flex-shrink-0" 
+                style={{ width: `${leftPanelWidth}%` }}
+              >
+                <ImagePreview image={image} onClose={onClose} />
+              </div>
 
-            {/* 拖拽分隔条 */}
-            <div 
-              className={`w-[1px] bg-border hover:bg-border cursor-col-resize flex-shrink-0 relative group ${
-                isDragging ? 'bg-border' : ''
-              }`}
-              onMouseDown={handleMouseDown}
-            >
-              <div className="absolute inset-y-0 -left-2 -right-2 flex items-center justify-center">
-                <div className="bg-white border  rounded px-1 py-2 opacity-0 group-hover:opacity-100 transition-opacity ">
-                  <GripVertical className="w-3 h-6 text-border" />
+              {/* 拖拽分隔条 */}
+              <div 
+                className={`w-[1px] bg-border hover:bg-border cursor-col-resize flex-shrink-0 relative group ${
+                  isDragging ? 'bg-border' : ''
+                }`}
+                onMouseDown={handleMouseDown}
+              >
+                <div className="absolute inset-y-0 -left-2 -right-2 flex items-center justify-center">
+                  <div className="bg-white border rounded px-1 py-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="w-3 h-6 text-border" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 信息面板区域 */}
+              <div 
+                className="bg-white flex flex-col min-w-0" 
+                style={{ width: `${100 - leftPanelWidth}%` }}
+              >
+                {/* 提示词管理区域 */}
+                <div className="flex-1 flex flex-col min-h-0 max-h-[calc(75vh-220px)]">
+                  <PromptList
+                    promptBlocks={modalState.promptBlocks}
+                    isEditing={modalState.isEditing}
+                    onUpdate={modalActions.handleUpdatePrompt}
+                    onDelete={modalActions.handleDeletePrompt}
+                    onCopy={modalActions.handleCopyPrompt}
+                  />
+                </div>
+
+                {/* 底部标签和按钮区域 */}
+                <div className="flex-shrink-0">
+                  <ImageInfo
+                    image={image}
+                    isEditing={modalState.isEditing}
+                    onDelete={onDelete ? () => onDelete(image.id) : undefined}
+                    deleteStatus={modalState.deleteStatus}
+                    tags={tags}
+                    tagCategories={tagCategories}
+                    editedTitle={modalState.editedTitle}
+                    editedTagIds={modalState.editedTagIds}
+                    editedLink={modalState.editedLink}
+                    onTitleChange={modalActions.handleTitleChange}
+                    onTagIdsChange={modalActions.handleTagIdsChange}
+                    onLinkChange={modalActions.handleLinkChange}
+                    onRefetch={refreshTags}
+                    tagSelectorOpen={modalState.tagSelectorOpen}
+                    setTagSelectorOpen={modalActions.handleTagSelectorOpen}
+                    onSave={modalActions.handleSave}
+                    onCancel={modalActions.handleCancel}
+                  />
                 </div>
               </div>
             </div>
-
-            {/* 信息面板区域 */}
-            <div 
-              className=" bg-white flex flex-col min-w-0" 
-              style={{ width: `${100 - leftPanelWidth}%` }}
-            >
-              {/* 提示词管理区域 */}
-              <div className="flex-1 flex flex-col min-h-0 max-h-[calc(75vh-220px)]">
-                <PromptList
-                  promptBlocks={modalState.promptBlocks}
-                  isEditing={modalState.isEditing}
-                  onUpdate={modalActions.handleUpdatePrompt}
-                  onDelete={modalActions.handleDeletePrompt}
-                  onCopy={modalActions.handleCopyPrompt}
-                />
+          ) : (
+            /* 单图模式：保持原有左右分栏布局 */
+            <div className="flex h-full" data-modal-container>
+              {/* 图片预览区域 */}
+              <div 
+                className="min-w-0 flex-shrink-0" 
+                style={{ width: `${leftPanelWidth}%` }}
+              >
+                <ImagePreview image={image} onClose={onClose} />
               </div>
 
-              {/* 底部标签和按钮区域 */}
-              <div className="flex-shrink-0">
-                <ImageInfo
-                  image={image}
-                  isEditing={modalState.isEditing}
-                  onDelete={onDelete ? () => onDelete(image.id) : undefined}
-                  deleteStatus={modalState.deleteStatus}
-                  tags={tags}
-                  tagCategories={tagCategories}
-                  editedTitle={modalState.editedTitle}
-                  editedTagIds={modalState.editedTagIds}
-                  editedLink={modalState.editedLink}
-                  onTitleChange={modalActions.handleTitleChange}
-                  onTagIdsChange={modalActions.handleTagIdsChange}
-                  onLinkChange={modalActions.handleLinkChange}
-                  onRefetch={refreshTags}
-                  tagSelectorOpen={modalState.tagSelectorOpen}
-                  setTagSelectorOpen={modalActions.handleTagSelectorOpen}
-                  onSave={modalActions.handleSave}
-                  onCancel={modalActions.handleCancel}
-                />
+              {/* 拖拽分隔条 */}
+              <div 
+                className={`w-[1px] bg-border hover:bg-border cursor-col-resize flex-shrink-0 relative group ${
+                  isDragging ? 'bg-border' : ''
+                }`}
+                onMouseDown={handleMouseDown}
+              >
+                <div className="absolute inset-y-0 -left-2 -right-2 flex items-center justify-center">
+                  <div className="bg-white border rounded px-1 py-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="w-3 h-6 text-border" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 信息面板区域 */}
+              <div 
+                className="bg-white flex flex-col min-w-0" 
+                style={{ width: `${100 - leftPanelWidth}%` }}
+              >
+                {/* 提示词管理区域 */}
+                <div className="flex-1 flex flex-col min-h-0 max-h-[calc(75vh-220px)]">
+                  <PromptList
+                    promptBlocks={modalState.promptBlocks}
+                    isEditing={modalState.isEditing}
+                    onUpdate={modalActions.handleUpdatePrompt}
+                    onDelete={modalActions.handleDeletePrompt}
+                    onCopy={modalActions.handleCopyPrompt}
+                  />
+                </div>
+
+                {/* 底部标签和按钮区域 */}
+                <div className="flex-shrink-0">
+                  <ImageInfo
+                    image={image}
+                    isEditing={modalState.isEditing}
+                    onDelete={onDelete ? () => onDelete(image.id) : undefined}
+                    deleteStatus={modalState.deleteStatus}
+                    tags={tags}
+                    tagCategories={tagCategories}
+                    editedTitle={modalState.editedTitle}
+                    editedTagIds={modalState.editedTagIds}
+                    editedLink={modalState.editedLink}
+                    onTitleChange={modalActions.handleTitleChange}
+                    onTagIdsChange={modalActions.handleTagIdsChange}
+                    onLinkChange={modalActions.handleLinkChange}
+                    onRefetch={refreshTags}
+                    tagSelectorOpen={modalState.tagSelectorOpen}
+                    setTagSelectorOpen={modalActions.handleTagSelectorOpen}
+                    onSave={modalActions.handleSave}
+                    onCancel={modalActions.handleCancel}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <DragOverlay>
             {draggedPrompt ? (
