@@ -29,6 +29,7 @@ import { Search, FolderOpen, Folder, Tag as TagIcon, Plus, X, Check, Loader2 } f
 import { Tag, TagCategory } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { toast } from '@/lib/enhanced-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface TagSelectorDropdownProps {
   tags: Tag[];
@@ -509,13 +510,15 @@ export function TagSelectorDropdown({
           Add Tag
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80 max-h-96 overflow-x-hidden" loop={false}>
+        <DropdownMenuContent className="w-80 max-h-96" loop={false}>
           <div className="p-2">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4  text-muted-foreground" />
               <Input
                 ref={inputRef}
                 placeholder="搜索标签..."
+                 className="pl-8 border border-border"
+
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -526,12 +529,12 @@ export function TagSelectorDropdown({
                   // 阻止事件冒泡到DropdownMenu
                   e.stopPropagation();
                 }}
-                className="pl-8"
               />
             </div>
           </div>
           <DropdownMenuSeparator />
-          <div className="max-h-64 overflow-y-auto">
+                    <ScrollArea className="h-72 w-full" tabIndex={0} onWheel={(e) => e.stopPropagation()}>
+                        <div className="space-y-2 overflow-x-hidden">
             {/* 显示创建新标签选项 */}
             {searchQuery.trim() && !searchTagExists && !hasMatchingTags && (
               <div>
@@ -596,7 +599,8 @@ export function TagSelectorDropdown({
                 </DropdownMenuItem>
               </div>
             )}
-          </div>
+            </div>
+          </ScrollArea>
         </DropdownMenuContent>
       </DropdownMenu>
       

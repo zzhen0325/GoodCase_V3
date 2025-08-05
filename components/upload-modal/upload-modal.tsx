@@ -19,7 +19,7 @@ import { useTagOperations } from '@/hooks/use-tag-operations';
 import { generateId } from '@/lib/utils';
 import { FileUploadArea } from './FileUploadArea';
 import { DualFileUploadArea } from './DualFileUploadArea';
-import { TagSelectorDropdown } from 'components/image-modal/TagSelectorDropdown';
+import { TagSelectorDropdown } from '@/components/shared/TagSelectorDropdown';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

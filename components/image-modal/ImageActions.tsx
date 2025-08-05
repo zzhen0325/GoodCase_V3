@@ -15,7 +15,7 @@ import {
   Link
 } from 'lucide-react';
 import { PromptBlock, Tag, TagCategory } from '@/types';
-import { TagSelectorDropdown } from './TagSelectorDropdown';
+import { TagSelectorDropdown } from '@/components/shared/TagSelectorDropdown';
 
 interface ImageActionsProps {
   isEditing: boolean;
