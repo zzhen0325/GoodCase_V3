@@ -110,9 +110,20 @@ const SidebarProvider = React.forwardRef<
     // 页面加载时的延迟显示逻辑
     React.useEffect(() => {
       if (isInitialLoad) {
-        // 2秒后自动显示边栏
         const timer = setTimeout(() => {
-          setOpen(defaultOpen);
+          // 检查当前页面是否是通过直接输入URL打开的
+          // 1. 如果是通过window.open打开的弹窗，不自动展开侧边栏
+          // 2. 如果URL中包含查询参数(如?image=xxx)，不自动展开侧边栏
+          // 3. 如果是从其他网站通过链接跳转来的，不自动展开侧边栏
+          const hasQueryParams = typeof window !== 'undefined' && window.location.search !== '';
+          const isDirectNavigation = typeof window !== 'undefined' && 
+                                    !window.opener && 
+                                    !hasQueryParams && 
+                                    (!document.referrer || document.referrer.includes(window.location.host));
+          
+          if (isDirectNavigation) {
+            setOpen(defaultOpen);
+          }
           setIsInitialLoad(false);
         }, 1500);
 
@@ -566,6 +577,9 @@ const SidebarGroupAction = React.forwardRef<
         'absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
         // Increases the hit area of the button on mobile.
         'after:absolute after:-inset-2 after:md:hidden',
+        'peer-data-[size=sm]/menu-button:top-1',
+        'peer-data-[size=default]/menu-button:top-1.5',
+        'peer-data-[size=lg]/menu-button:top-2.5',
         'group-data-[collapsible=icon]:hidden',
         className
       )}

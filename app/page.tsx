@@ -348,7 +348,7 @@ function HomePageContent() {
       />
       <SidebarInset>
         <header className="flex h-24 shrink-0 items-center gap-4 border-b px-10 z-9999">
-          <SidebarTrigger className="h-12 w-12 bg-muted/30 border border-border" />
+          <SidebarTrigger className={`h-12 w-12 ${sidebarOpen ? 'bg-muted/30 text-black  ' : 'bg-accent text-black '}   border border-border rounded-2xl`} />
           <Separator orientation="vertical" className="mx-2 h-4" />
           {/* 当边栏隐藏时显示标题 */}
           {!sidebarOpen && (

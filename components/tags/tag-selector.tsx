@@ -5,10 +5,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent
+} from '@/components/ui/dropdown-menu';
 import { Search, Tags, X, ChevronDown, Plus } from 'lucide-react';
 import { Tag, TagCategory } from '@/types';
 import { TagItem } from './tag-item';
@@ -47,6 +47,7 @@ export function TagSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
+
   // 获取选中的标签对象
   const selectedTags = useMemo(() => {
     return tags.filter((tag: Tag) => selectedTagIds.includes(tag.id));
@@ -73,6 +74,10 @@ export function TagSelector({
 
     return grouped;
   }, [tagCategories, filteredTags, searchQuery]);
+
+
+
+ 
 
   // 切换标签选择
   const toggleTag = (tag: Tag) => {
@@ -117,10 +122,12 @@ export function TagSelector({
     }
   };
 
+
+
   return (
     <div className={cn('w-full', className)}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
@@ -179,16 +186,16 @@ export function TagSelector({
               <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
             </div>
           </Button>
-        </PopoverTrigger>
+        </DropdownMenuTrigger>
 
-        <PopoverContent className="w-full p-0" align="start">
+        <DropdownMenuContent className="w-full p-0">
           <div className="p-3 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="搜索标签..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="pl-8"
               />
             </div>
@@ -254,7 +261,7 @@ export function TagSelector({
                         {groupTags.map((tag) => (
                           <div
                             key={tag.id}
-                            className="flex items-center justify-between p-1 hover:bg-muted/30 rounded"
+                            className="flex items-center justify-between p-1 rounded hover:bg-muted/30"
                           >
                             <TagItem
                               tag={tag}
@@ -291,8 +298,8 @@ export function TagSelector({
               )}
             </div>
           </ScrollArea>
-        </PopoverContent>
-      </Popover>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

@@ -151,8 +151,10 @@ export async function POST(request: NextRequest) {
         console.log('开始处理双图上传');
         
         // 获取before图片元数据
-        const beforeMetadata = await getImageMetadataServer(beforeFile!);
-        const afterMetadata = await getImageMetadataServer(afterFile!);
+        const beforeBuffer = Buffer.from(await beforeFile!.arrayBuffer());
+        const afterBuffer = Buffer.from(await afterFile!.arrayBuffer());
+        const beforeMetadata = await getImageMetadataServer(beforeBuffer, beforeFile!.type);
+        const afterMetadata = await getImageMetadataServer(afterBuffer, afterFile!.type);
         
         console.log('Before图片元数据:', beforeMetadata);
         console.log('After图片元数据:', afterMetadata);
@@ -189,7 +191,7 @@ export async function POST(request: NextRequest) {
         beforeImageData = {
           storagePath: `images/${beforeFileName}`,
           url: beforeUrl,
-          fileSize: beforeMetadata.fileSize,
+          fileSize: beforeMetadata.size,
           width: beforeMetadata.width,
           height: beforeMetadata.height,
           mimeType: beforeFile!.type,
@@ -199,7 +201,7 @@ export async function POST(request: NextRequest) {
         afterImageData = {
           storagePath: `images/${afterFileName}`,
           url: afterUrl,
-          fileSize: afterMetadata.fileSize,
+          fileSize: afterMetadata.size,
           width: afterMetadata.width,
           height: afterMetadata.height,
           mimeType: afterFile!.type,
@@ -215,7 +217,8 @@ export async function POST(request: NextRequest) {
     } else {
       // 单图模式：使用增强的服务器端元数据获取
       try {
-        metadata = await getImageMetadataServer(imageFile);
+        const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
+        metadata = await getImageMetadataServer(imageBuffer, imageFile.type);
         console.log('图片元数据获取成功:', metadata);
         
         // 如果仍然无法获取尺寸，记录警告

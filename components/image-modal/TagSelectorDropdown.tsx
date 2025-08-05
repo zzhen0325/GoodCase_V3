@@ -161,7 +161,7 @@ function CreateTagForm({ searchQuery, tagCategories, onConfirm, onCancel, onCrea
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="输入标签名称"
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          
         />
       </div>
 
@@ -244,14 +244,7 @@ function CreateTagForm({ searchQuery, tagCategories, onConfirm, onCancel, onCrea
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="输入新分类名称"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleConfirmNewCategory();
-                } else if (e.key === 'Escape') {
-                  handleCancelNewCategory();
-                }
-              }}
-              autoFocus
+              
             />
             <div className="flex gap-2">
               <Button
@@ -326,7 +319,7 @@ function CreateCategoryForm({ onConfirm, onCancel }: CreateCategoryFormProps) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="输入分类名称"
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          
         />
       </div>
 
@@ -364,7 +357,18 @@ export function TagSelectorDropdown({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showCreateTagDialog, setShowCreateTagDialog] = React.useState(false);
   const [showCreateCategoryDialog, setShowCreateCategoryDialog] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const { createTag, createTagCategory } = useTagOperations();
+
+  // 确保输入框在下拉菜单打开时获得焦点
+  React.useEffect(() => {
+    if (open && inputRef.current) {
+      // 延迟聚焦以确保DOM已渲染
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [open]);
 
   // 按分类聚合标签
   const groupedTags = React.useMemo(() => {
@@ -458,7 +462,7 @@ export function TagSelectorDropdown({
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={onOpenChange}>
+      <DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
         <DropdownMenuTrigger asChild>
           <Button 
             type="button"
@@ -470,16 +474,24 @@ export function TagSelectorDropdown({
           Add Tag
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80 max-h-96 overflow-x-hidden" onCloseAutoFocus={(e) => e.preventDefault()}>
+        <DropdownMenuContent className="w-80 max-h-96 overflow-x-hidden" loop={false}>
           <div className="p-2">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={inputRef}
                 placeholder="搜索标签..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  // 阻止事件冒泡到DropdownMenu
+                  e.stopPropagation();
+                }}
+                onKeyUp={(e) => {
+                  // 阻止事件冒泡到DropdownMenu
+                  e.stopPropagation();
+                }}
                 className="pl-8"
-                autoFocus
               />
             </div>
           </div>

@@ -30,10 +30,11 @@ export function SearchBar({
   currentFilters = DEFAULT_SEARCH_FILTERS,
   images = [],
 }: SearchBarProps) {
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const [query, setQuery] = useState(currentFilters.query || '');
   const [isFocused, setIsFocused] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
@@ -100,8 +101,8 @@ export function SearchBar({
   const handleSearchChange = useCallback(
     (value: string) => {
       setQuery(value);
-      setSelectedIndex(-1);
       setShowDropdown(value.trim().length > 0);
+      setHighlightIndex(-1);
       debouncedSearch(value);
     },
     [debouncedSearch]
@@ -111,7 +112,6 @@ export function SearchBar({
   const clearSearch = useCallback(() => {
     setQuery('');
     setShowDropdown(false);
-    setSelectedIndex(-1);
     onSearch({
       ...currentFilters,
       query: '',
@@ -130,6 +130,7 @@ export function SearchBar({
   
   // 选择建议项
   const selectSuggestion = useCallback((suggestion: SearchSuggestion) => {
+    setHighlightIndex(-1);
     if (suggestion.type === 'tag') {
       // 选择标签时，添加到过滤器的tags数组中
       const currentTags = currentFilters.tags || [];
@@ -152,38 +153,24 @@ export function SearchBar({
       });
     }
     setShowDropdown(false);
-    setSelectedIndex(-1);
   }, [onSearch, currentFilters]);
   
   // 处理键盘导航
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!showDropdown || suggestions.length === 0) return;
-    
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev => 
-          prev < suggestions.length - 1 ? prev + 1 : 0
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev => 
-          prev > 0 ? prev - 1 : suggestions.length - 1
-        );
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-          selectSuggestion(suggestions[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        setShowDropdown(false);
-        setSelectedIndex(-1);
-        break;
+    if (e.key === 'Escape') {
+      setShowDropdown(false);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIndex(idx => (idx + 1 >= suggestions.length ? 0 : idx + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIndex(idx => (idx <= 0 ? suggestions.length - 1 : idx - 1));
+    } else if ((e.key === 'Enter' || e.key === ' ') && highlightIndex >= 0) {
+      e.preventDefault();
+      selectSuggestion(suggestions[highlightIndex]);
     }
-  }, [showDropdown, suggestions, selectedIndex, selectSuggestion]);
+  }, [showDropdown, suggestions, highlightIndex, selectSuggestion]);
 
   // 处理输入框变化
   const handleInputChange = useCallback(
@@ -207,7 +194,6 @@ export function SearchBar({
       if (!dropdownRef.current?.contains(e.relatedTarget as Node)) {
         setIsFocused(false);
         setShowDropdown(false);
-        setSelectedIndex(-1);
       }
     }, 150);
   }, []);
@@ -222,7 +208,6 @@ export function SearchBar({
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setShowDropdown(false);
-        setSelectedIndex(-1);
       }
     };
     
@@ -235,7 +220,7 @@ export function SearchBar({
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-black transition-colors duration-200 z-10" />
-          <div className="relative w-full min-h-12 rounded-lg bg-muted/30 border border-border focus-within:ring-2 focus-within:bg-white transition-all duration-300">
+          <div className="relative w-full min-h-12 rounded-2xl bg-muted/30 border border-border focus-within:ring-2 ring-accent  ring-offset-2  focus-within:bg-white transition-all duration-300">
             <div className="flex flex-wrap items-center gap-2 p-2 pl-11 pr-10">
               {/* 选中的标签显示区域 */}
               {currentFilters.tags && currentFilters.tags.length > 0 && (
@@ -282,7 +267,7 @@ export function SearchBar({
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
-                className="flex-1 min-w-32 border-0 bg-transparent p-0 text-black placeholder:text-black focus:ring-0 focus-visible:ring-0"
+                className="flex-1 min-w-32 border-0 bg-transparent p-0 text-black placeholder:text-black/30 focus:ring-0 focus-visible:ring-0"
               />
             </div>
           </div>
@@ -301,23 +286,20 @@ export function SearchBar({
           {showDropdown && suggestions.length > 0 && (
             <div
               ref={dropdownRef}
-              className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto"
+              className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto"
             >
               {suggestions.map((suggestion, index) => (
                 <div
                   key={suggestion.id}
-                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                    index === selectedIndex
-                      ? 'bg-accent/50'
-                      : 'hover:bg-accent/30'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${highlightIndex === index ? 'bg-accent/40' : 'hover:bg-accent/30'}`}
                   onClick={() => selectSuggestion(suggestion)}
+                  onMouseEnter={() => setHighlightIndex(index)}
                 >
                   <div className="flex-shrink-0">
                     {suggestion.type === 'tag' ? (
-                      <TagIcon className="h-4 w-4 text-blue-500" />
+                      <TagIcon className="h-4 w-4 text-black" />
                     ) : (
-                      <FileText className="h-4 w-4 text-green-500" />
+                      <FileText className="h-4 w-4 text-black" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

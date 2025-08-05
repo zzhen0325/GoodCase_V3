@@ -62,12 +62,11 @@ export const DualFileUploadArea: React.FC<DualFileUploadAreaProps> = ({
         let processedFile = file;
         
         if (compressionConfig.enabled) {
-          processedFile = await compressImageFile(
-            file,
-            compressionConfig.maxWidth,
-            compressionConfig.maxHeight,
-            compressionConfig.quality
-          );
+          processedFile = await compressImageFile(file, {
+            maxWidth: compressionConfig.maxWidth,
+            maxHeight: compressionConfig.maxHeight,
+            quality: compressionConfig.quality
+          });
         }
         
         // 更新进度
