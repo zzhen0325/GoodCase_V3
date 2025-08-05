@@ -35,10 +35,11 @@ import {
   Tag as TagIcon,
   FolderOpen,
   Folder,
+  Loader2,
 } from 'lucide-react';
 import { Tag, TagCategory, getColorTheme } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
-import { toast } from 'sonner';
+import { toast } from '@/lib/enhanced-toast';
 
 // 创建标签表单组件
 interface CreateTagFormProps {
@@ -66,16 +67,37 @@ export function CreateTagForm({
 }: CreateTagFormProps) {
   const [name, setName] = React.useState(searchQuery);
   const [categoryId, setCategoryId] = React.useState<string>('');
+  const [isCreating, setIsCreating] = React.useState(false);
   const { createTag } = useTagOperations();
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || isCreating) return;
+
+    setIsCreating(true);
+    
+    // 显示进度条
+    const progressToastId = toast.progress({
+      progress: 0,
+      message: '正在创建标签...',
+      description: `创建标签 "${name.trim()}"`
+    });
 
     try {
+      // 模拟进度更新
+      toast.updateProgress(progressToastId, {
+        progress: 30,
+        message: '验证标签信息...'
+      });
+
       const result = await createTag({
         name: name.trim(),
         
         categoryId: categoryId || tagCategories[0]?.id || "",
+      });
+
+      toast.updateProgress(progressToastId, {
+        progress: 80,
+        message: '保存标签数据...'
       });
 
       if (result.success) {
@@ -89,14 +111,16 @@ export function CreateTagForm({
           onTagsChange([...selectedTagIds, result.tag.id]);
         }
 
-        toast.success('标签创建成功');
+        toast.completeProgress(progressToastId, '标签创建成功');
         onCancel(); // 关闭对话框
       } else {
-        toast.error(result.error || '创建标签失败');
+        toast.failProgress(progressToastId, result.error || '创建标签失败');
       }
     } catch (error) {
       console.error('创建标签失败:', error);
-      toast.error('创建标签失败');
+      toast.failProgress(progressToastId, '创建标签失败');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -162,11 +186,15 @@ export function CreateTagForm({
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!name?.trim()}
+          disabled={!name?.trim() || isCreating}
           className="flex items-center gap-2 px-5"
         >
-          <Plus className="w-4 h-4" />
-          创建标签
+          {isCreating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
+          {isCreating ? '创建中...' : '创建标签'}
         </Button>
       </div>
     </div>
@@ -184,10 +212,36 @@ export function CreateCategoryForm({
   onCancel,
 }: CreateCategoryFormProps) {
   const [name, setName] = React.useState('');
+  const [isCreating, setIsCreating] = React.useState(false);
 
-  const handleSubmit = () => {
-    if (!name.trim()) return;
-    onConfirm({ name: name.trim() });
+  const handleSubmit = async () => {
+    if (!name.trim() || isCreating) return;
+    
+    setIsCreating(true);
+    
+    // 显示进度条
+    const progressToastId = toast.progress({
+      progress: 0,
+      message: '正在创建分类...',
+      description: `创建分类 "${name.trim()}"`
+    });
+
+    try {
+      // 模拟进度更新
+      toast.updateProgress(progressToastId, {
+        progress: 50,
+        message: '验证分类信息...'
+      });
+
+      await onConfirm({ name: name.trim() });
+      
+      toast.completeProgress(progressToastId, '分类创建成功');
+    } catch (error) {
+      console.error('创建分类失败:', error);
+      toast.failProgress(progressToastId, '创建分类失败');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -214,11 +268,15 @@ export function CreateCategoryForm({
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!name?.trim()}
+          disabled={!name?.trim() || isCreating}
           className="flex items-center gap-2 px-5"
         >
-          <Plus className="w-4 h-4" />
-          创建分类
+          {isCreating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
+          {isCreating ? '创建中...' : '创建分类'}
         </Button>
       </div>
     </div>
@@ -339,14 +397,13 @@ export function TagSelectorDropdown({
         if (onRefetch) {
           onRefetch();
         }
-        toast.success('分类创建成功');
         setShowCreateCategoryDialog(false);
       } else {
-        toast.error(result.error || '创建分类失败');
+        throw new Error(result.error || '创建分类失败');
       }
     } catch (error) {
       console.error('创建分类失败:', error);
-      toast.error('创建分类失败');
+      throw error; // 重新抛出错误，让CreateCategoryForm处理
     }
   };
 

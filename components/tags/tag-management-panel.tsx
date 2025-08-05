@@ -45,6 +45,7 @@ import { TagGroupItem } from './tag-group-item';
 import { useTagOperations } from '@/hooks/use-tag-operations';
 import { cn } from '@/lib/utils';
 import toast from '@/lib/enhanced-toast';
+import { Loader2 } from 'lucide-react';
 
 interface TagManagementPanelProps {
   open: boolean;
@@ -368,6 +369,8 @@ export function TagManagementPanel({
     type: 'tagCategory' | 'tag' | 'selected';
     data?: Tag | TagCategory;
   }>({ type: 'tag' });
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
 
 
   // 切换分类展开状态
@@ -385,23 +388,60 @@ export function TagManagementPanel({
 
   // 处理创建分类
   const handleCreateCategory = async (data: { name: string }) => {
+    if (isCreatingCategory) return;
+    
+    setIsCreatingCategory(true);
+    
+    // 显示进度条
+    const progressToastId = toast.progress({
+      progress: 0,
+      message: '正在创建分类...',
+      description: `创建分类 "${data.name}"`
+    });
+
     try {
+      // 模拟进度更新
+      toast.updateProgress(progressToastId, {
+        progress: 50,
+        message: '验证分类信息...'
+      });
+
       const result = await createTagCategory(data);
+      
       if (result.success) {
-        toast.success('分类创建成功');
+        toast.completeProgress(progressToastId, '分类创建成功');
         setShowCreateCategory(false);
       } else {
-        toast.error('创建分类失败', { description: result.error || '未知错误' });
+        toast.failProgress(progressToastId, result.error || '创建分类失败');
       }
     } catch (error) {
       console.error('创建分类失败:', error);
-      toast.error('创建分类失败', { description: error instanceof Error ? error.message : '未知错误' });
+      toast.failProgress(progressToastId, error instanceof Error ? error.message : '创建分类失败');
+    } finally {
+      setIsCreatingCategory(false);
     }
   };
 
   // 处理创建标签
   const handleCreateTag = async (data: { name: string; categoryId?: string }) => {
+    if (isCreatingTag) return;
+    
+    setIsCreatingTag(true);
+    
+    // 显示进度条
+    const progressToastId = toast.progress({
+      progress: 0,
+      message: '正在创建标签...',
+      description: `创建标签 "${data.name}"`
+    });
+
     try {
+      // 模拟进度更新
+      toast.updateProgress(progressToastId, {
+        progress: 30,
+        message: '验证标签信息...'
+      });
+
       // 随机选择一个颜色主题
       const colorThemes = ['pink', 'cyan', 'yellow', 'green', 'purple'];
       const randomColor = colorThemes[Math.floor(Math.random() * colorThemes.length)];
@@ -411,16 +451,23 @@ export function TagManagementPanel({
         categoryId: data.categoryId || tagCategories[0]?.id || ""
       });
       
+      toast.updateProgress(progressToastId, {
+        progress: 80,
+        message: '保存标签数据...'
+      });
+      
       if (result.success) {
-        toast.success('标签创建成功');
+        toast.completeProgress(progressToastId, '标签创建成功');
         setShowCreateTag(false);
         setCreateTagCategoryId('');
       } else {
-        toast.error('创建标签失败', { description: result.error || '未知错误' });
+        toast.failProgress(progressToastId, result.error || '创建标签失败');
       }
     } catch (error) {
       console.error('创建标签失败:', error);
-      toast.error('创建标签失败', { description: error instanceof Error ? error.message : '未知错误' });
+      toast.failProgress(progressToastId, error instanceof Error ? error.message : '创建标签失败');
+    } finally {
+      setIsCreatingTag(false);
     }
   };
 

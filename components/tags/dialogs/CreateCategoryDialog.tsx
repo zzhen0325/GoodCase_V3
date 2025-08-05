@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
+import { toast } from '@/lib/enhanced-toast';
 
 interface CreateCategoryDialogProps {
   open: boolean;
@@ -15,6 +17,7 @@ interface CreateCategoryDialogProps {
 export function CreateCategoryDialog({ open, onOpenChange, onConfirm, initialData }: CreateCategoryDialogProps) {
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>('pink');
+  const [isCreating, setIsCreating] = useState(false);
   
   const isEditMode = !!initialData;
   
@@ -28,11 +31,35 @@ export function CreateCategoryDialog({ open, onOpenChange, onConfirm, initialDat
     }
   }, [initialData, open]);
 
-  const handleSubmit = () => {
-    if (name.trim()) {
-      onConfirm({ name: name.trim(), color });
+  const handleSubmit = async () => {
+    if (!name.trim() || isCreating) return;
+    
+    setIsCreating(true);
+    
+    // 显示进度条
+    const progressToastId = toast.progress({
+      progress: 0,
+      message: isEditMode ? '正在更新分类...' : '正在创建分类...',
+      description: `${isEditMode ? '更新' : '创建'}分类 "${name.trim()}"`
+    });
+
+    try {
+      // 模拟进度更新
+      toast.updateProgress(progressToastId, {
+        progress: 50,
+        message: '验证分类信息...'
+      });
+
+      await onConfirm({ name: name.trim(), color });
+      
+      toast.completeProgress(progressToastId, isEditMode ? '分类更新成功' : '分类创建成功');
       setName('');
       setColor('pink');
+    } catch (error) {
+      console.error('操作分类失败:', error);
+      toast.failProgress(progressToastId, isEditMode ? '分类更新失败' : '分类创建失败');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -94,8 +121,14 @@ export function CreateCategoryDialog({ open, onOpenChange, onConfirm, initialDat
           <Button variant="outline" onClick={() => onOpenChange(false)} className='px-6'>
             取消
           </Button>
-          <Button onClick={handleSubmit} disabled={!name?.trim()} className="bg-accent text-black px-6">
-            {isEditMode ? '保存' : '创建'}
+          <Button onClick={handleSubmit} disabled={!name?.trim() || isCreating} className="bg-accent text-black px-6">
+            {isCreating ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : null}
+            {isCreating 
+              ? (isEditMode ? '保存中...' : '创建中...') 
+              : (isEditMode ? '保存' : '创建')
+            }
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -25,10 +25,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Search, FolderOpen, Folder, Tag as TagIcon, Plus, X, Check } from 'lucide-react';
+import { Search, FolderOpen, Folder, Tag as TagIcon, Plus, X, Check, Loader2 } from 'lucide-react';
 import { Tag, TagCategory } from '@/types';
 import { useTagOperations } from '@/hooks/use-tag-operations';
-import { toast } from 'sonner';
+import { toast } from '@/lib/enhanced-toast';
 
 interface TagSelectorDropdownProps {
   tags: Tag[];
@@ -302,11 +302,42 @@ interface CreateCategoryFormProps {
 
 function CreateCategoryForm({ onConfirm, onCancel }: CreateCategoryFormProps) {
   const [name, setName] = React.useState('');
+  const [isCreating, setIsCreating] = React.useState(false);
+  const { createTagCategory } = useTagOperations();
 
-  const handleSubmit = () => {
-    if (name.trim()) {
-      onConfirm({ name: name.trim() });
-      onCancel();
+  const handleSubmit = async () => {
+    if (!name.trim() || isCreating) return;
+
+    setIsCreating(true);
+    
+    // 显示进度条
+    const progressToastId = toast.progress({
+      progress: 0,
+      message: '正在创建分类...',
+      description: `创建分类 "${name.trim()}"`
+    });
+
+    try {
+      // 模拟进度更新
+      toast.updateProgress(progressToastId, {
+        progress: 50,
+        message: '验证分类信息...'
+      });
+
+      const result = await createTagCategory({ name: name.trim() });
+
+      if (result.success) {
+        toast.completeProgress(progressToastId, '分类创建成功');
+        onConfirm({ name: name.trim() });
+        onCancel();
+      } else {
+        toast.failProgress(progressToastId, result.error || '创建分类失败');
+      }
+    } catch (error) {
+      console.error('创建分类失败:', error);
+      toast.failProgress(progressToastId, '创建分类失败');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -334,11 +365,15 @@ function CreateCategoryForm({ onConfirm, onCancel }: CreateCategoryFormProps) {
         </Button>
         <Button 
           onClick={handleSubmit} 
-          disabled={!name?.trim()}
+          disabled={!name?.trim() || isCreating}
           className="flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" />
-          创建分类
+          {isCreating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
+          {isCreating ? '创建中...' : '创建分类'}
         </Button>
       </div>
     </div>
