@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { ImageData } from '@/types';
@@ -367,6 +367,15 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
 
+  // 按添加时间排序图片（最新的在前）
+  const sortedImages = useMemo(() => {
+    return [...images].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA; // 降序排序，最新的在前
+    });
+  }, [images]);
+
   // 滚动加载检测
   useEffect(() => {
     const container = containerRef.current;
@@ -469,7 +478,7 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
 
       {/* 瀑布流布局 */}
       <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-4">
-        {images.map((image, index) => (
+        {sortedImages.map((image, index) => (
           <WaterfallImageCard
             key={image.id}
             image={image}
@@ -501,7 +510,7 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
 
       {/* 到达底部提示 */}
       <AnimatePresence>
-        {!hasMore && images.length > 0 && (
+        {!hasMore && sortedImages.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -525,7 +534,7 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
                 </svg>
               </div>
               <p className="text-sm font-medium">已显示全部图片</p>
-              <p className="text-xs mt-1">共 {images.length} 张图片</p>
+              <p className="text-xs mt-1">共 {sortedImages.length} 张图片</p>
             </div>
           </motion.div>
         )}
