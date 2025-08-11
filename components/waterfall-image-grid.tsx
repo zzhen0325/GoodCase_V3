@@ -101,12 +101,14 @@ const WaterfallImageCard = React.memo(function WaterfallImageCard({
       ref={ref}
       initial={{ opacity: 0, y: 20 }}
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-      transition={{ 
-        delay: index * 0.02, 
-        duration: 0.4,
-        ease: "easeOut"
+      transition={{
+        delay: index * 0.02,
+        duration: 0.3,
+        ease: "easeOut",
       }}
-      className="relative group cursor-pointer break-inside-avoid mb-4"
+      whileHover={{ scale: 1.03, zIndex: 10 }}
+      // 卡片间距
+      className="relative group cursor-pointer rounded-xl break-inside-avoid  m-4 hover:shadow-xl transition-shadow duration-200"
       onClick={handleClick}
     >
       {/* 编辑模式选择框 */}
@@ -366,6 +368,7 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
 }: WaterfallImageGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [columnCount, setColumnCount] = useState(3);
 
   // 按添加时间排序图片（最新的在前）
   const sortedImages = useMemo(() => {
@@ -375,6 +378,35 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
       return dateB - dateA; // 降序排序，最新的在前
     });
   }, [images]);
+
+  // 根据屏幕宽度决定列数
+  const getColumnCount = () => {
+    const width = window.innerWidth;
+    if (width >= 1536) return 6; // 2xl
+    if (width >= 1280) return 5; // xl
+    if (width >= 1024) return 4; // lg
+    if (width >= 768) return 3; // md
+    if (width >= 640) return 2; // sm
+    return 1; // xs
+  };
+
+  useEffect(() => {
+    const calculateColumnCount = () => {
+      setColumnCount(getColumnCount());
+    };
+    calculateColumnCount();
+    window.addEventListener('resize', calculateColumnCount);
+    return () => window.removeEventListener('resize', calculateColumnCount);
+  }, []);
+
+  // 将图片分配到不同的列中
+  const columns = useMemo(() => {
+    const newColumns: ImageData[][] = Array.from({ length: columnCount }, () => []);
+    sortedImages.forEach((image, index) => {
+      newColumns[index % columnCount].push(image);
+    });
+    return newColumns;
+  }, [sortedImages, columnCount]);
 
   // 滚动加载检测
   useEffect(() => {
@@ -406,7 +438,7 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
   // 加载状态
   if (loading) {
     return (
-      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-4 space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 space-y-4">
         {Array.from({ length: 12 }).map((_, index) => (
           <motion.div
             key={index}
@@ -477,17 +509,21 @@ export const WaterfallImageGrid = React.memo(function WaterfallImageGrid({
       </AnimatePresence>
 
       {/* 瀑布流布局 */}
-      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-4">
-        {sortedImages.map((image, index) => (
-          <WaterfallImageCard
-            key={image.id}
-            image={image}
-            onClick={onImageClick}
-            index={index}
-            isEditMode={isEditMode}
-            isSelected={selectedImageIds.has(image.id)}
-            onSelect={onSelectImage}
-          />
+      <div className="flex w-full gap-4">
+        {columns.map((column, colIndex) => (
+          <div key={colIndex} className="flex flex-col flex-1 gap-4">
+            {column.map((image, index) => (
+              <WaterfallImageCard
+                key={image.id}
+                image={image}
+                onClick={onImageClick}
+                index={index}
+                isEditMode={isEditMode}
+                isSelected={selectedImageIds.has(image.id)}
+                onSelect={onSelectImage}
+              />
+            ))}
+          </div>
         ))}
       </div>
 
