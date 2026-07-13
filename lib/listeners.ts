@@ -1,6 +1,8 @@
 "use client"
 
 import { Database } from './database';
+import { MockStore } from './mock-store';
+import { isMockDataEnabled } from './mock-mode';
 import { ImageData, Tag } from '@/types';
 
 // 监听器管理类
@@ -119,6 +121,11 @@ export class ListenerManager {
     callback: (images: ImageData[]) => void,
     key: string = 'images'
   ) {
+    if (isMockDataEnabled()) {
+      const unsubscribe = MockStore.subscribeToImages(callback);
+      this.registerListener(key, unsubscribe);
+      return unsubscribe;
+    }
     const unsubscribe = Database.subscribeToImages(
       callback,
       (error) => this.handleError(key, error)
@@ -132,6 +139,11 @@ export class ListenerManager {
     callback: (tags: Tag[]) => void,
     key: string = 'tags'
   ) {
+    if (isMockDataEnabled()) {
+      const unsubscribe = MockStore.subscribeToTags(callback);
+      this.registerListener(key, unsubscribe);
+      return unsubscribe;
+    }
     const unsubscribe = Database.subscribeToTags(
       callback,
       (error) => this.handleError(key, error)
@@ -147,6 +159,11 @@ export class ListenerManager {
     key?: string
   ) {
     const listenerKey = key || `image-${id}`;
+    if (isMockDataEnabled()) {
+      const unsubscribe = MockStore.subscribeToImage(id, callback);
+      this.registerListener(listenerKey, unsubscribe);
+      return unsubscribe;
+    }
     const unsubscribe = Database.subscribeToImage(
       id,
       callback,
@@ -163,6 +180,11 @@ export class ListenerManager {
     callback: (images: ImageData[]) => void,
     key: string = 'search'
   ) {
+    if (isMockDataEnabled()) {
+      const unsubscribe = MockStore.subscribeToImages(callback);
+      this.registerListener(key, unsubscribe);
+      return unsubscribe;
+    }
     // 由于Database没有subscribeToSearchImages方法，使用subscribeToImages
     const unsubscribe = Database.subscribeToImages(
       callback,

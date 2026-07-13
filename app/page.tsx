@@ -677,24 +677,29 @@ export default function HomePage() {
         onRefresh={refreshData}
       />
       
-      <div className="flex justify-center w-full ">
+      <div className="flex w-full justify-center pt-8 sm:pt-10">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-[55%]"
+          className="w-[65%] max-w-[1280px]"
         >
-          <div className="text-center ">
-           <p className="text-sm text-gray-300 mt-10">
+          <div className="text-center">
+           <p className="mb-2 text-xs tracking-[0.08em] text-gray-300 sm:text-sm">
               Manage your images and prompt words to make creation more efficient.
             </p>
-            <div className="h-auto mb-1 ">
+            <div className="relative h-[clamp(7rem,13vw,12rem)] w-full">
               <TextPressure
                 text="GoooodCase!"
-                fontFamily="Inter"
+                flex
+                alpha={false}
+                stroke={false}
+                width
+                weight
+                italic
+                scale={false}
                 textColor="#000"
-                className="text-4xl font-bold"
-                minFontSize={32} />
+                minFontSize={24} />
             </div>
              
           </div>

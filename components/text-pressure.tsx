@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface TextPressureProps {
     text?: string;
@@ -18,10 +18,29 @@ interface TextPressureProps {
     minFontSize?: number;
 }
 
+const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return Math.sqrt(dx * dx + dy * dy);
+};
+
+const getAttr = (distance: number, maxDist: number, minVal: number, maxVal: number) => {
+    const val = maxVal - Math.abs((maxVal * distance) / maxDist);
+    return Math.max(minVal, val + minVal);
+};
+
+const debounce = (func: () => void, delay: number) => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(func, delay);
+    };
+};
+
 const TextPressure: React.FC<TextPressureProps> = ({
     text = 'Compressa',
-    fontFamily = 'Compressa VF',
-    fontUrl = 'https://res.cloudinary.com/dr6lvwubh/raw/upload/v1529908256/CompressaPRO-GX.woff2',
+    fontFamily = 'Roboto Flex',
+    fontUrl = '/fonts/RobotoFlex-Variable.woff2',
     width = true,
     weight = true,
     italic = true,
@@ -48,12 +67,6 @@ const TextPressure: React.FC<TextPressureProps> = ({
 
     const chars = text.split('');
 
-    const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
-
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             cursorRef.current.x = e.clientX;
@@ -66,7 +79,7 @@ const TextPressure: React.FC<TextPressureProps> = ({
         };
 
         window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchmove', handleTouchMove, { passive: true });
 
         if (containerRef.current) {
             const { left, top, width, height } = containerRef.current.getBoundingClientRect();
@@ -82,12 +95,14 @@ const TextPressure: React.FC<TextPressureProps> = ({
         };
     }, []);
 
-    const setSize = () => {
+    const setSize = useCallback(() => {
         if (!containerRef.current || !titleRef.current) return;
 
         const { width: containerW, height: containerH } = containerRef.current.getBoundingClientRect();
 
-        let newFontSize = containerW / (chars.length / 2);
+        // React Bits' 2x ratio is tuned for its shorter demo label. Reserve
+        // enough width for longer product names even at the widest font axis.
+        let newFontSize = (containerW / chars.length) * 1.45;
         newFontSize = Math.max(newFontSize, minFontSize);
 
         setFontSize(newFontSize);
@@ -104,13 +119,14 @@ const TextPressure: React.FC<TextPressureProps> = ({
                 setLineHeight(yRatio);
             }
         });
-    };
+    }, [chars.length, minFontSize, scale]);
 
     useEffect(() => {
-        setSize();
-        window.addEventListener('resize', setSize);
-        return () => window.removeEventListener('resize', setSize);
-    }, [scale, text]);
+        const debouncedSetSize = debounce(setSize, 100);
+        debouncedSetSize();
+        window.addEventListener('resize', debouncedSetSize);
+        return () => window.removeEventListener('resize', debouncedSetSize);
+    }, [setSize]);
 
     useEffect(() => {
         let rafId: number;
@@ -133,18 +149,18 @@ const TextPressure: React.FC<TextPressureProps> = ({
 
                     const d = dist(mouseRef.current, charCenter);
 
-                    const getAttr = (distance: number, minVal: number, maxVal: number) => {
-                        const val = maxVal - Math.abs((maxVal * distance) / maxDist);
-                        return Math.max(minVal, val + minVal);
-                    };
+                    const wdth = width ? Math.floor(getAttr(d, maxDist, 5, 200)) : 100;
+                    const wght = weight ? Math.floor(getAttr(d, maxDist, 100, 900)) : 400;
+                    const italVal = italic ? getAttr(d, maxDist, 0, 1).toFixed(2) : '0';
+                    const alphaVal = alpha ? getAttr(d, maxDist, 0, 1).toFixed(2) : '1';
+                    const settings = `'wght' ${wght}, 'wdth' ${wdth}, 'ital' ${italVal}`;
 
-                    const wdth = width ? Math.floor(getAttr(d, 5, 200)) : 100;
-                    const wght = weight ? Math.floor(getAttr(d, 100, 900)) : 400;
-                    const italVal = italic ? getAttr(d, 0, 1).toFixed(2) : '0';
-                    const alphaVal = alpha ? getAttr(d, 0, 1).toFixed(2) : '1';
-
-                    span.style.opacity = alphaVal;
-                    span.style.fontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'ital' ${italVal}`;
+                    if (span.style.fontVariationSettings !== settings) {
+                        span.style.fontVariationSettings = settings;
+                    }
+                    if (alpha && span.style.opacity !== alphaVal) {
+                        span.style.opacity = alphaVal;
+                    }
                 });
             }
 
@@ -153,34 +169,41 @@ const TextPressure: React.FC<TextPressureProps> = ({
 
         animate();
         return () => cancelAnimationFrame(rafId);
-    }, [width, weight, italic, alpha, chars.length]);
+    }, [width, weight, italic, alpha]);
+
+    const styleElement = useMemo(() => (
+        <style>{`
+          @font-face {
+            font-family: '${fontFamily}';
+            src: url('${fontUrl}') format('woff2');
+            font-style: normal;
+            font-weight: 100 1000;
+            font-stretch: 25% 151%;
+            font-display: swap;
+          }
+          .stroke span {
+            position: relative;
+            color: ${textColor};
+          }
+          .stroke span::after {
+            content: attr(data-char);
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: transparent;
+            z-index: -1;
+            -webkit-text-stroke-width: ${strokeWidth}px;
+            -webkit-text-stroke-color: ${strokeColor};
+          }
+        `}</style>
+    ), [fontFamily, fontUrl, textColor, strokeColor, strokeWidth]);
 
     return (
         <div
             ref={containerRef}
             className="relative w-full h-full overflow-hidden bg-transparent"
         >
-            <style>{`
-        @font-face {
-          font-family: '${fontFamily}';
-          src: url('${fontUrl}');
-          font-style: normal;
-        }
-        .stroke span {
-          position: relative;
-          color: ${textColor};
-        }
-        .stroke span::after {
-          content: attr(data-char);
-          position: absolute;
-          left: 0;
-          top: 0;
-          color: transparent;
-          z-index: -1;
-          -webkit-text-stroke-width: ${strokeWidth}px;
-          -webkit-text-stroke-color: ${strokeColor};
-        }
-      `}</style>
+            {styleElement}
 
             <h1
                 ref={titleRef}
