@@ -330,7 +330,7 @@ export function Dock({
         </AnimatePresence>
       </div>
       
-      <div className="fixed bottom-20 left-0 right-0 flex justify-center z-50" ref={dockRef}>
+      <div className="fixed bottom-8 scale-90 left-0 right-0 flex justify-center z-50" ref={dockRef}>
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
